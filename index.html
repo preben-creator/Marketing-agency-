@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lumen Motion · AI Video Marketing Agency</title>
+  <meta name="description" content="Lumen Motion makes scroll-stopping AI video ads, product films and social content for brands that want to move faster.">
+  <meta property="og:title" content="Lumen Motion · AI Video Marketing Agency">
+  <meta property="og:description" content="Scroll-stopping AI video ads, product films and social content, delivered in days.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- ============ NAV ============ -->
+  <header class="nav" id="top">
+    <div class="container nav__inner">
+      <a href="#top" class="logo" aria-label="Lumen Motion home">
+        <span class="logo__mark" aria-hidden="true"></span>
+        <span>Lumen Motion</span>
+      </a>
+      <nav class="nav__links" aria-label="Main">
+        <a href="#work">Work</a>
+        <a href="#services">Services</a>
+        <a href="#process">Process</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <a href="#contact" class="btn btn--small">Book a call</a>
+      <button class="nav__toggle" aria-label="Open menu" aria-expanded="false"><span></span><span></span></button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <div class="hero__glow" aria-hidden="true"></div>
+      <div class="container hero__inner">
+        <p class="eyebrow">AI video marketing agency</p>
+        <h1>Video ads that stop the scroll.<br><span class="grad">Made with AI, in days.</span></h1>
+        <p class="lead">We combine generative AI with human creative direction to produce ads, product films and social content at a fraction of the time and cost of a traditional shoot.</p>
+        <div class="hero__cta">
+          <a href="#contact" class="btn">Start a project</a>
+          <a href="#work" class="btn btn--ghost">
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+            Watch the reel
+          </a>
+        </div>
+
+        <!-- Showreel: replace data-video with your own YouTube/Vimeo embed URL or an .mp4 path -->
+        <button class="reel" data-video="https://www.youtube.com/embed/dQw4w9WgXcQ" aria-label="Play showreel">
+          <div class="reel__frame">
+            <div class="reel__shapes" aria-hidden="true"><i></i><i></i><i></i></div>
+            <span class="play" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg></span>
+            <span class="reel__label">2026 Showreel · 1:12</span>
+          </div>
+        </button>
+      </div>
+    </section>
+
+    <!-- ============ STATS ============ -->
+    <section class="stats">
+      <div class="container stats__grid">
+        <div><strong>3.4×</strong><span>average lift in ad CTR</span></div>
+        <div><strong>72h</strong><span>typical first-cut turnaround</span></div>
+        <div><strong>60%</strong><span>lower cost than a live shoot</span></div>
+        <div><strong>250+</strong><span>videos delivered</span></div>
+      </div>
+      <p class="container fineprint">Placeholder figures. Replace with your own results.</p>
+    </section>
+
+    <!-- ============ WORK ============ -->
+    <section class="section" id="work">
+      <div class="container">
+        <div class="section__head">
+          <p class="eyebrow">Selected work</p>
+          <h2>Recent campaigns</h2>
+          <p class="muted">Click any project to play it. Swap these for your own videos in <code>index.html</code>.</p>
+        </div>
+
+        <div class="filters" role="tablist" aria-label="Filter work">
+          <button class="chip is-active" data-filter="all">All</button>
+          <button class="chip" data-filter="ads">Ads</button>
+          <button class="chip" data-filter="product">Product</button>
+          <button class="chip" data-filter="social">Social</button>
+        </div>
+
+        <div class="work-grid">
+          <article class="card" data-cat="ads">
+            <button class="card__media" data-video="https://www.youtube.com/embed/dQw4w9WgXcQ" style="--a:#7c5cff;--b:#00d4ff" aria-label="Play: Nova Sneakers launch">
+              <span class="play play--sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg></span>
+              <span class="tag">0:30 · 9:16</span>
+            </button>
+            <div class="card__body"><h3>Nova Sneakers launch</h3><p>AI-generated product world for a TikTok and Reels launch campaign.</p></div>
+          </article>
+
+          <article class="card" data-cat="product">
+            <button class="card__media" data-video="https://www.youtube.com/embed/dQw4w9WgXcQ" style="--a:#ff6b6b;--b:#ffb86b" aria-label="Play: Aurora Skincare product film">
+              <span class="play play--sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg></span>
+              <span class="tag">1:00 · 16:9</span>
+            </button>
+            <div class="card__body"><h3>Aurora Skincare</h3><p>A cinematic product film built without a single studio day.</p></div>
+          </article>
+
+          <article class="card" data-cat="social">
+            <button class="card__media" data-video="https://www.youtube.com/embed/dQw4w9WgXcQ" style="--a:#00c896;--b:#00d4ff" aria-label="Play: Harbor Coffee social series">
+              <span class="play play--sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg></span>
+              <span class="tag">12 × 0:15</span>
+            </button>
+            <div class="card__body"><h3>Harbor Coffee</h3><p>A month of always-on social content with an AI brand avatar.</p></div>
+          </article>
+
+          <article class="card" data-cat="ads">
+            <button class="card__media" data-video="https://www.youtube.com/embed/dQw4w9WgXcQ" style="--a:#ff4ecd;--b:#7c5cff" aria-label="Play: Pulse Fintech app ad">
+              <span class="play play--sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg></span>
+              <span class="tag">0:20 · 1:1</span>
+            </button>
+            <div class="card__body"><h3>Pulse Fintech</h3><p>Twenty ad variants for A/B testing across Meta and YouTube.</p></div>
+          </article>
+
+          <article class="card" data-cat="product">
+            <button class="card__media" data-video="https://www.youtube.com/embed/dQw4w9WgXcQ" style="--a:#ffd166;--b:#ff6b6b" aria-label="Play: Volt E-Bikes explainer">
+              <span class="play play--sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg></span>
+              <span class="tag">0:45 · 16:9</span>
+            </button>
+            <div class="card__body"><h3>Volt E-Bikes</h3><p>An animated explainer that turned specs into a story.</p></div>
+          </article>
+
+          <article class="card" data-cat="social">
+            <button class="card__media" data-video="https://www.youtube.com/embed/dQw4w9WgXcQ" style="--a:#4ea8ff;--b:#00c896" aria-label="Play: Atlas Travel UGC-style series">
+              <span class="play play--sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg></span>
+              <span class="tag">8 × 0:30</span>
+            </button>
+            <div class="card__body"><h3>Atlas Travel</h3><p>UGC-style destination videos, localised into five languages.</p></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SERVICES ============ -->
+    <section class="section section--alt" id="services">
+      <div class="container">
+        <div class="section__head">
+          <p class="eyebrow">Services</p>
+          <h2>Everything your brand needs on video</h2>
+        </div>
+        <div class="services">
+          <div class="service">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z M10 9v6l5-3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
+            <h3>Performance video ads</h3>
+            <p>Hook-first ads for TikTok, Reels, Shorts and YouTube, with dozens of variants ready to test.</p>
+          </div>
+          <div class="service">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z M12 12l8-4.5 M12 12v9 M12 12L4 7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
+            <h3>AI product films</h3>
+            <p>Cinematic product visuals generated from your photos or 3D files. No studio, no shipping samples.</p>
+          </div>
+          <div class="service">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+            <h3>AI avatars & spokespeople</h3>
+            <p>A consistent on-brand presenter for explainers, onboarding and social, in any language.</p>
+          </div>
+          <div class="service">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></div>
+            <h3>Always-on social content</h3>
+            <p>A monthly content engine: short-form videos planned, produced and delivered on a schedule.</p>
+          </div>
+          <div class="service">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 12h18 M12 3c3 3.5 3 14.5 0 18 M12 3c-3 3.5-3 14.5 0 18" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></div>
+            <h3>Localisation & dubbing</h3>
+            <p>Take one winning video into new markets with AI voice, lip-sync and translated captions.</p>
+          </div>
+          <div class="service">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V5 M4 19h16 M8 15l4-4 3 3 5-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <h3>Creative strategy & testing</h3>
+            <p>We study what's working, write the hooks, and iterate based on real ad performance data.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PROCESS ============ -->
+    <section class="section" id="process">
+      <div class="container">
+        <div class="section__head">
+          <p class="eyebrow">How it works</p>
+          <h2>From brief to published in four steps</h2>
+        </div>
+        <ol class="steps">
+          <li><span class="steps__n">01</span><h3>Discovery call</h3><p>We learn your brand, audience and goals, and agree on what success looks like.</p></li>
+          <li><span class="steps__n">02</span><h3>Concepts & scripts</h3><p>You get hooks, scripts and style frames to approve before anything is produced.</p></li>
+          <li><span class="steps__n">03</span><h3>AI production</h3><p>Our team generates, edits, scores and polishes every frame, with human review throughout.</p></li>
+          <li><span class="steps__n">04</span><h3>Launch & iterate</h3><p>We deliver every format you need, then refine based on how the videos perform.</p></li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ============ PRICING ============ -->
+    <section class="section section--alt" id="pricing">
+      <div class="container">
+        <div class="section__head">
+          <p class="eyebrow">Packages</p>
+          <h2>Simple, transparent pricing</h2>
+          <p class="muted">Placeholder prices. Edit them to match your offer.</p>
+        </div>
+        <div class="pricing">
+          <div class="plan">
+            <h3>Starter</h3>
+            <p class="plan__price">$1,500<span>/ project</span></p>
+            <ul><li>3 short-form videos</li><li>2 aspect ratios each</li><li>1 round of revisions</li><li>Delivery in 5 days</li></ul>
+            <a href="#contact" class="btn btn--ghost btn--block">Get started</a>
+          </div>
+          <div class="plan plan--featured">
+            <span class="plan__badge">Most popular</span>
+            <h3>Growth</h3>
+            <p class="plan__price">$4,000<span>/ month</span></p>
+            <ul><li>12 videos every month</li><li>Ad variants for testing</li><li>Creative strategy call</li><li>Unlimited revisions</li></ul>
+            <a href="#contact" class="btn btn--block">Book a call</a>
+          </div>
+          <div class="plan">
+            <h3>Brand</h3>
+            <p class="plan__price">Custom</p>
+            <ul><li>Hero campaign films</li><li>Custom AI avatar</li><li>Localisation into any language</li><li>Dedicated producer</li></ul>
+            <a href="#contact" class="btn btn--ghost btn--block">Talk to us</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ TESTIMONIALS ============ -->
+    <section class="section">
+      <div class="container">
+        <div class="section__head">
+          <p class="eyebrow">Kind words</p>
+          <h2>Brands that moved faster</h2>
+        </div>
+        <div class="quotes">
+          <figure class="quote"><blockquote>"We went from one video a quarter to twelve a month, and our cost per acquisition dropped by a third."</blockquote><figcaption><strong>Client name</strong> · Head of Growth, Company</figcaption></figure>
+          <figure class="quote"><blockquote>"The product film looked like a six-figure shoot. It was delivered in a week."</blockquote><figcaption><strong>Client name</strong> · Brand Director, Company</figcaption></figure>
+          <figure class="quote"><blockquote>"They understand both the creative and the performance side. Rare combination."</blockquote><figcaption><strong>Client name</strong> · Founder, Company</figcaption></figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FAQ ============ -->
+    <section class="section section--alt" id="faq">
+      <div class="container container--narrow">
+        <div class="section__head">
+          <p class="eyebrow">FAQ</p>
+          <h2>Questions, answered</h2>
+        </div>
+        <details><summary>Will the videos look "AI-generated"?</summary><p>Not unless you want them to. Every video is directed, edited and finished by people, so the result matches your brand rather than a generic AI look.</p></details>
+        <details><summary>Who owns the final videos?</summary><p>You do. All final deliverables are licensed to you for commercial use across every channel.</p></details>
+        <details><summary>What do you need from us to start?</summary><p>Your brand guidelines, product photos or files, and a short brief. We'll guide you through the rest on the discovery call.</p></details>
+        <details><summary>How fast can you deliver?</summary><p>Most first cuts arrive within 72 hours of script approval. Larger campaigns are scheduled in weekly sprints.</p></details>
+        <details><summary>Do you also run the ads?</summary><p>We focus on creative, but we work closely with your media buyer or in-house team and can recommend partners.</p></details>
+      </div>
+    </section>
+
+    <!-- ============ CONTACT ============ -->
+    <section class="section contact" id="contact">
+      <div class="container contact__inner">
+        <div>
+          <p class="eyebrow">Let's talk</p>
+          <h2>Ready to make videos that sell?</h2>
+          <p class="muted">Tell us a little about your brand and we'll come back within one business day with ideas.</p>
+          <ul class="contact__list">
+            <li><a href="mailto:hello@example.com">hello@example.com</a></li>
+            <li>Your city · Working worldwide</li>
+          </ul>
+        </div>
+        <!-- To receive submissions, create a free form at formspree.io and replace the action URL below. -->
+        <form class="form" action="https://formspree.io/f/your-form-id" method="POST">
+          <label>Name<input name="name" required autocomplete="name"></label>
+          <label>Email<input type="email" name="email" required autocomplete="email"></label>
+          <label>Company<input name="company" autocomplete="organization"></label>
+          <label>What do you need?
+            <select name="need">
+              <option>Video ads</option><option>Product film</option><option>Social content</option><option>AI avatar</option><option>Something else</option>
+            </select>
+          </label>
+          <label class="form__full">Message<textarea name="message" rows="4"></textarea></label>
+          <button class="btn form__full" type="submit">Send message</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer__inner">
+      <a href="#top" class="logo"><span class="logo__mark" aria-hidden="true"></span><span>Lumen Motion</span></a>
+      <nav class="footer__social" aria-label="Social">
+        <a href="#">Instagram</a><a href="#">TikTok</a><a href="#">LinkedIn</a><a href="#">YouTube</a>
+      </nav>
+      <p class="muted">© <span id="year">2026</span> Lumen Motion. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- Video lightbox -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__box" role="dialog" aria-modal="true" aria-label="Video player">
+      <button class="modal__close" data-close aria-label="Close video">×</button>
+      <div class="modal__video" id="modal-video"></div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
