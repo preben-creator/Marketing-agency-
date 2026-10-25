@@ -59,18 +59,68 @@ document.querySelectorAll('[data-video]').forEach(el =>
 modal.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', closeVideo));
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.hidden) closeVideo(); });
 
-// Reveal sections on scroll
-const revealEls = document.querySelectorAll('.section__head, .card, .service, .steps li, .plan, .quote, .stats__grid > div');
-revealEls.forEach(el => el.classList.add('reveal'));
-if ('IntersectionObserver' in window) {
-  const io = new IntersectionObserver(entries => {
-    entries.forEach(e => {
-      if (e.isIntersecting) { e.target.classList.add('is-visible'); io.unobserve(e.target); }
-    });
-  }, { threshold: 0.12 });
-  revealEls.forEach(el => io.observe(el));
+// Animations, powered by Motion (motion.dev, bundled in assets/vendor/motion.js)
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const root = document.documentElement;
+
+if (!window.Motion || reduceMotion) {
+  // No library or the visitor prefers less motion: show everything as-is
+  root.classList.remove('js-motion');
 } else {
-  revealEls.forEach(el => el.classList.add('is-visible'));
+  const { animate, inView, scroll, stagger } = window.Motion;
+  const ease = [0.22, 1, 0.36, 1];
+
+  // Hero entrance
+  const heroItems = document.querySelectorAll('.hero__inner > *');
+  animate(heroItems, { opacity: [0, 1], y: [32, 0] }, { duration: 0.9, delay: stagger(0.12), ease });
+  root.classList.remove('js-motion');
+
+  // Gentle parallax on the showreel as you scroll past the hero
+  const reel = document.querySelector('.reel');
+  scroll(animate(reel, { y: [0, -60], scale: [1, 0.96] }, { ease: 'linear' }), {
+    target: document.querySelector('.hero'),
+    offset: ['start start', 'end start'],
+  });
+
+  // Scroll progress bar at the top of the page
+  scroll(animate('.progress', { scaleX: [0, 1] }, { ease: 'linear' }));
+
+  // Section headings and groups of cards fade up, one after another
+  const groups = [
+    ['.section__head', ':scope > *'],
+    ['.work-grid', '.card'],
+    ['.services', '.service'],
+    ['.steps', 'li'],
+    ['.pricing', '.plan'],
+    ['.quotes', '.quote'],
+    ['.contact__inner', ':scope > *'],
+  ];
+  groups.forEach(([container, child]) => {
+    document.querySelectorAll(container).forEach(el => {
+      const items = el.querySelectorAll(child);
+      items.forEach(i => { i.style.opacity = 0; });
+      inView(el, () => {
+        animate(items, { opacity: [0, 1], y: [40, 0] }, { duration: 0.8, delay: stagger(0.1), ease });
+      }, { amount: 0.15 });
+    });
+  });
+
+  // Count the stats up from zero when they come into view
+  document.querySelectorAll('.stats strong').forEach(el => {
+    const match = el.textContent.match(/^([\d.,]+)(.*)$/);
+    if (!match) return;
+    const target = parseFloat(match[1].replace(',', ''));
+    const decimals = (match[1].split('.')[1] || '').length;
+    const suffix = match[2];
+    el.textContent = (0).toFixed(decimals) + suffix;
+    inView(el, () => {
+      animate(0, target, {
+        duration: 1.6,
+        ease,
+        onUpdate: v => { el.textContent = v.toFixed(decimals) + suffix; },
+      });
+    }, { amount: 0.6 });
+  });
 }
 
 // Footer year
