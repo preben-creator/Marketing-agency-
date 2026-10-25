@@ -214,3 +214,19 @@ details p { color: var(--muted); margin: 12px 0 0; }
   .nav__inner > .btn--small { display: none; }
   .nav__toggle { margin-left: auto; }
 }
+
+/* ===== Results (React section: Bklit UI charts, Kokonut UI flip board) ===== */
+.flap-board { min-height: 56px; margin: 8px 0 20px; font-family: var(--font-head); }
+.results-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px; }
+.results-card { padding: 28px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); min-width: 0; }
+.results-card h3 { margin-bottom: 4px; }
+.results-card > p { font-size: .9rem; margin-bottom: 20px; }
+.results-chart { min-height: 160px; }
+.results-ring { display: grid; place-items: center; min-height: 280px; }
+.contact { position: relative; overflow: hidden; }
+.contact__bg { position: absolute; inset: 0; opacity: .6; }
+.contact__bg > * { height: 100%; }
+.contact > .container { position: relative; }
+@media (max-width: 960px) {
+  .results-grid { grid-template-columns: 1fr; }
+}

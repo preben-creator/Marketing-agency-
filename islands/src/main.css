@@ -1,0 +1,83 @@
+/* Tailwind for the React sections only. No preflight, so the rest of the site keeps its own styles. */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@source "./";
+/* The site already has its own .container class */
+@source not inline("container");
+
+/* Bklit UI chart tokens, tuned to the site's dark palette */
+:root {
+  --chart-1: #7c5cff;
+  --chart-2: #00d4ff;
+  --chart-3: #ff4ecd;
+  --chart-4: #9aa0b4;
+  --chart-5: #f2f3f7;
+  --chart-line-primary: var(--chart-1);
+  --chart-line-secondary: var(--chart-2);
+  --chart-positive: #00c896;
+  --chart-negative: #ff6b6b;
+  --chart-background: #161926;
+  --chart-foreground: #6b7189;
+  --chart-foreground-muted: #9aa0b4;
+  --chart-crosshair: #6b7189;
+  --chart-grid: rgba(154, 160, 180, 0.15);
+  --chart-brush-border: var(--chart-grid);
+  --chart-label: #9aa0b4;
+  --chart-marker-background: #252a3b;
+  --chart-marker-border: #3a4160;
+  --chart-marker-foreground: #f2f3f7;
+  --chart-marker-badge-background: #f2f3f7;
+  --chart-marker-badge-foreground: #0a0b10;
+  --chart-indicator-color: #f2f3f7;
+  --chart-indicator-secondary-color: #0a0b10;
+  --chart-segment-background: rgba(154, 160, 180, 0.12);
+  --chart-segment-line: rgba(255, 255, 255, 0.25);
+  --chart-scale-mix: #252a3b;
+  --chart-scale-01: #2a2f42;
+  --chart-scale-02: color-mix(in oklab, var(--chart-1) 35%, var(--chart-scale-mix));
+  --chart-scale-03: color-mix(in oklab, var(--chart-1) 55%, var(--chart-scale-mix));
+  --chart-scale-04: color-mix(in oklab, var(--chart-1) 78%, var(--chart-scale-mix));
+  --chart-scale-05: var(--chart-1);
+  --chart-scale-pattern-color: #0a0b10;
+  --chart-tooltip-background: #1d2132;
+  --chart-tooltip-foreground: #f2f3f7;
+  --chart-tooltip-muted: #9aa0b4;
+  --background: #0a0b10;
+  --foreground: #f2f3f7;
+  --muted-foreground: #9aa0b4;
+  --popover: #1d2132;
+  --popover-foreground: #f2f3f7;
+  --legend: #161926;
+  --legend-foreground: #f2f3f7;
+  --legend-muted: #252a3b;
+  --legend-muted-foreground: #9aa0b4;
+  --legend-track: #252a3b;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: #252a3b;
+  --color-muted-foreground: var(--muted-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-chart-label: var(--chart-label);
+  --color-chart-tooltip-background: var(--chart-tooltip-background);
+  --color-chart-tooltip-foreground: var(--chart-tooltip-foreground);
+  --color-chart-tooltip-muted: var(--chart-tooltip-muted);
+  --color-chart-indicator: var(--chart-indicator-color);
+  --color-chart-indicator-secondary: var(--chart-indicator-secondary-color);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-positive: var(--chart-positive);
+  --color-chart-negative: var(--chart-negative);
+  --color-legend: var(--legend);
+  --color-legend-foreground: var(--legend-foreground);
+  --color-legend-muted: var(--legend-muted);
+  --color-legend-muted-foreground: var(--legend-muted-foreground);
+  --color-legend-track: var(--legend-track);
+}
