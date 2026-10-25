@@ -123,5 +123,48 @@ if (!window.Motion || reduceMotion) {
   });
 }
 
+// More animations, powered by anime.js (animejs.com, bundled in assets/vendor/anime.min.js)
+if (window.anime && !reduceMotion) {
+  // Pulsing ring around the showreel play button
+  const play = document.querySelector('.reel .play');
+  const ring = document.createElement('span');
+  ring.className = 'play__ring';
+  play.appendChild(ring);
+  anime({
+    targets: ring,
+    scale: [1, 1.7],
+    opacity: [0.6, 0],
+    duration: 1800,
+    easing: 'easeOutQuad',
+    loop: true,
+  });
+
+  // Service icons draw themselves line by line when the section comes into view
+  const iconShapes = document.querySelectorAll('.service .icon svg > *');
+  anime.set(iconShapes, { strokeDashoffset: anime.setDashoffset });
+  const drawIcons = () => anime({
+    targets: iconShapes,
+    strokeDashoffset: [anime.setDashoffset, 0],
+    duration: 1400,
+    delay: anime.stagger(80, { start: 300 }),
+    easing: 'easeInOutSine',
+  });
+  const servicesEl = document.querySelector('.services');
+  const io = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) { drawIcons(); io.disconnect(); }
+  }, { threshold: 0.2 });
+  io.observe(servicesEl);
+
+  // The "Most popular" badge gives a little bounce every few seconds
+  anime({
+    targets: '.plan__badge',
+    translateY: [0, -6, 0],
+    duration: 900,
+    delay: 3000,
+    easing: 'easeOutElastic(1, .5)',
+    loop: true,
+  });
+}
+
 // Footer year
 document.getElementById('year').textContent = new Date().getFullYear();

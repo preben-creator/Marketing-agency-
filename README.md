@@ -27,4 +27,4 @@ To use your own domain, add it under **Settings → Pages → Custom domain**.
 
 ## Animations
 
-Animations use [Motion](https://motion.dev) (MIT licence), bundled locally in `assets/vendor/motion.js` so the site doesn't depend on a CDN. The animation code is at the bottom of `script.js`. Visitors who have "reduce motion" turned on in their system settings see the page without animations.
+Animations use [Motion](https://motion.dev) and [anime.js](https://animejs.com) (both MIT licence), bundled locally in `assets/vendor/` so the site doesn't depend on a CDN. Motion handles the scroll effects; anime.js handles the pulsing play button, the self-drawing service icons and the bouncing "Most popular" badge. The animation code is at the bottom of `script.js`. Visitors who have "reduce motion" turned on in their system settings see the page without animations.
