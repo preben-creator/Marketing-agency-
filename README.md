@@ -8,6 +8,8 @@ A static one-page site for an AI video marketing agency. Plain HTML, CSS and Jav
 - `styles.css`: design. Change the colours and fonts in the `:root` block at the top to rebrand.
 - `script.js`: mobile menu, work filters, video player, scroll animations
 - `assets/favicon.svg`: browser tab icon
+- `assets/islands/`: the built React sections (don't edit by hand, see below)
+- `islands/`: source for the React sections
 
 ## Customising
 
@@ -24,3 +26,21 @@ A static one-page site for an AI video marketing agency. Plain HTML, CSS and Jav
 4. After a minute the site is live at `https://<your-username>.github.io/<repo-name>/`.
 
 To use your own domain, add it under **Settings → Pages → Custom domain**.
+
+## Animations
+
+Animations use [Motion](https://motion.dev) and [anime.js](https://animejs.com) (both MIT licence), bundled locally in `assets/vendor/` so the site doesn't depend on a CDN. Motion handles the scroll effects; anime.js handles the pulsing play button, the self-drawing service icons and the bouncing "Most popular" badge. The animation code is at the bottom of `script.js`. Visitors who have "reduce motion" turned on in their system settings see the page without animations.
+
+## React sections (Bklit UI and Kokonut UI)
+
+The Results section uses [Bklit UI](https://bklit.com) charts, and the flip-board headline and the flowing lines behind the contact form use [Kokonut UI](https://kokonutui.com) (both MIT licence). These are React components, so their source lives in `islands/` and is built into `assets/islands/islands.js` and `islands.css`. The rest of the page stays plain HTML.
+
+To change the chart numbers or the flip-board words, edit `islands/src/main.jsx`, then rebuild:
+
+```
+cd islands
+npm install
+npm run build
+```
+
+Commit the updated files in `assets/islands/` so GitHub Pages serves them.

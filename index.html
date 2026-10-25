@@ -12,9 +12,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/islands/islands.css">
   <link rel="stylesheet" href="styles.css">
+  <script>document.documentElement.classList.add('js-motion');</script>
 </head>
 <body>
+  <div class="progress" aria-hidden="true"></div>
   <!-- ============ NAV ============ -->
   <header class="nav" id="top">
     <div class="container nav__inner">
@@ -198,8 +201,32 @@
       </div>
     </section>
 
+    <!-- ============ RESULTS (React: Bklit UI charts + Kokonut UI flip board) ============ -->
+    <section class="section section--alt" id="results">
+      <div class="container">
+        <div class="section__head">
+          <p class="eyebrow">Results</p>
+          <h2>Proof in the numbers</h2>
+          <div class="flap-board" id="flap-board" aria-label="More views, more clicks, lower CPA, faster"></div>
+          <p class="muted">Placeholder data. Replace it with your own campaign results in <code>islands/src/main.jsx</code>.</p>
+        </div>
+        <div class="results-grid">
+          <div class="results-card">
+            <h3>Click-through rate</h3>
+            <p class="muted">AI video vs traditional video ads over 12 weeks. Hover to compare.</p>
+            <div class="results-chart" id="results-area"></div>
+          </div>
+          <div class="results-card">
+            <h3>What clients save</h3>
+            <p class="muted">Compared with a traditional production. Hover a ring for details.</p>
+            <div class="results-ring" id="results-ring"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ============ PRICING ============ -->
-    <section class="section section--alt" id="pricing">
+    <section class="section" id="pricing">
       <div class="container">
         <div class="section__head">
           <p class="eyebrow">Packages</p>
@@ -231,7 +258,7 @@
     </section>
 
     <!-- ============ TESTIMONIALS ============ -->
-    <section class="section">
+    <section class="section section--alt">
       <div class="container">
         <div class="section__head">
           <p class="eyebrow">Kind words</p>
@@ -246,7 +273,7 @@
     </section>
 
     <!-- ============ FAQ ============ -->
-    <section class="section section--alt" id="faq">
+    <section class="section" id="faq">
       <div class="container container--narrow">
         <div class="section__head">
           <p class="eyebrow">FAQ</p>
@@ -262,6 +289,8 @@
 
     <!-- ============ CONTACT ============ -->
     <section class="section contact" id="contact">
+      <!-- Animated flowing lines (React: Kokonut UI Background Paths) -->
+      <div class="contact__bg" id="contact-bg" aria-hidden="true"></div>
       <div class="container contact__inner">
         <div>
           <p class="eyebrow">Let's talk</p>
@@ -308,6 +337,9 @@
     </div>
   </div>
 
+  <script src="assets/vendor/motion.js"></script>
+  <script src="assets/vendor/anime.min.js"></script>
   <script src="script.js"></script>
+  <script type="module" src="assets/islands/islands.js"></script>
 </body>
 </html>
