@@ -1,26 +1,20 @@
-# Lumen Motion website
+# Orvelo KI-sekretær – nettside
 
-A static one-page site for an AI video marketing agency. Plain HTML, CSS and JavaScript, with no build step, so it runs on GitHub Pages for free.
+En statisk side for Orvelos KI-sekretær for håndverkere: HTML, CSS og JavaScript i én fil, uten byggesteg. Den kjører gratis på GitHub Pages.
 
-## Files
+## Filer
 
-- `index.html`: all page content (text, videos, prices, contact details)
-- `styles.css`: design. Change the colours and fonts in the `:root` block at the top to rebrand.
-- `script.js`: mobile menu, work filters, video player, scroll animations
-- `assets/favicon.svg`: browser tab icon
+- `index.html`: hele siden (tekst, demo, pakker, priser, spørsmål og svar, kontaktskjema). CSS og JS ligger i samme fil.
+- `assets/orvelo-logo.svg`, `assets/favicon.svg`: logo og fane-ikon
+- `demo/index.html`: videresender gamle demo-lenker til forsiden og beholder `?bransje=` og `?firma=`
 
-## Customising
+## Tilpasse
 
-- **Agency name:** search and replace `Lumen Motion` in `index.html`.
-- **Videos:** every play button has a `data-video` attribute. Paste a YouTube embed URL (`https://www.youtube.com/embed/VIDEO_ID`), a Vimeo one (`https://player.vimeo.com/video/VIDEO_ID`), or a path to an `.mp4` file in `assets/`.
-- **Contact form:** create a free form at [formspree.io](https://formspree.io) and put its URL in the form's `action`.
-- **Email, stats, prices, testimonials:** edit the text directly in `index.html`. The current values are placeholders.
+- **Demo for en kunde:** `?bransje=ror|el|snekker|maler|tak|flis|varme&firma=Firmanavn`, for eksempel `https://preben-creator.github.io/marketing-agency-/?bransje=el&firma=Berg%20Elektro%20AS#demo`
+- **Pakker og priser:** søk etter `id="pakker"` i `index.html`.
+- **Kontaktskjema og e-post:** skjemaet sendes via [FormSubmit](https://formsubmit.co) til hilleren.bedrift@gmail.com. Første gang noen sender skjemaet kommer en aktiveringsmail, og den må bekreftes én gang.
+- **Stemme:** demoen bruker nettleserens norske stemmer. De beste (Pernille og Finn) finnes i Microsoft Edge.
 
-## Publishing on GitHub Pages
+## Publisere på GitHub Pages
 
-1. Push these files to the root of your repository's `main` branch.
-2. On GitHub, open the repository's **Settings → Pages**.
-3. Under **Build and deployment**, set Source to **Deploy from a branch**, pick `main` and `/ (root)`, and save.
-4. After a minute the site is live at `https://<your-username>.github.io/<repo-name>/`.
-
-To use your own domain, add it under **Settings → Pages → Custom domain**.
+Settings → Pages → Deploy from a branch → `main` og `/ (root)`.
