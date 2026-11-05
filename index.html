@@ -209,6 +209,10 @@ footer .fine{opacity:.7;font-size:.75rem}
   <section id="demo" class="demo" aria-label="Demo">
   <div class="controls">
     <div class="firm">
+      <label for="cat">Fagområde:</label>
+      <select id="cat"></select>
+    </div>
+    <div class="firm">
       <label for="trade">Fag:</label>
       <select id="trade"></select>
     </div>
@@ -442,7 +446,7 @@ footer .fine{opacity:.7;font-size:.75rem}
       cust:"Hei Ola! Befaring for elbillader er booket torsdag kl. 09:00. Du får fast pris etter befaringen. Hilsen {firm}"
     },
     snekker: {
-      label:"🪚 Snekker / tømrer", firm:"Larsen Bygg AS", caller:"Ingrid Moe",
+      label:"🪚 Snekker / tømrer", firm:"Larsen Bygg AS", caller:"Anne Eriksen",
       prio:"ok", prioText:"Tilbud",
       steps:[
         ["sys","Innkommende anrop · 476 12 909 · kl. 21:40"],
@@ -453,21 +457,21 @@ footer .fine{opacity:.7;font-size:.75rem}
         ["set","problem","Ny terrasse ~30 m², bakkeplan, royalimpregnert"],
         ["prio"],
         ["ai","Notert. Hva heter du, og hvor bor du?"],
-        ["cust","Ingrid Moe, Kolbotnveien 7."],
-        ["set","navn","Ingrid Moe"],["set","adresse","Kolbotnveien 7, Nordre Follo"],["set","tlf","476 12 909"],
-        ["ai","Takk, Ingrid. Kan snekkeren komme på befaring mandag klokka 16?"],
+        ["cust","Anne Eriksen, Kolbotnveien 7."],
+        ["set","navn","Anne Eriksen"],["set","adresse","Kolbotnveien 7, Nordre Follo"],["set","tlf","476 12 909"],
+        ["ai","Takk, Anne. Kan snekkeren komme på befaring mandag klokka 16?"],
         ["cust","Ja, det går fint."],
-        ["set","tid","Mandag kl. 16:00 (befaring)"],["cal","16:00","Ingrid Moe · befaring terrasse"],
+        ["set","tid","Mandag kl. 16:00 (befaring)"],["cal","16:00","Anne Eriksen · befaring terrasse"],
         ["ai","Supert. Du får en bekreftelse på SMS. Takk for at du ringte, og god kveld!"],
         ["sys","Samtale avsluttet · tatt utenom arbeidstid"],
         ["done"]
       ],
       busy:[["08:00","Kjøkken, Oppegård"],["12:30","Vindusbytte, Ski"]],
-      sms:"Ny forespørsel (kveld): Ingrid Moe, 476 12 909\nKolbotnveien 7\nTerrasse ~30 m², royalimpregnert\nBefaring mandag kl. 16:00",
-      cust:"Hei Ingrid! Befaring for ny terrasse er booket mandag kl. 16:00. Hilsen {firm}"
+      sms:"Ny forespørsel (kveld): Anne Eriksen, 476 12 909\nKolbotnveien 7\nTerrasse ~30 m², royalimpregnert\nBefaring mandag kl. 16:00",
+      cust:"Hei Anne! Befaring for ny terrasse er booket mandag kl. 16:00. Hilsen {firm}"
     },
     maler: {
-      label:"🎨 Maler", firm:"Fjeld Maling AS", caller:"Sofie Dahl",
+      label:"🎨 Maler", firm:"Pedersen Maling AS", caller:"Hilde Jensen",
       prio:"ok", prioText:"Tilbud",
       steps:[
         ["sys","Innkommende anrop · 932 41 778"],
@@ -478,21 +482,21 @@ footer .fine{opacity:.7;font-size:.75rem}
         ["set","problem","Utvendig maling enebolig ~140 m², noe skraping"],
         ["prio"],
         ["ai","Da bør maleren se på det før han gir pris. Hva er navnet og adressen din?"],
-        ["cust","Sofie Dahl, Granåsen 3 i Asker."],
-        ["set","navn","Sofie Dahl"],["set","adresse","Granåsen 3, Asker"],["set","tlf","932 41 778"],
-        ["ai","Takk, Sofie. Passer det med befaring onsdag klokka 15?"],
+        ["cust","Hilde Jensen, Granåsen 3 i Asker."],
+        ["set","navn","Hilde Jensen"],["set","adresse","Granåsen 3, Asker"],["set","tlf","932 41 778"],
+        ["ai","Takk, Hilde. Passer det med befaring onsdag klokka 15?"],
         ["cust","Ja, det passer bra."],
-        ["set","tid","Onsdag kl. 15:00 (befaring)"],["cal","15:00","Sofie Dahl · befaring fasade"],
+        ["set","tid","Onsdag kl. 15:00 (befaring)"],["cal","15:00","Hilde Jensen · befaring fasade"],
         ["ai","Da er det booket. Du får en bekreftelse på SMS nå. Ha en fin dag!"],
         ["sys","Samtale avsluttet"],
         ["done"]
       ],
       busy:[["08:00","Stue og gang, Bærum"],["11:30","Rekkverk, Asker"]],
-      sms:"Ny befaring: Sofie Dahl, 932 41 778\nGranåsen 3, Asker\nUtvendig maling ~140 m², skraping solside\nOnsdag kl. 15:00",
-      cust:"Hei Sofie! Befaring for utvendig maling er booket onsdag kl. 15:00. Hilsen {firm}"
+      sms:"Ny befaring: Hilde Jensen, 932 41 778\nGranåsen 3, Asker\nUtvendig maling ~140 m², skraping solside\nOnsdag kl. 15:00",
+      cust:"Hei Hilde! Befaring for utvendig maling er booket onsdag kl. 15:00. Hilsen {firm}"
     },
     tak: {
-      label:"🏠 Taktekker", firm:"Nordtak AS", caller:"Erik Strand",
+      label:"🏠 Taktekker", firm:"Andersen Tak AS", caller:"Per Halvorsen",
       prio:"hi", prioText:"Haster",
       steps:[
         ["sys","Innkommende anrop · 905 67 314 · lørdag"],
@@ -503,21 +507,21 @@ footer .fine{opacity:.7;font-size:.75rem}
         ["set","problem","Takstein blåst av, drypp inn på loft"],
         ["prio"],
         ["ai","Bra. Jeg merker saken som hastesak. Hva heter du, og hvor er huset?"],
-        ["cust","Erik Strand, Sjøskogenveien 41 i Ski."],
-        ["set","navn","Erik Strand"],["set","adresse","Sjøskogenveien 41, Nordre Follo"],["set","tlf","905 67 314"],
-        ["ai","Takk, Erik. Vakthavende kan komme mandag klokka 07:30 og legge provisorisk tetting. Jeg varsler ham nå i tilfelle han kan komme før. Er det greit?"],
+        ["cust","Per Halvorsen, Sjøskogenveien 41 i Ski."],
+        ["set","navn","Per Halvorsen"],["set","adresse","Sjøskogenveien 41, Nordre Follo"],["set","tlf","905 67 314"],
+        ["ai","Takk, Per. Vakthavende kan komme mandag klokka 07:30 og legge provisorisk tetting. Jeg varsler ham nå i tilfelle han kan komme før. Er det greit?"],
         ["cust","Ja, takk!"],
-        ["set","tid","Mandag kl. 07:30 (vakt varslet)"],["cal","07:30","Erik Strand · tak lekker (haster)"],
+        ["set","tid","Mandag kl. 07:30 (vakt varslet)"],["cal","07:30","Per Halvorsen · tak lekker (haster)"],
         ["ai","Da er det registrert. Du får SMS når taktekkeren er på vei. God helg så langt det går!"],
         ["sys","Samtale avsluttet · tatt i helgen"],
         ["done"]
       ],
       busy:[["09:00","Takrenner, Oppegård"],["12:00","Takbytte, Ås"]],
-      sms:"HASTER: Erik Strand, 905 67 314\nSjøskogenveien 41, Ski\nTakstein blåst av, drypp på loft\nBooket mandag kl. 07:30, ring hvis du kan før",
-      cust:"Hei Erik! Saken er registrert som hastesak. Taktekker kommer mandag kl. 07:30, eller tidligere hvis mulig. Hilsen {firm}"
+      sms:"HASTER: Per Halvorsen, 905 67 314\nSjøskogenveien 41, Ski\nTakstein blåst av, drypp på loft\nBooket mandag kl. 07:30, ring hvis du kan før",
+      cust:"Hei Per! Saken er registrert som hastesak. Taktekker kommer mandag kl. 07:30, eller tidligere hvis mulig. Hilsen {firm}"
     },
     flis: {
-      label:"🧱 Murer / flislegger", firm:"Solberg Flis & Mur AS", caller:"Maria Haugen",
+      label:"🧱 Murer / flislegger", firm:"Solberg Flis og Mur AS", caller:"Maria Haugen",
       prio:"ok", prioText:"Tilbud",
       steps:[
         ["sys","Innkommende anrop · 948 20 156"],
@@ -542,7 +546,7 @@ footer .fine{opacity:.7;font-size:.75rem}
       cust:"Hei Maria! Befaring for nytt bad er booket tirsdag kl. 14:00. Hilsen {firm}"
     },
     varme: {
-      label:"❄️ Varmepumpe / ventilasjon", firm:"Klimaservice Øst AS", caller:"Jonas Berg",
+      label:"❄️ Varmepumpe / ventilasjon", firm:"Karlsen Varme AS", caller:"Jon Kristiansen",
       prio:"ok", prioText:"Service",
       steps:[
         ["sys","Innkommende anrop · 461 83 220"],
@@ -553,25 +557,245 @@ footer .fine{opacity:.7;font-size:.75rem}
         ["set","problem","Varmepumpe blinker rødt, blåser kaldt. Service ~2 år siden"],
         ["prio"],
         ["ai","Da anbefaler jeg service og feilsøking samtidig. Hva er navnet og adressen din?"],
-        ["cust","Jonas Berg, Løkkeveien 18 i Sandvika."],
-        ["set","navn","Jonas Berg"],["set","adresse","Løkkeveien 18, Bærum"],["set","tlf","461 83 220"],
-        ["ai","Takk, Jonas. Vi har ledig fredag klokka 10. Passer det?"],
+        ["cust","Jon Kristiansen, Løkkeveien 18 i Sandvika."],
+        ["set","navn","Jon Kristiansen"],["set","adresse","Løkkeveien 18, Bærum"],["set","tlf","461 83 220"],
+        ["ai","Takk, Jon. Vi har ledig fredag klokka 10. Passer det?"],
         ["cust","Ja, fredag er fint."],
-        ["set","tid","Fredag kl. 10:00 (service)"],["cal","10:00","Jonas Berg · varmepumpe feil"],
+        ["set","tid","Fredag kl. 10:00 (service)"],["cal","10:00","Jon Kristiansen · varmepumpe feil"],
         ["ai","Da er det booket. Tips: rens gjerne filteret i mellomtiden. Du får en bekreftelse på SMS. Ha en fin dag!"],
         ["sys","Samtale avsluttet"],
         ["done"]
       ],
       busy:[["08:00","Balansert ventilasjon, Asker"],["13:00","Montering, Bærum"]],
-      sms:"Ny service: Jonas Berg, 461 83 220\nLøkkeveien 18, Sandvika\nVarmepumpe (Mitsubishi) blinker rødt, blåser kaldt\nFredag kl. 10:00",
-      cust:"Hei Jonas! Service på varmepumpen er booket fredag kl. 10:00. Hilsen {firm}"
+      sms:"Ny service: Jon Kristiansen, 461 83 220\nLøkkeveien 18, Sandvika\nVarmepumpe (Mitsubishi) blinker rødt, blåser kaldt\nFredag kl. 10:00",
+      cust:"Hei Jon! Service på varmepumpen er booket fredag kl. 10:00. Hilsen {firm}"
+    },
+    bil: {
+      label:"🚗 Bilverksted", firm:"Nilsen Bil AS", caller:"Morten Olsen",
+      prio:"ok", prioText:"Vanlig",
+      steps:[
+        ["sys","Innkommende anrop · 948 22 615"],
+        ["ai","Hei, du har kommet til {firm}. Mekanikerne står i verkstedet, men jeg kan hjelpe deg. Hva gjelder det?"],
+        ["cust","Hei. Motorlampa lyser på bilen, og den går litt ujevnt på tomgang."],
+        ["ai","Det bør vi se på snart. Hvilken bil er det, og omtrent hvor langt har den gått?"],
+        ["cust","En Volkswagen Golf fra 2017. Rundt 140 tusen kilometer."],
+        ["set","problem","Motorlampe lyser, ujevn tomgang · VW Golf 2017, ca. 140 000 km"],
+        ["prio"],
+        ["ai","Takk. Da setter vi av tid til feilsøking. Hva heter du, og hvor holder du til?"],
+        ["cust","Morten Olsen, fra Kjeller."],
+        ["set","navn","Morten Olsen"],["set","adresse","Kjeller, Lillestrøm (leverer bilen selv)"],["set","tlf","948 22 615"],
+        ["ai","Takk, Morten. Vi har ledig plass i morgen klokka 08. Kan du levere bilen da?"],
+        ["cust","Ja, klokka åtte passer fint."],
+        ["set","tid","I morgen kl. 08:00 (feilsøking)"],["cal","08:00","Morten Olsen · motorlampe Golf"],
+        ["ai","Flott, da er det booket. Du får en bekreftelse på SMS. Kjør forsiktig så lenge!"],
+        ["sys","Samtale avsluttet"],
+        ["done"]
+      ],
+      busy:[["09:00","EU-kontroll, Tesla"],["12:00","Dekkskift, fire biler"]],
+      sms:"Ny verkstedtime: Morten Olsen, 948 22 615\nKjeller, leverer bilen selv\nVW Golf 2017: motorlampe, ujevn tomgang\nI morgen kl. 08:00",
+      cust:"Hei Morten! Bilen din er booket inn i morgen kl. 08:00 for feilsøking. Hilsen {firm}"
+    },
+    frisor: {
+      label:"✂️ Frisør", firm:"Salong Lien", caller:"Camilla Bakke",
+      prio:"ok", prioText:"Timebestilling",
+      steps:[
+        ["sys","Innkommende anrop · 917 30 442"],
+        ["ai","Hei, du har kommet til {firm}. Frisørene er opptatt med kunder, men jeg kan booke time for deg. Hva ønsker du?"],
+        ["cust","Hei! Jeg vil gjerne klippe meg og farge håret. Har dere noe ledig neste uke?"],
+        ["ai","Det har vi. Klipp og farge tar rundt to timer. Har du en fast frisør du ønsker?"],
+        ["cust","Gjerne Marte, hun klippet meg sist."],
+        ["set","problem","Klipp og farge (ca. 2 timer) · ønsker Marte"],
+        ["prio"],
+        ["ai","Notert. Hva er navnet ditt?"],
+        ["cust","Camilla Bakke."],
+        ["set","navn","Camilla Bakke"],["set","adresse","Fast kunde"],["set","tlf","917 30 442"],
+        ["ai","Takk, Camilla. Marte har ledig tirsdag klokka 12 eller torsdag klokka 17. Hva passer best?"],
+        ["cust","Torsdag klokka fem passer perfekt."],
+        ["set","tid","Torsdag kl. 17:00 (klipp og farge, Marte)"],["cal","17:00","Camilla Bakke · klipp og farge"],
+        ["ai","Da er du booket hos Marte torsdag klokka 17. Du får en påminnelse på SMS dagen før. Velkommen!"],
+        ["sys","Samtale avsluttet"],
+        ["done"]
+      ],
+      busy:[["10:00","Herreklipp"],["13:00","Striper og klipp"]],
+      sms:"Ny time: Camilla Bakke, 917 30 442\nKlipp og farge, ca. 2 t, hos Marte\nTorsdag kl. 17:00",
+      cust:"Hei Camilla! Du er booket hos Marte torsdag kl. 17:00 for klipp og farge. Hilsen {firm}"
+    },
+    mat: {
+      label:"🎂 Baker, konditor og mat", firm:"Holm Bakeri AS", caller:"Silje Moen",
+      prio:"ok", prioText:"Bestilling",
+      steps:[
+        ["sys","Innkommende anrop · 934 18 270"],
+        ["ai","Hei, du har kommet til {firm}. Vi står i bakeriet, men jeg tar gjerne imot bestillingen din. Hva kan jeg hjelpe med?"],
+        ["cust","Hei! Jeg skal ha konfirmasjon om tre uker og trenger kake til rundt 40 personer."],
+        ["ai","Så hyggelig! Ønsker du bløtkake, marsipankake eller noe annet? Og er det allergier vi må ta hensyn til?"],
+        ["cust","Marsipankake, gjerne med navn på. Én gjest tåler ikke nøtter."],
+        ["set","problem","Konfirmasjonskake ~40 pers., marsipan med navn · én nøtteallergiker"],
+        ["prio"],
+        ["ai","Notert. Hva er navnet ditt, og skal kaken hentes eller leveres?"],
+        ["cust","Silje Moen. Vi henter den selv."],
+        ["set","navn","Silje Moen"],["set","adresse","Henter selv i butikken"],["set","tlf","934 18 270"],
+        ["ai","Takk, Silje. Konditoren ringer deg for å avtale detaljene. Passer det i morgen klokka 14?"],
+        ["cust","Ja, det passer bra."],
+        ["set","tid","I morgen kl. 14:00 (telefon med konditor)"],["cal","14:00","Silje Moen · konfirmasjonskake"],
+        ["ai","Supert. Du får en bekreftelse på SMS nå. Takk for bestillingen!"],
+        ["sys","Samtale avsluttet"],
+        ["done"]
+      ],
+      busy:[["06:00","Bakst, dagens brød"],["11:00","Catering, firmalunsj"]],
+      sms:"Ny bestilling: Silje Moen, 934 18 270\nKonfirmasjonskake ~40 pers., marsipan m/navn\nNØTTEALLERGI · hentes selv\nRing i morgen kl. 14:00",
+      cust:"Hei Silje! Takk for bestillingen. Konditoren ringer deg i morgen kl. 14:00. Hilsen {firm}"
+    },
+    las: {
+      label:"🔑 Låsesmed", firm:"Lund Lås AS", caller:"Thomas Lie",
+      prio:"hi", prioText:"Haster",
+      steps:[
+        ["sys","Innkommende anrop · 452 77 109 · kl. 22:15"],
+        ["ai","Hei, du har kommet til {firm}. Jeg er den digitale assistenten deres. Hva har skjedd?"],
+        ["cust","Jeg har låst meg ute! Nøkkelen ligger inne, og det er kaldt ute."],
+        ["ai","Det ordner vi. Er det en vanlig ytterdør med nøkkellås, eller en kodelås?"],
+        ["cust","Vanlig ytterdør. Det er leiligheten min."],
+        ["set","problem","Utelåst, nøkkel inne · ytterdør i leilighet"],
+        ["prio"],
+        ["ai","Forstått. Hva er navnet og adressen din, så sender jeg vakthavende låsesmed?"],
+        ["cust","Thomas Lie, Thorvald Meyers gate 50 i Oslo."],
+        ["set","navn","Thomas Lie"],["set","adresse","Thorvald Meyers gate 50, Oslo"],["set","tlf","452 77 109"],
+        ["ai","Takk, Thomas. Låsesmeden er hos deg om omtrent en halvtime. Ha legitimasjon klar, så vi kan se at du bor der."],
+        ["cust","Supert, tusen takk!"],
+        ["set","tid","I kveld kl. 22:45 (utrykning)"],["cal","22:45","Thomas Lie · utelåst (haster)"],
+        ["ai","Bare hyggelig. Du får en SMS når han er på vei."],
+        ["sys","Samtale avsluttet · tatt utenom arbeidstid"],
+        ["done"]
+      ],
+      busy:[["08:00","Låsbytte, borettslag"],["14:00","Adgangskontroll, kontor"]],
+      sms:"UTRYKNING: Thomas Lie, 452 77 109\nThorvald Meyers gate 50, Oslo\nUtelåst, nøkkel inne\nAnkomst ca. kl. 22:45",
+      cust:"Hei Thomas! Låsesmeden er på vei og er hos deg ca. kl. 22:45. Hilsen {firm}"
+    },
+    design: {
+      label:"💍 Design og bestillingsarbeid", firm:"Aas Atelier", caller:"Hanne Lund",
+      prio:"ok", prioText:"Bestilling",
+      steps:[
+        ["sys","Innkommende anrop · 922 61 380"],
+        ["ai","Hei, du har kommet til {firm}. Vi er i verkstedet nå, men jeg kan hjelpe deg. Hva tenker du på?"],
+        ["cust","Hei! Jeg vil gjerne bestille noe spesiallaget som gave, og lurer på hva som er mulig."],
+        ["ai","Så fint! Det beste er en kort prat i verkstedet, så kan dere se på ideer og materialer sammen. Når trenger du det ferdig?"],
+        ["cust","Helst før jul. Det er en gave til mannen min."],
+        ["set","problem","Spesialbestilling (gave) · ønskes ferdig før jul"],
+        ["prio"],
+        ["ai","Notert. Hva er navnet ditt?"],
+        ["cust","Hanne Lund."],
+        ["set","navn","Hanne Lund"],["set","adresse","Kommer til verkstedet"],["set","tlf","922 61 380"],
+        ["ai","Takk, Hanne. Vi har ledig tid onsdag klokka 11 eller lørdag klokka 12. Hva passer?"],
+        ["cust","Lørdag klokka tolv."],
+        ["set","tid","Lørdag kl. 12:00 (konsultasjon)"],["cal","12:00","Hanne Lund · spesialbestilling"],
+        ["ai","Da ses vi lørdag klokka 12. Ta gjerne med bilder eller ideer. Ha en fin dag!"],
+        ["sys","Samtale avsluttet"],
+        ["done"]
+      ],
+      busy:[["10:00","Henting, bestilling"],["14:00","Verkstedarbeid"]],
+      sms:"Ny konsultasjon: Hanne Lund, 922 61 380\nSpesialbestilling (gave), ferdig før jul\nLørdag kl. 12:00",
+      cust:"Hei Hanne! Du er booket lørdag kl. 12:00. Ta gjerne med bilder eller ideer. Hilsen {firm}"
+    },
+    verksted: {
+      label:"🛠️ Reparasjon og verksted", firm:"Strand Verksted AS", caller:"Geir Hagen",
+      prio:"ok", prioText:"Reparasjon",
+      steps:[
+        ["sys","Innkommende anrop · 941 55 027"],
+        ["ai","Hei, du har kommet til {firm}. Vi sitter i verkstedet, men jeg hjelper deg gjerne. Hva gjelder det?"],
+        ["cust","Hei. Jeg har noe som har gått i stykker og trenger reparasjon. Tar dere imot sånt?"],
+        ["ai","Ja, det gjør vi. Haster det, eller kan det vente noen dager?"],
+        ["cust","Det haster ikke, men det er et arvestykke, så jeg vil gjerne få det fikset ordentlig."],
+        ["set","problem","Reparasjon av arvestykke · haster ikke"],
+        ["prio"],
+        ["ai","Forstått. Da kan du levere det inn, så får du et prisoverslag før vi starter. Hva er navnet ditt?"],
+        ["cust","Geir Hagen."],
+        ["set","navn","Geir Hagen"],["set","adresse","Leverer inn selv"],["set","tlf","941 55 027"],
+        ["ai","Takk, Geir. Passer det å komme innom fredag klokka 15?"],
+        ["cust","Ja, det går fint."],
+        ["set","tid","Fredag kl. 15:00 (innlevering)"],["cal","15:00","Geir Hagen · innlevering reparasjon"],
+        ["ai","Supert. Du får prisoverslag på SMS når vi har sett på det. Ha en fin dag!"],
+        ["sys","Samtale avsluttet"],
+        ["done"]
+      ],
+      busy:[["09:00","Ferdigstilling, ordre 112"],["12:00","Henting, kunde"]],
+      sms:"Innlevering: Geir Hagen, 941 55 027\nReparasjon av arvestykke, haster ikke\nFredag kl. 15:00 · gi prisoverslag",
+      cust:"Hei Geir! Velkommen innom fredag kl. 15:00 med det som skal repareres. Hilsen {firm}"
+    },
+    grafisk: {
+      label:"🖨️ Trykk og grafisk", firm:"Dahl Trykk AS", caller:"Kristin Aune",
+      prio:"ok", prioText:"Tilbud",
+      steps:[
+        ["sys","Innkommende anrop · 905 13 846"],
+        ["ai","Hei, du har kommet til {firm}. Alle er opptatt i produksjonen, men jeg kan hjelpe deg. Hva trenger du?"],
+        ["cust","Hei! Vi trenger 500 brosjyrer og et par roll-ups til en messe om to uker."],
+        ["ai","Det rekker vi fint. Har dere ferdige trykkfiler, eller trenger dere hjelp med design også?"],
+        ["cust","Vi har logo, men trenger hjelp med oppsettet."],
+        ["set","problem","500 brosjyrer + roll-ups, messe om 2 uker · trenger designhjelp"],
+        ["prio"],
+        ["ai","Notert. Hva heter du, og hvilket firma gjelder det?"],
+        ["cust","Kristin Aune, fra Aune Regnskap."],
+        ["set","navn","Kristin Aune (Aune Regnskap)"],["set","adresse","Bedriftskunde"],["set","tlf","905 13 846"],
+        ["ai","Takk, Kristin. En grafiker kan ringe deg i morgen klokka 10 og gå gjennom ønskene. Passer det?"],
+        ["cust","Ja, det passer fint."],
+        ["set","tid","I morgen kl. 10:00 (telefonmøte)"],["cal","10:00","Kristin Aune · brosjyrer og roll-ups"],
+        ["ai","Flott. Du får tilbud på e-post etter samtalen. Ha en fin dag!"],
+        ["sys","Samtale avsluttet"],
+        ["done"]
+      ],
+      busy:[["08:00","Trykk, menyer"],["13:00","Levering, plakater"]],
+      sms:"Ny forespørsel: Kristin Aune, 905 13 846\nAune Regnskap\n500 brosjyrer + roll-ups, messe om 2 uker\nTrenger design · ring i morgen kl. 10:00",
+      cust:"Hei Kristin! En grafiker ringer deg i morgen kl. 10:00. Hilsen {firm}"
     }
   };
+
+  // Alle godkjente håndverksfag (mesterbrevfag, Lovdata FOR-2000-12-08-1281) + elektriker (DSB).
+  // Hvert fag bruker samtalen (s) som passer best.
+  const FAGOMRADER = [
+    ["🏗️ Byggfag", [
+      ["Anleggsgartner","snekker"],["Blikkenslager (kobber og blikk)","tak"],["Byggtapetserer","maler"],
+      ["Bygningsglass","snekker"],["Feier","tak"],["Finsteinhugger","flis"],["Glassmester","snekker"],
+      ["Kulde- og varmepumpemontør","varme"],["Kulde- og varmepumpetekniker","varme"],["Kuldemontør","varme"],
+      ["Maler","maler"],["Murer","flis"],["Rørlegger","ror"],["Steinfaget","flis"],["Stillasbygger","tak"],
+      ["Tak- og membrantekker","tak"],["Taktekker","tak"],["Tømrer","snekker"],
+      ["Ventilasjon og blikkenslager","varme"],["Ventilasjonstekniker","varme"]]],
+    ["⚡ Elektro", [["Elektriker","el"]]],
+    ["🚗 Bilfag", [
+      ["Bilmekaniker, lette kjøretøy","bil"],["Bilmekaniker, tunge kjøretøy","bil"],["Billakkerer","bil"],
+      ["Bilskadereparatør","bil"],["Hjul- og karosserimaker","bil"],["Hjulutrustning","bil"],
+      ["Motorsykkelmekaniker","bil"],["Reservedeler","bil"]]],
+    ["🍞 Matfag", [
+      ["Baker","mat"],["Konditor","mat"],["Kokk","mat"],["Institusjonskokk","mat"],["Slakter","mat"],
+      ["Butikkslakter","mat"],["Kjøttskjærer","mat"],["Pølsemaker","mat"]]],
+    ["✂️ Estetiske fag", [
+      ["Frisør","frisor"],["Dame- og herrefrisør","frisor"],["Damefrisør","frisor"],["Herrefrisør","frisor"],
+      ["Maskør- og parykkmaker","frisor"],["Parykkmaker","frisor"],["Blomsterdekoratør","design"],
+      ["Fotograf","design"],["Gullsmed","design"],["Sølvsmed","design"],["Filigransarbeider","design"],
+      ["Filigranssølvsmed","design"],["Gravør","design"],["Skredder","design"],["Herreskredder","design"],
+      ["Kjole- og draktsyer","design"],["Kostymesyer","design"],["Bunadtilvirker","design"],["Buntmaker","design"],
+      ["Strikker","design"],["Håndvever","design"],["Keramiker","design"],["Pottemaker","design"],
+      ["Profileringsdesigner","design"],["Urmaker","verksted"],["Storurmaker","verksted"]]],
+    ["🖨️ Grafiske fag", [
+      ["Bokbinder","grafisk"],["Håndbokbinder","grafisk"],["Boktrykker","grafisk"],["Førtrykker","grafisk"],
+      ["Grafiker","grafisk"],["Grafisk trykker","grafisk"],["Litograf","grafisk"],["Mediegrafiker","grafisk"],
+      ["Reprodusør","grafisk"],["Trykker","grafisk"],["Porteføljemaker","grafisk"]]],
+    ["🪑 Møbel- og trefag", [
+      ["Snekker","snekker"],["Møbelsnekker","design"],["Trevare- og møbelsnekker","design"],["Trevaresnekker","design"],
+      ["Trevare og bygginnredning","design"],["Møbeltapetserer","verksted"],["Tredreier","design"],["Treskjærer","design"],
+      ["Bøkker","design"],["Kurvmaker","design"],["Forgyller","design"],["Instrumentmaker","design"]]],
+    ["🔧 Verkstedhåndverksfag", [
+      ["Låsesmed","las"],["Smed","verksted"],["Hovslager","verksted"],["Børsemaker","verksted"],["Salmaker","verksted"],
+      ["Seilmaker","verksted"],["Skomaker","verksted"],["Tanntekniker","verksted"],["Gipsmaker","design"],
+      ["Kjemisk renser","verksted"],["Tekstilrens","verksted"],["Tekstilrenhold","verksted"]]]
+  ];
+  const slug = t => t.toLowerCase().replace(/æ/g,"ae").replace(/ø/g,"o").replace(/å/g,"a").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  const FAG = []; // {name, slug, s, cat}
+  FAGOMRADER.forEach(([cat, list], ci) => list.forEach(([name, s]) => FAG.push({ name, slug: slug(name), s, cat: ci })));
 
   const $ = s => document.querySelector(s);
   const chat=$("#chat"), tradeSel=$("#trade"), firmIn=$("#firm"), playBtn=$("#play"), voiceBtn=$("#voice");
   const callbar=$("#callbar"), statusText=$("#statusText"), timerEl=$("#timer");
-  let key = SCENARIOS[params.get("bransje")] ? params.get("bransje") : "ror";
+  const catSel=$("#cat");
+  let fag = FAG.find(f=>f.slug===params.get("fag")) || FAG.find(f=>f.s===params.get("bransje")) || FAG.find(f=>f.s==="ror");
+  let key = fag.s;
   let firmOverride = (params.get("firma")||"").trim().slice(0,40);
   let run = 0, voiceOn = false, timerId = null;
 
@@ -579,20 +803,28 @@ footer .fine{opacity:.7;font-size:.75rem}
   const fill = t => t.replaceAll("{firm}", firm());
   const sleep = ms => new Promise(r=>setTimeout(r,ms));
 
-  Object.entries(SCENARIOS).forEach(([k,s])=>{
-    const o=document.createElement("option"); o.value=k; o.textContent=s.label; tradeSel.appendChild(o);
+  FAGOMRADER.forEach(([cat],ci)=>{
+    const o=document.createElement("option"); o.value=ci; o.textContent=cat; catSel.appendChild(o);
   });
-  tradeSel.onchange=()=>{ key=tradeSel.value; select(); reset(); syncUrl(); };
+  function fillFag(){
+    tradeSel.innerHTML="";
+    FAG.filter(f=>f.cat===fag.cat).forEach(f=>{
+      const o=document.createElement("option"); o.value=f.slug; o.textContent=f.name; tradeSel.appendChild(o);
+    });
+  }
+  catSel.onchange=()=>{ fag=FAG.find(f=>f.cat===+catSel.value); key=fag.s; select(); reset(); syncUrl(); };
+  tradeSel.onchange=()=>{ fag=FAG.find(f=>f.slug===tradeSel.value); key=fag.s; select(); reset(); syncUrl(); };
   function select(){
-    tradeSel.value=key;
+    catSel.value=fag.cat; fillFag();
+    tradeSel.value=fag.slug;
     firmIn.placeholder = SCENARIOS[key].firm;
     updateFirm();
   }
-  function updateFirm(){ $("#who").textContent=firm(); $("#custFrom").textContent=firm()+" · nå"; }
+  function updateFirm(){ $("#who").textContent=firm(); $("#custFrom").textContent=firm()+" · nå"; if(typeof updateVoiceLabel==="function") try{ updateVoiceLabel(); }catch(e){} }
   firmIn.value = firmOverride;
   firmIn.addEventListener("input",()=>{ firmOverride=firmIn.value.trim(); updateFirm(); syncUrl(); });
   function syncUrl(){
-    const p=new URLSearchParams(); p.set("bransje",key); if(firmIn.value.trim()) p.set("firma",firmIn.value.trim());
+    const p=new URLSearchParams(); p.set("fag",fag.slug); if(firmIn.value.trim()) p.set("firma",firmIn.value.trim());
     history.replaceState(null,"","?"+p.toString());
   }
 
@@ -626,7 +858,31 @@ footer .fine{opacity:.7;font-size:.75rem}
     document.getElementById("voiceInfo").hidden=!voiceOn;
     if(!voiceOn) speechSynthesis.cancel();
   };
-  function speak(text, who, myRun){
+  // Ferdige lydfiler (laget med tools/generate-voice.mjs) brukes når de finnes og firmanavnet er standard.
+  let recorded={}, curAudio=null;
+  fetch("audio/manifest.json").then(r=>r.ok?r.json():{}).then(m=>{ recorded=m||{}; updateVoiceLabel(); }).catch(()=>{});
+  function useRecorded(i){ const m=recorded[key]; return !!(m && m.steps.includes(i) && firm()===m.firm); }
+  function updateVoiceLabel(){
+    const lbl=document.getElementById("voiceInfo"); const m=recorded[key];
+    if(lbl && m && firm()===m.firm) lbl.textContent="Stemme: Grok (xAI)";
+    else loadVoices();
+  }
+  function playRecorded(i, myRun){
+    return new Promise(res=>{
+      const a=new Audio(`audio/${key}/${i}.mp3`); curAudio=a;
+      a.onended=()=>res(true); a.onerror=()=>res(null);
+      a.play().catch(()=>res(null));
+      if(myRun!==run){ a.pause(); res(false); }
+    });
+  }
+  async function speak(text, who, myRun, i){
+    if(voiceOn && myRun===run && useRecorded(i)){
+      const r=await playRecorded(i, myRun);
+      if(r!==null) return r;
+    }
+    return speakTTS(text, who, myRun);
+  }
+  function speakTTS(text, who, myRun){
     return new Promise(res=>{
       if(!voiceOn || myRun!==run){ return res(false); }
       const u=new SpeechSynthesisUtterance(text);
@@ -642,6 +898,7 @@ footer .fine{opacity:.7;font-size:.75rem}
 
   function reset(){
     run++; if("speechSynthesis" in window) speechSynthesis.cancel();
+    if(curAudio){ curAudio.pause(); curAudio=null; }
     clearInterval(timerId); timerEl.textContent="";
     chat.innerHTML='<div class="empty"><div class="big">📞</div>Trykk «Spill av samtalen» for å høre en kunde ringe inn.</div>';
     callbar.className="callbar"; statusText.textContent="Venter på anrop";
@@ -676,7 +933,7 @@ footer .fine{opacity:.7;font-size:.75rem}
     const t0=Date.now();
     timerId=setInterval(()=>{const sec=Math.floor((Date.now()-t0)/1000); timerEl.textContent=`· ${Math.floor(sec/60)}:${String(sec%60).padStart(2,"0")}`;},500);
 
-    for(const step of s.steps){
+    for(const [i,step] of s.steps.entries()){
       if(myRun!==run) return;
       const [type,a,b]=step;
       if(type==="sys"){ const d=document.createElement("div"); d.className="sys"; d.textContent=a; add(d); await sleep(500); }
@@ -685,7 +942,7 @@ footer .fine{opacity:.7;font-size:.75rem}
         const tp=typing(type); await sleep(type==="ai"?700:900); tp.remove(); if(myRun!==run) return;
         bubble(type,text);
         if(type==="ai") callbar.classList.add("talking");
-        const spoke=await speak(text,type,myRun);
+        const spoke=await speak(text,type,myRun,i);
         callbar.classList.remove("talking");
         if(!spoke) await sleep(Math.min(3200, 900 + text.length*28));
       }
