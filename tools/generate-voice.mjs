@@ -21,7 +21,17 @@ const m = html.match(/const SCENARIOS = (\{[\s\S]*?\n  \});/);
 if (!m) { console.error("Fant ikke SCENARIOS i index.html"); process.exit(1); }
 const SCENARIOS = Function(`return (${m[1].replace(/;$/, "")})`)();
 
+// Gjør om ting TTS ofte uttaler feil på norsk: klokkeslett og "kr".
+const NUM = ["null","ett","to","tre","fire","fem","seks","sju","åtte","ni","ti","elleve","tolv","tretten","fjorten","femten","seksten","sytten","atten","nitten","tjue","tjueen","tjueto","tjuetre"];
+function speakable(text) {
+  return text
+    .replace(/klokka (\d{1,2}):30/g, (_, h) => `klokka halv ${NUM[(+h + 1) % 24]}`)
+    .replace(/klokka (\d{1,2})(?![:\d])/g, (_, h) => `klokka ${NUM[+h]}`)
+    .replace(/(\d+) ?kr\b/g, "$1 kroner");
+}
+
 async function tts(text, voice) {
+  text = speakable(text);
   const res = await fetch("https://api.x.ai/v1/tts", {
     method: "POST",
     headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
@@ -38,10 +48,16 @@ const args = process.argv.slice(2);
 mkdirSync(new URL("audio/", root), { recursive: true });
 
 if (args.includes("--test")) {
+  // Lager samme to setninger med flere stemmer, så man kan sammenligne: audio/test-<stemme>.mp3
   const s = SCENARIOS.ror;
-  const line = s.steps.find((x) => x[0] === "ai")[1].replaceAll("{firm}", s.firm);
-  writeFileSync(new URL("audio/test.mp3", root), await tts(line, AI_VOICE));
-  console.log("Skrev audio/test.mp3:", line);
+  const ai = s.steps.filter((x) => x[0] === "ai").map((x) => x[1].replaceAll("{firm}", s.firm));
+  const line = `${ai[0]} ${ai.find((t) => /klokka/.test(t)) || ""}`.trim();
+  const voices = (process.env.TEST_VOICES || "ara,eve,una").split(",");
+  for (const v of voices) {
+    writeFileSync(new URL(`audio/test-${v}.mp3`, root), await tts(line, v));
+    console.log(`Skrev audio/test-${v}.mp3`);
+  }
+  console.log("Tekst:", speakable(line));
   process.exit(0);
 }
 
