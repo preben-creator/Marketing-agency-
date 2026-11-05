@@ -357,12 +357,15 @@ footer .fine{opacity:.7;font-size:.75rem}
       <h2 id="kontaktH">Vil du ha dette på ditt nummer?</h2>
       <p class="muted">Fortell litt om firmaet ditt, så tar vi kontakt innen én arbeidsdag og viser deg demoen med ditt eget firmanavn.</p>
       <ul class="contact-list">
-        <li>✉️ <a href="mailto:hei@orvelo.no">hei@orvelo.no</a></li>
+        <li>✉️ <a href="mailto:hilleren.bedrift@gmail.com">hilleren.bedrift@gmail.com</a></li>
         <li>⏱️ 15 minutter, uforpliktende</li>
       </ul>
     </div>
-    <!-- For å motta skjemaet: lag et gratis skjema på formspree.io og bytt ut action-adressen under. -->
-    <form class="form" action="https://formspree.io/f/your-form-id" method="POST">
+    <!-- Skjemaet sendes via FormSubmit til e-posten under. Første innsending gir en aktiveringsmail som må bekreftes én gang. -->
+    <form class="form" action="https://formsubmit.co/hilleren.bedrift@gmail.com" method="POST">
+      <input type="hidden" name="_subject" value="Ny henvendelse fra nettsiden (KI-sekretær)">
+      <input type="hidden" name="_template" value="table">
+      <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off">
       <label>Navn<input name="navn" required autocomplete="name"></label>
       <label>Firma<input name="firma" autocomplete="organization"></label>
       <label>Telefon<input type="tel" name="telefon" required autocomplete="tel"></label>

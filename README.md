@@ -12,8 +12,7 @@ En statisk side for Orvelos KI-sekretær for håndverkere: HTML, CSS og JavaScri
 
 - **Demo for en kunde:** `?bransje=ror|el|snekker|maler|tak|flis|varme&firma=Firmanavn`, for eksempel `https://preben-creator.github.io/marketing-agency-/?bransje=el&firma=Berg%20Elektro%20AS#demo`
 - **Pakker og priser:** søk etter `id="pakker"` i `index.html`.
-- **Kontaktskjema:** lag et gratis skjema på [formspree.io](https://formspree.io) og sett adressen i skjemaets `action`.
-- **E-post:** `hei@orvelo.no` er en plassholder. Bytt den ut med din egen.
+- **Kontaktskjema og e-post:** skjemaet sendes via [FormSubmit](https://formsubmit.co) til hilleren.bedrift@gmail.com. Første gang noen sender skjemaet kommer en aktiveringsmail, og den må bekreftes én gang.
 - **Stemme:** demoen bruker nettleserens norske stemmer. De beste (Pernille og Finn) finnes i Microsoft Edge.
 
 ## Publisere på GitHub Pages
