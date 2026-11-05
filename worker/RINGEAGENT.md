@@ -16,6 +16,7 @@ privatpersoner (også ENK). SMS-koden beviser at det er eieren av nummeret som b
    - Secret `TWILIO_ACCOUNT_SID` og Secret `TWILIO_AUTH_TOKEN` (forsiden i Twilio-konsollen)
    - Text `TWILIO_FROM` = `+17372508034` (byttes til norsk nummer senere)
    - (valgfritt) Text `BOOKING_URL`, `VARSEL_EPOST`, `STEMME`
+   - (valgfritt) Text `TEST_NUMMER` = ditt mobilnummer: hopper over SMS-koden (koden blir 0000). Twilio-prøvekonto kan ikke sende SMS til Norge.
 4. Åpne `https://orvelo-ring.<ditt-navn>.workers.dev/` og test med din egen mobil.
    I e-poster kan du lenke til `...workers.dev/?firma=Bedriftsnavn`, så er firmanavnet fylt ut.
 

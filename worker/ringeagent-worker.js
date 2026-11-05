@@ -15,6 +15,7 @@
 //   BOOKING_URL          (Text,   valgfri)  Google Avtaleplan-lenken
 //   VARSEL_EPOST         (Text,   valgfri)  hvor sammendrag sendes (via FormSubmit)
 //   STEMME               (Text,   valgfri)  Grok-stemme, standard «ara»
+//   TEST_NUMMER          (Text,   valgfri)  ditt eget nummer: hopper over SMS-koden (koden blir 0000) mens Twilio er prøvekonto
 
 const BOOKING_URL_DEFAULT = "https://calendar.app.google/24niGvpRRwPqNqr28";
 const VARSEL_EPOST_DEFAULT = "hilleren.bedrift@gmail.com";
@@ -310,9 +311,11 @@ async function kodeEndepunkt(request, env) {
   if (forMange("kode:" + ip, 5, 60 * 60 * 1000) || forMange("kode:" + til, 3, 60 * 60 * 1000)) {
     return json({ feil: "Mange forsøk. Prøv igjen senere." }, 429);
   }
-  const kode = String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, "0");
+  const test = env.TEST_NUMMER && normaliserNummer(env.TEST_NUMMER) === til;
+  const kode = test ? "0000" : String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, "0");
   const ts = Date.now();
   const sig = await hmac(env.TWILIO_AUTH_TOKEN, `kode|${til}|${kode}|${ts}`);
+  if (test) return json({ ok: true, billett: `${ts}.${sig}`, test: true });
   const r = await sendSms(env, til, `Din kode fra Orvelo: ${kode}`);
   if (!r.ok) return json({ feil: "Fikk ikke sendt SMS. Sjekk nummeret og prøv igjen." }, 502);
   return json({ ok: true, billett: `${ts}.${sig}` });
@@ -430,7 +433,7 @@ function vis(t,k){const m=$("melding");m.textContent=t;m.className="melding "+(k
 function data(){return{navn:$("navn").value,firma:$("firma").value,nummer:$("nummer").value,samtykke:$("samtykke").checked,nettside:$("nettside").value};}
 async function post(sti,body){const r=await fetch(sti,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.feil||"Noe gikk galt");return d;}
 $("steg1").onsubmit=async e=>{e.preventDefault();$("knapp1").disabled=true;vis("Sender kode …");
- try{const d=await post("/kode",data());billett=d.billett||"";$("steg1").classList.add("skjult");$("steg2").classList.remove("skjult");$("kode").focus();vis("Vi har sendt deg en kode på SMS.","ok");}
+ try{const d=await post("/kode",data());billett=d.billett||"";$("steg1").classList.add("skjult");$("steg2").classList.remove("skjult");$("kode").focus();vis(d.test?"Testmodus: koden er 0000.":"Vi har sendt deg en kode på SMS.","ok");}
  catch(err){vis(err.message,"feil");}finally{$("knapp1").disabled=false;}};
 $("steg2").onsubmit=async e=>{e.preventDefault();$("knapp2").disabled=true;vis("Ringer deg …");
  try{await post("/ring",{...data(),kode:$("kode").value,billett});vis("Telefonen din ringer om noen sekunder. Ta den!","ok");}
