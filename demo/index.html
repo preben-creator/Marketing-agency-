@@ -116,6 +116,37 @@ header img{height:34px;width:auto}
 .cta{text-align:center;padding:30px 0 60px}
 .cta p{color:var(--muted)}
 footer{border-top:1px solid var(--border);padding:20px 0;font-size:.8rem;color:var(--muted);text-align:center}
+.voice-info{text-align:center;font-size:.78rem;margin:-10px 0 18px;min-height:1.2em}
+/* Pakker og tjenester */
+.sec{margin:64px 0 0}
+.sec-head{text-align:center;margin-bottom:26px}
+.sec-head p{color:var(--muted);max-width:620px;margin:0 auto}
+.plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch}
+@media (max-width:900px){.plans{grid-template-columns:1fr}}
+.plan{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:24px;display:flex;flex-direction:column;gap:14px;position:relative}
+.plan.best{border-color:var(--accent);box-shadow:0 20px 60px -30px rgba(124,92,255,.7);background:linear-gradient(180deg,rgba(124,92,255,.12),var(--surface) 40%)}
+.plan .badge{position:absolute;top:-12px;left:24px;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff}
+.plan h3{font-size:1.4rem;margin:0}
+.plan .for{color:var(--muted);font-size:.9rem;margin:0}
+.price{font-family:var(--font-head);font-size:2.1rem;font-weight:700;line-height:1}
+.price small{font-size:.9rem;font-weight:500;color:var(--muted)}
+.terms{font-size:.85rem;color:var(--muted);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:10px 0;display:grid;gap:2px}
+.terms b{color:var(--text);font-weight:600}
+.plan ul{list-style:none;margin:0;padding:0;display:grid;gap:8px;font-size:.92rem}
+.plan li{display:grid;grid-template-columns:18px 1fr;gap:8px}
+.plan li::before{content:"✓";color:var(--accent-2);font-weight:700}
+.plan li.inc{color:var(--muted)}
+.plan li.inc::before{content:"＋";color:var(--muted)}
+.plan .btn{justify-content:center;margin-top:auto}
+.vat{text-align:center;color:var(--muted);font-size:.8rem;margin-top:14px}
+.svc-group{margin-top:28px}
+.svc-group h3{font-size:1.05rem;margin-bottom:12px;color:var(--accent-2);font-family:var(--font-body);font-weight:600;letter-spacing:.04em;text-transform:uppercase;font-size:.8rem}
+.svcs{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.svc{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px}
+.svc .i{font-size:1.3rem;margin-bottom:6px}
+.svc b{display:block;margin-bottom:4px}
+.svc p{margin:0;color:var(--muted);font-size:.88rem}
+.svc .tier{display:inline-block;margin-top:8px;font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--muted)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -145,6 +176,7 @@ footer{border-top:1px solid var(--border);padding:20px 0;font-size:.8rem;color:v
     <button class="btn btn--ghost" id="voice" aria-pressed="false" title="Les samtalen høyt">🔇 Lyd av</button>
     <button class="btn" id="play">▶ Spill av samtalen</button>
   </div>
+  <p class="voice-info muted" id="voiceInfo" aria-live="polite" hidden></p>
 
   <div class="stage">
     <div class="phone">
@@ -192,6 +224,57 @@ footer{border-top:1px solid var(--border);padding:20px 0;font-size:.8rem;color:v
       </div>
     </div>
   </div>
+
+  <section class="sec" id="pakker" aria-labelledby="pakkerH">
+    <div class="sec-head">
+      <div class="eyebrow">Pakker</div>
+      <h2 id="pakkerH">Velg pakken som passer firmaet ditt</h2>
+      <p>Vi setter alt opp for deg. Du trenger bare å sette av 30 minutter til oppstart.</p>
+    </div>
+    <div class="plans">
+      <article class="plan">
+        <h3>Start</h3>
+        <p class="for">1–4 ansatte, få henvendelser på nett</p>
+        <div class="price">1 490 <small>kr/mnd</small></div>
+        <div class="terms"><span>Oppstart: <b>9 900 kr</b> (engangs)</span><span>Bindingstid: <b>3 mnd</b></span></div>
+        <ul><li>KI-sekretær i chat på nettsiden, svarer hele døgnet</li><li>Stiller de riktige spørsmålene og gir råd ved akutte skader</li><li>Ferdig arbeidsordre på e-post eller SMS</li></ul>
+        <a class="btn btn--ghost" href="../#contact">Velg Start</a>
+      </article>
+      <article class="plan">
+        <h3>Pro</h3>
+        <p class="for">5–10 ansatte, jevn strøm av jobber</p>
+        <div class="price">2 990 <small>kr/mnd</small></div>
+        <div class="terms"><span>Oppstart: <b>19 900 kr</b> (engangs)</span><span>Bindingstid: <b>6 mnd</b></span></div>
+        <ul><li class="inc">Alt i Start</li><li>Booking av befaring rett i kalenderen (Google eller Outlook)</li><li>Kunden sender bilde av jobben, og sekretæren beskriver det</li><li>SMS-bekreftelse og påminnelse til kunden</li><li>Svarer på engelsk, polsk og andre språk</li><li>Månedsrapport: henvendelser, bookede jobber og verdi</li></ul>
+        <a class="btn btn--ghost" href="../#contact">Velg Pro</a>
+      </article>
+      <article class="plan best"><span class="badge">Anbefalt</span>
+        <h3>Komplett</h3>
+        <p class="for">10–20 ansatte, kontor og flere montører</p>
+        <div class="price">5 990 <small>kr/mnd</small></div>
+        <div class="terms"><span>Oppstart: <b>39 900 kr</b> (engangs)</span><span>Bindingstid: <b>12 mnd</b></span></div>
+        <ul><li class="inc">Alt i Pro</li><li><span><b>KI-telefonsvarer</b> som tar telefonen når ingen svarer</span></li><li>Tilbudsutkast fra bilder og samtalen, godkjennes med ett klikk</li><li>Bilag fra bilde: kvitteringen havner på riktig jobb</li><li>Fakturautkast til Tripletex, Fiken eller PowerOffice</li><li>Ferdigmelding med før- og etterbilder til kunden</li><li>Ber om Google-anmeldelse og purrer på ubetalte fakturaer</li><li>Oversikt for daglig leder og prioritert support samme dag</li></ul>
+        <a class="btn" href="../#contact">Velg Komplett</a>
+      </article>
+    </div>
+    <p class="vat">Alle priser er i kroner eksklusive mva.</p>
+  </section>
+
+  <section class="sec" id="tjenester" aria-labelledby="tjH">
+    <div class="sec-head">
+      <div class="eyebrow">Alle tjenestene</div>
+      <h2 id="tjH">Alt Orvelo kan gjøre for deg</h2>
+      <p>KI-sekretæren tar kundene og papirarbeidet. KI-video gir deg flere kunder å ta imot.</p>
+    </div>
+    <div class="svc-group">
+      <h3>KI-sekretær for håndverkere</h3>
+      <div class="svcs"><div class="svc"><div class="i">💬</div><b>Chat på nettsiden</b><p>Svarer kundene døgnet rundt og finner ut hva jobben gjelder.</p><span class="tier">Start</span></div><div class="svc"><div class="i">📋</div><b>Ferdig arbeidsordre</b><p>Navn, adresse, problem og hast på SMS eller e-post.</p><span class="tier">Start</span></div><div class="svc"><div class="i">🚨</div><b>Råd ved akutte skader</b><p>Forteller kunden hva de kan gjøre før du kommer.</p><span class="tier">Start</span></div><div class="svc"><div class="i">📅</div><b>Booking i kalenderen</b><p>Befaringer rett inn i Google eller Outlook.</p><span class="tier">Pro</span></div><div class="svc"><div class="i">📷</div><b>Bilde av jobben</b><p>Kunden sender bilde, sekretæren beskriver hva den ser.</p><span class="tier">Pro</span></div><div class="svc"><div class="i">✅</div><b>SMS-bekreftelse</b><p>Bekreftelse og påminnelse til kunden før avtalen.</p><span class="tier">Pro</span></div><div class="svc"><div class="i">🌍</div><b>Flere språk</b><p>Svarer på engelsk, polsk og andre språk.</p><span class="tier">Pro</span></div><div class="svc"><div class="i">📊</div><b>Månedsrapport</b><p>Antall henvendelser, bookede jobber og estimert verdi.</p><span class="tier">Pro</span></div><div class="svc"><div class="i">📞</div><b>KI-telefonsvarer</b><p>Tar telefonen når ingen svarer og sender sammendrag på SMS.</p><span class="tier">Komplett</span></div><div class="svc"><div class="i">🧾</div><b>Tilbudsutkast</b><p>Laget fra bilder og samtalen, klart til godkjenning.</p><span class="tier">Komplett</span></div><div class="svc"><div class="i">🧾</div><b>Bilag fra bilde</b><p>Leser beløp og mva og legger kvitteringen på riktig jobb.</p><span class="tier">Komplett</span></div><div class="svc"><div class="i">💸</div><b>Fakturautkast</b><p>Til Tripletex, Fiken eller PowerOffice når jobben er ferdig.</p><span class="tier">Komplett</span></div><div class="svc"><div class="i">📸</div><b>Ferdigmelding</b><p>Før- og etterbilder til kunden når jobben er gjort.</p><span class="tier">Komplett</span></div><div class="svc"><div class="i">⭐</div><b>Anmeldelser og purring</b><p>Ber om Google-anmeldelse og purrer på ubetalte fakturaer.</p><span class="tier">Komplett</span></div></div>
+    </div>
+    <div class="svc-group">
+      <h3>KI-video og markedsføring</h3>
+      <div class="svcs"><div class="svc"><div class="i">🎯</div><b>Videoannonser</b><p>Annonser for TikTok, Reels, Shorts og YouTube, med mange varianter å teste.</p><span class="tier">Eget tilbud</span></div><div class="svc"><div class="i">📦</div><b>KI-produktfilmer</b><p>Produktvideoer laget fra bildene dine, uten studio.</p><span class="tier">Eget tilbud</span></div><div class="svc"><div class="i">🧑‍💼</div><b>KI-avatarer</b><p>En fast presentatør for forklaringer og sosiale medier, på alle språk.</p><span class="tier">Eget tilbud</span></div><div class="svc"><div class="i">📱</div><b>Innhold til sosiale medier</b><p>Korte videoer planlagt, produsert og levert hver måned.</p><span class="tier">Eget tilbud</span></div><div class="svc"><div class="i">🗣️</div><b>Oversettelse og dubbing</b><p>Én video til nye markeder med KI-stemme og undertekster.</p><span class="tier">Eget tilbud</span></div><div class="svc"><div class="i">🧪</div><b>Strategi og testing</b><p>Vi skriver hookene og forbedrer etter ekte annonsetall.</p><span class="tier">Eget tilbud</span></div></div>
+    </div>
+  </section>
 
   <section class="roi" aria-labelledby="roiH">
     <div class="eyebrow">Hva koster ubesvarte anrop?</div>
@@ -434,21 +517,44 @@ footer{border-top:1px solid var(--border);padding:20px 0;font-size:.8rem;color:v
   }
 
   // Voice (Web Speech API, Norwegian if available)
-  let nbVoices=[];
-  function loadVoices(){ if(!("speechSynthesis" in window)) return; nbVoices=speechSynthesis.getVoices().filter(v=>/^(nb|no|nn)/i.test(v.lang)); }
+  // Pick the most natural Norwegian voices the browser offers.
+  // Edge: "Microsoft Pernille/Finn/Iselin Online (Natural)"; Chrome: "Google norsk"; Safari/macOS: "Nora".
+  let aiVoice=null, custVoice=null;
+  const FEMALE=/pernille|iselin|nora|hulda|google/i, MALE=/finn|henrik|magnus|jon\b/i;
+  function score(v){
+    let s=0; const n=v.name;
+    if(/natural|neural|online/i.test(n)) s+=100;
+    if(/google/i.test(n)) s+=60;
+    if(/premium|enhanced|forbedret/i.test(n)) s+=50;
+    if(/nora/i.test(n)) s+=40;
+    if(!v.localService) s+=10;
+    if(/^nb/i.test(v.lang)) s+=5;
+    return s;
+  }
+  function loadVoices(){
+    if(!("speechSynthesis" in window)) return;
+    const nb=speechSynthesis.getVoices().filter(v=>/^(nb|no|nn)/i.test(v.lang)).sort((a,b)=>score(b)-score(a));
+    aiVoice = nb.find(v=>FEMALE.test(v.name)) || nb[0] || null;
+    custVoice = nb.find(v=>MALE.test(v.name) && v!==aiVoice) || nb.find(v=>v!==aiVoice) || aiVoice;
+    const lbl=document.getElementById("voiceInfo");
+    if(lbl) lbl.textContent = aiVoice ? "Stemme: "+aiVoice.name.replace(/^Microsoft\s+/,"").replace(/\s*-\s*Norwegian.*$/i,"") : "Ingen norsk stemme funnet i denne nettleseren. Prøv Microsoft Edge for best kvalitet.";
+  }
   if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; } else { voiceBtn.hidden=true; }
   voiceBtn.onclick=()=>{
     voiceOn=!voiceOn; voiceBtn.setAttribute("aria-pressed",voiceOn);
     voiceBtn.textContent = voiceOn ? "🔊 Lyd på" : "🔇 Lyd av";
+    document.getElementById("voiceInfo").hidden=!voiceOn;
     if(!voiceOn) speechSynthesis.cancel();
   };
   function speak(text, who, myRun){
     return new Promise(res=>{
       if(!voiceOn || myRun!==run){ return res(false); }
       const u=new SpeechSynthesisUtterance(text);
-      u.lang="nb-NO"; u.rate=1.05;
-      if(nbVoices.length){ u.voice = who==="ai" ? nbVoices[0] : (nbVoices[1]||nbVoices[0]); }
-      u.pitch = who==="ai" ? 1.05 : 0.85;
+      u.lang="nb-NO"; u.rate=1;
+      const v = who==="ai" ? aiVoice : custVoice;
+      if(v){ try{ u.voice=v; }catch(e){} }
+      // Only shift pitch when both speakers share one voice, so natural voices stay natural.
+      u.pitch = (custVoice===aiVoice && who!=="ai") ? 0.8 : 1;
       u.onend=()=>res(true); u.onerror=()=>res(false);
       speechSynthesis.speak(u);
     });
