@@ -588,7 +588,7 @@ footer .fine{opacity:.7;font-size:.75rem}
     firmIn.placeholder = SCENARIOS[key].firm;
     updateFirm();
   }
-  function updateFirm(){ $("#who").textContent=firm(); $("#custFrom").textContent=firm()+" · nå"; }
+  function updateFirm(){ $("#who").textContent=firm(); $("#custFrom").textContent=firm()+" · nå"; if(typeof updateVoiceLabel==="function") try{ updateVoiceLabel(); }catch(e){} }
   firmIn.value = firmOverride;
   firmIn.addEventListener("input",()=>{ firmOverride=firmIn.value.trim(); updateFirm(); syncUrl(); });
   function syncUrl(){
@@ -626,7 +626,31 @@ footer .fine{opacity:.7;font-size:.75rem}
     document.getElementById("voiceInfo").hidden=!voiceOn;
     if(!voiceOn) speechSynthesis.cancel();
   };
-  function speak(text, who, myRun){
+  // Ferdige lydfiler (laget med tools/generate-voice.mjs) brukes når de finnes og firmanavnet er standard.
+  let recorded={}, curAudio=null;
+  fetch("audio/manifest.json").then(r=>r.ok?r.json():{}).then(m=>{ recorded=m||{}; updateVoiceLabel(); }).catch(()=>{});
+  function useRecorded(i){ const m=recorded[key]; return !!(m && m.steps.includes(i) && firm()===m.firm); }
+  function updateVoiceLabel(){
+    const lbl=document.getElementById("voiceInfo"); const m=recorded[key];
+    if(lbl && m && firm()===m.firm) lbl.textContent="Stemme: Grok (xAI)";
+    else loadVoices();
+  }
+  function playRecorded(i, myRun){
+    return new Promise(res=>{
+      const a=new Audio(`audio/${key}/${i}.mp3`); curAudio=a;
+      a.onended=()=>res(true); a.onerror=()=>res(null);
+      a.play().catch(()=>res(null));
+      if(myRun!==run){ a.pause(); res(false); }
+    });
+  }
+  async function speak(text, who, myRun, i){
+    if(voiceOn && myRun===run && useRecorded(i)){
+      const r=await playRecorded(i, myRun);
+      if(r!==null) return r;
+    }
+    return speakTTS(text, who, myRun);
+  }
+  function speakTTS(text, who, myRun){
     return new Promise(res=>{
       if(!voiceOn || myRun!==run){ return res(false); }
       const u=new SpeechSynthesisUtterance(text);
@@ -642,6 +666,7 @@ footer .fine{opacity:.7;font-size:.75rem}
 
   function reset(){
     run++; if("speechSynthesis" in window) speechSynthesis.cancel();
+    if(curAudio){ curAudio.pause(); curAudio=null; }
     clearInterval(timerId); timerEl.textContent="";
     chat.innerHTML='<div class="empty"><div class="big">📞</div>Trykk «Spill av samtalen» for å høre en kunde ringe inn.</div>';
     callbar.className="callbar"; statusText.textContent="Venter på anrop";
@@ -676,7 +701,7 @@ footer .fine{opacity:.7;font-size:.75rem}
     const t0=Date.now();
     timerId=setInterval(()=>{const sec=Math.floor((Date.now()-t0)/1000); timerEl.textContent=`· ${Math.floor(sec/60)}:${String(sec%60).padStart(2,"0")}`;},500);
 
-    for(const step of s.steps){
+    for(const [i,step] of s.steps.entries()){
       if(myRun!==run) return;
       const [type,a,b]=step;
       if(type==="sys"){ const d=document.createElement("div"); d.className="sys"; d.textContent=a; add(d); await sleep(500); }
@@ -685,7 +710,7 @@ footer .fine{opacity:.7;font-size:.75rem}
         const tp=typing(type); await sleep(type==="ai"?700:900); tp.remove(); if(myRun!==run) return;
         bubble(type,text);
         if(type==="ai") callbar.classList.add("talking");
-        const spoke=await speak(text,type,myRun);
+        const spoke=await speak(text,type,myRun,i);
         callbar.classList.remove("talking");
         if(!spoke) await sleep(Math.min(3200, 900 + text.length*28));
       }
