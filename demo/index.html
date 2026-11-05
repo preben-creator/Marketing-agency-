@@ -116,6 +116,7 @@ header img{height:34px;width:auto}
 .cta{text-align:center;padding:30px 0 60px}
 .cta p{color:var(--muted)}
 footer{border-top:1px solid var(--border);padding:20px 0;font-size:.8rem;color:var(--muted);text-align:center}
+.voice-info{text-align:center;font-size:.78rem;margin:-10px 0 18px;min-height:1.2em}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -145,6 +146,7 @@ footer{border-top:1px solid var(--border);padding:20px 0;font-size:.8rem;color:v
     <button class="btn btn--ghost" id="voice" aria-pressed="false" title="Les samtalen høyt">🔇 Lyd av</button>
     <button class="btn" id="play">▶ Spill av samtalen</button>
   </div>
+  <p class="voice-info muted" id="voiceInfo" aria-live="polite" hidden></p>
 
   <div class="stage">
     <div class="phone">
@@ -434,21 +436,44 @@ footer{border-top:1px solid var(--border);padding:20px 0;font-size:.8rem;color:v
   }
 
   // Voice (Web Speech API, Norwegian if available)
-  let nbVoices=[];
-  function loadVoices(){ if(!("speechSynthesis" in window)) return; nbVoices=speechSynthesis.getVoices().filter(v=>/^(nb|no|nn)/i.test(v.lang)); }
+  // Pick the most natural Norwegian voices the browser offers.
+  // Edge: "Microsoft Pernille/Finn/Iselin Online (Natural)"; Chrome: "Google norsk"; Safari/macOS: "Nora".
+  let aiVoice=null, custVoice=null;
+  const FEMALE=/pernille|iselin|nora|hulda|google/i, MALE=/finn|henrik|magnus|jon\b/i;
+  function score(v){
+    let s=0; const n=v.name;
+    if(/natural|neural|online/i.test(n)) s+=100;
+    if(/google/i.test(n)) s+=60;
+    if(/premium|enhanced|forbedret/i.test(n)) s+=50;
+    if(/nora/i.test(n)) s+=40;
+    if(!v.localService) s+=10;
+    if(/^nb/i.test(v.lang)) s+=5;
+    return s;
+  }
+  function loadVoices(){
+    if(!("speechSynthesis" in window)) return;
+    const nb=speechSynthesis.getVoices().filter(v=>/^(nb|no|nn)/i.test(v.lang)).sort((a,b)=>score(b)-score(a));
+    aiVoice = nb.find(v=>FEMALE.test(v.name)) || nb[0] || null;
+    custVoice = nb.find(v=>MALE.test(v.name) && v!==aiVoice) || nb.find(v=>v!==aiVoice) || aiVoice;
+    const lbl=document.getElementById("voiceInfo");
+    if(lbl) lbl.textContent = aiVoice ? "Stemme: "+aiVoice.name.replace(/^Microsoft\s+/,"").replace(/\s*-\s*Norwegian.*$/i,"") : "Ingen norsk stemme funnet i denne nettleseren. Prøv Microsoft Edge for best kvalitet.";
+  }
   if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; } else { voiceBtn.hidden=true; }
   voiceBtn.onclick=()=>{
     voiceOn=!voiceOn; voiceBtn.setAttribute("aria-pressed",voiceOn);
     voiceBtn.textContent = voiceOn ? "🔊 Lyd på" : "🔇 Lyd av";
+    document.getElementById("voiceInfo").hidden=!voiceOn;
     if(!voiceOn) speechSynthesis.cancel();
   };
   function speak(text, who, myRun){
     return new Promise(res=>{
       if(!voiceOn || myRun!==run){ return res(false); }
       const u=new SpeechSynthesisUtterance(text);
-      u.lang="nb-NO"; u.rate=1.05;
-      if(nbVoices.length){ u.voice = who==="ai" ? nbVoices[0] : (nbVoices[1]||nbVoices[0]); }
-      u.pitch = who==="ai" ? 1.05 : 0.85;
+      u.lang="nb-NO"; u.rate=1;
+      const v = who==="ai" ? aiVoice : custVoice;
+      if(v){ try{ u.voice=v; }catch(e){} }
+      // Only shift pitch when both speakers share one voice, so natural voices stay natural.
+      u.pitch = (custVoice===aiVoice && who!=="ai") ? 0.8 : 1;
       u.onend=()=>res(true); u.onerror=()=>res(false);
       speechSynthesis.speak(u);
     });
