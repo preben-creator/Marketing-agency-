@@ -126,5 +126,131 @@
       "ai": "ara",
       "cust": "leo"
     }
+  },
+  "bil": {
+    "firm": "Nilsen Bil AS",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "leo"
+    }
+  },
+  "frisor": {
+    "firm": "Salong Lien",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "eve"
+    }
+  },
+  "mat": {
+    "firm": "Holm Bakeri AS",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "eve"
+    }
+  },
+  "las": {
+    "firm": "Lund Lås AS",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "leo"
+    }
+  },
+  "design": {
+    "firm": "Aas Atelier",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "eve"
+    }
+  },
+  "verksted": {
+    "firm": "Strand Verksted AS",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "leo"
+    }
+  },
+  "grafisk": {
+    "firm": "Dahl Trykk AS",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "eve"
+    }
   }
 }

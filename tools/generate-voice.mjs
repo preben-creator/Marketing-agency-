@@ -14,7 +14,7 @@ if (!KEY) { console.error("Mangler XAI_API_KEY i miljøet."); process.exit(1); }
 const AI_VOICE = process.env.AI_VOICE || "ara";     // sekretæren
 const CUST_VOICE = process.env.CUST_VOICE || "leo"; // kunden (mann)
 const CUST_VOICE_F = process.env.CUST_VOICE_F || "eve"; // kunden (kvinne)
-const FEMALE = /^(Kari|Anne|Hilde|Maria|Ingrid|Sofie|Nina|Silje|Kristin|Ida)\b/;
+const FEMALE = /^(Kari|Anne|Hilde|Maria|Ingrid|Sofie|Nina|Silje|Kristin|Ida|Camilla|Hanne)\b/;
 const LANGUAGE = process.env.TTS_LANGUAGE || "no";  // norsk er ikke offisielt støttet; prøv "no", ellers "auto"
 
 const root = new URL("../", import.meta.url);
