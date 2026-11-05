@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Snakk med KI-sekretæren · Orvelo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0b10;--bg-alt:#10121a;--surface:#161926;--surface-2:#1d2133;--border:#252a3b;
+  --text:#f2f3f7;--muted:#9aa0b4;--accent:#7c5cff;--accent-2:#00d4ff;--ok:#2fd889;--warn:#ffb547;--bad:#ff5c7a;
+  --font-body:"Inter",system-ui,sans-serif;--font-head:"Space Grotesk","Inter",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:400 16px/1.55 var(--font-body);-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--font-head);line-height:1.15;margin:0 0 .4em;letter-spacing:-.02em}
+.wrap{max-width:1120px;margin:0 auto;padding:20px 16px 48px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:22px}
+.brand{font-family:var(--font-head);font-weight:700;font-size:1.15rem;letter-spacing:-.01em}
+.brand span{background:linear-gradient(90deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.tag{font-size:.75rem;border:1px solid var(--border);border-radius:999px;padding:4px 10px;color:var(--muted)}
+.hello{margin-bottom:22px}
+.hello h1{font-size:clamp(1.6rem,4.4vw,2.5rem)}
+.hello p{color:var(--muted);max-width:720px;margin:0}
+.grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:20px;align-items:start}
+@media (max-width:880px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--bg-alt);border:1px solid var(--border);border-radius:20px;overflow:hidden}
+.callhead{padding:22px 18px 16px;text-align:center;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(124,92,255,.18),transparent)}
+.callhead .who{font-family:var(--font-head);font-weight:600;font-size:1.15rem}
+.callhead .sub{font-size:.82rem;color:var(--muted)}
+.orb{--lvl:0;width:112px;height:112px;margin:18px auto 10px;border-radius:50%;border:0;cursor:pointer;display:grid;place-items:center;
+  background:radial-gradient(circle at 35% 30%,#9d86ff,var(--accent) 45%,#3a2a9a);color:#fff;font-weight:600;font-size:.9rem;
+  box-shadow:0 0 0 calc(6px + var(--lvl)*26px) rgba(124,92,255,.18),0 20px 50px -18px rgba(124,92,255,.8);transition:box-shadow .12s,transform .15s}
+.orb:hover{transform:scale(1.03)}
+.orb svg{width:34px;height:34px}
+.orb.on{background:radial-gradient(circle at 35% 30%,#ff8aa0,var(--bad) 50%,#9a2a45);box-shadow:0 0 0 calc(6px + var(--lvl)*26px) rgba(255,92,122,.16),0 20px 50px -18px rgba(255,92,122,.7)}
+.orb.speaking{box-shadow:0 0 0 calc(6px + var(--lvl)*26px) rgba(0,212,255,.22),0 20px 50px -18px rgba(0,212,255,.7)}
+.orb:disabled{opacity:.6;cursor:wait}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;padding:3px 11px;border-radius:999px;background:var(--surface);border:1px solid var(--border)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.status.live .dot{background:var(--ok);animation:pulse 1.2s infinite}
+.status.wait .dot{background:var(--warn);animation:pulse .6s infinite}
+.status.err .dot{background:var(--bad)}
+@keyframes pulse{50%{opacity:.35}}
+.hint{font-size:.78rem;color:var(--muted);margin-top:8px}
+.chat{height:380px;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
+.msg{max-width:86%;padding:9px 13px;border-radius:16px;font-size:.93rem;animation:in .25s ease;white-space:pre-wrap}
+.msg small{display:block;font-size:.68rem;margin-bottom:2px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.msg.ai{align-self:flex-start;background:var(--surface-2);border:1px solid var(--border);border-bottom-left-radius:4px}
+.msg.ai small{color:var(--accent-2)}
+.msg.me{align-self:flex-end;background:linear-gradient(135deg,var(--accent),#5b3fe0);border-bottom-right-radius:4px}
+.msg.me small{color:rgba(255,255,255,.75)}
+.sys{align-self:center;font-size:.76rem;color:var(--muted);background:var(--surface);border:1px dashed var(--border);border-radius:999px;padding:3px 12px;text-align:center}
+@keyframes in{from{opacity:0;transform:translateY(6px)}}
+.empty{margin:auto;text-align:center;color:var(--muted);font-size:.9rem;max-width:300px}
+.compose{display:flex;gap:8px;padding:12px;border-top:1px solid var(--border)}
+.compose input{flex:1;min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:10px 15px;outline:0}
+.compose input:focus{border-color:var(--accent)}
+.compose button,.chip{border:0;cursor:pointer}
+.compose button{border-radius:999px;padding:10px 16px;font-weight:600;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff}
+.mute{background:var(--surface)!important;border:1px solid var(--border)!important;color:var(--text)!important;padding:10px 12px!important}
+.chips{padding:0 12px 14px;display:flex;flex-wrap:wrap;gap:6px}
+.chipgroup{width:100%;font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600;margin-top:4px}
+.chip{background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:6px 11px;font-size:.82rem;color:var(--text);text-align:left}
+.chip:hover{border-color:var(--accent)}
+.side{display:flex;flex-direction:column;gap:20px}
+.pad{padding:16px 18px}
+.side h2{font-size:1.05rem;margin-bottom:2px}
+.side .lead{font-size:.82rem;color:var(--muted);margin:0 0 12px}
+.days{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px}
+.day{flex:0 0 auto;border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:6px 10px;font-size:.78rem;cursor:pointer;text-align:center;line-height:1.25}
+.day b{display:block;font-size:.95rem}
+.day.sel{border-color:var(--accent);background:rgba(124,92,255,.15)}
+.day.closed{opacity:.5}
+.day .n{display:inline-block;margin-top:2px;font-size:.66rem;color:var(--ok)}
+.slots{display:flex;flex-direction:column;gap:6px;min-height:120px}
+.slot{display:flex;gap:10px;align-items:center;font-size:.84rem;padding:7px 10px;border-radius:10px;background:var(--surface);border:1px solid var(--border)}
+.slot time{font-variant-numeric:tabular-nums;color:var(--muted);min-width:86px}
+.slot.busy{opacity:.55}
+.slot.new{border-color:var(--ok);background:rgba(47,216,137,.1);opacity:1;animation:in .4s ease}
+.slot.new time{color:var(--ok)}
+.log{display:flex;flex-direction:column;gap:8px;max-height:330px;overflow-y:auto}
+.ev{font-size:.83rem;padding:9px 11px;border-radius:12px;background:var(--surface);border:1px solid var(--border);animation:in .3s ease}
+.ev b{display:block;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent-2);margin-bottom:2px}
+.ev.sms b{color:var(--ok)}
+.ev.note b{color:var(--warn)}
+.ev .q{color:var(--muted);font-style:italic}
+.foot{margin-top:26px;font-size:.8rem;color:var(--muted);text-align:center}
+.foot a{color:var(--accent-2)}
+.banner{display:none;margin-bottom:16px;padding:12px 14px;border-radius:14px;border:1px solid var(--warn);background:rgba(255,181,71,.08);font-size:.88rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><span>Orvelo</span> · KI-sekretær</div>
+    <div class="tag">Live demo</div>
+  </div>
+
+  <div class="banner" id="banner"></div>
+
+  <section class="hello">
+    <h1 id="hTitle">Ring den nye sekretæren til salongen</h1>
+    <p id="hLead">Trykk på knappen og snakk som en kunde som vil bestille time. Du kan også spørre om hvordan tjenesten fungerer og hva den koster.</p>
+  </section>
+
+  <div class="grid">
+    <section class="card" aria-label="Samtale">
+      <div class="callhead">
+        <div class="who" id="who">Salongen</div>
+        <div class="sub" id="whoSub">Digital sekretær</div>
+        <button class="orb" id="orb" aria-label="Ring sekretæren">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="orbIcon"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+        </button>
+        <div class="status" id="status"><span class="dot"></span><span id="statusText">Trykk for å ringe</span></div>
+        <div class="hint" id="hint">Bruk gjerne hodetelefoner. Du kan avbryte henne når du vil, som i en vanlig samtale.</div>
+      </div>
+      <div class="chat" id="chat" aria-live="polite">
+        <div class="empty" id="empty">Samtalen vises her som tekst mens dere snakker.</div>
+      </div>
+      <form class="compose" id="compose" autocomplete="off">
+        <input id="text" placeholder="Eller skriv her …" aria-label="Skriv til sekretæren">
+        <button type="button" class="mute" id="mute" title="Slå lyd av/på" aria-label="Slå lyd av eller på">🔊</button>
+        <button type="submit">Send</button>
+      </form>
+      <div class="chips" id="chips"></div>
+    </section>
+
+    <aside class="side">
+      <section class="card pad" aria-label="Kalender">
+        <h2>Salongens kalender</h2>
+        <p class="lead">Slik ser salongen det. Nye timer dukker opp her med en gang.</p>
+        <div class="days" id="days"></div>
+        <div class="slots" id="slots"></div>
+      </section>
+      <section class="card pad" aria-label="Hva sekretæren gjør">
+        <h2>Det som skjer i bakgrunnen</h2>
+        <p class="lead">SMS og beskjeder er simulert i demoen. Ingenting sendes på ekte.</p>
+        <div class="log" id="log"><div class="ev"><b>Klar</b>Sekretæren venter på første kunde.</div></div>
+      </section>
+    </aside>
+  </div>
+
+  <p class="foot">Dette er en demo laget av Orvelo. Timer som bestilles her lagres ikke og havner ikke i salongens ekte system.<br>Spørsmål? Kontakt Preben på <a href="mailto:hilleren.bedrift@gmail.com">hilleren.bedrift@gmail.com</a>.</p>
+</div>
+
+<script>
+"use strict";
+/* ================= Kunder (en blokk per salong/firma) ================= */
+const KUNDER = {
+  dejavu: {
+    navn: "Deja Vu Frisør",
+    kortnavn: "Deja Vu",
+    kontaktperson: "Jessica",
+    adresse: "Solheimsgaten 78, 5054 Bergen (Danmarksplass)",
+    telefon: "55 59 09 54",
+    epost: "post@dejavubergen.no",
+    // 0 = søndag ... 6 = lørdag. null = stengt. "avtale" = bare etter avtale.
+    apent: {0:null, 1:"avtale", 2:["10:00","17:00"], 3:["10:00","17:00"], 4:["10:00","17:00"], 5:["10:00","17:00"], 6:["10:00","15:00"]},
+    apentTekst: "Mandag: etter avtale (ingen drop-in). Tirsdag til fredag: 10 til 17. Lørdag: 10 til 15. Søndag: stengt. Tirsdag til fredag kan timer avtales utenom vanlig åpningstid etter avtale med frisøren.",
+    frisorer: ["Jessica", "Gitte"],
+    tjenester: [
+      ["Klipp", [["Klipp 15 min, uten vask","495 kr",15],["Klipp 30 min","845 kr",30],["Klipp 45 min","1 095 kr",45],["Klipp barn (opptil 10 år), uten vask","675 kr",30],["Lugg","200 kr",15],["Ny lugg","400 kr",15]]],
+      ["Farge", [["Farge, ettervekst","fra 1 200 kr",90],["Farge, kort hår","fra 1 650 kr",90],["Farge, langt hår","fra 2 200 kr",120],["Fargeskyll","fra 550 kr",45]]],
+      ["Striping", [["Striper, highlights","fra 2 200 kr",150],["Striper, lowlights","fra 1 900 kr",120],["Balayage / foilayage","fra 2 200 kr",180],["Bleking","fra 2 100 kr",150],["Toner","fra 550 kr",30]]],
+      ["Permanent", [["Permanent, kort hår","fra 1 940 kr",120],["Permanent, langt hår","fra 3 000 kr",150]]],
+      ["Hårpleie", [["Kur sammen med annen behandling","fra 300 kr",15],["Kur som egen behandling","fra 450 kr",30]]],
+      ["Bryn", [["Farge og nappe bryn","550 kr",30],["Nappe bryn","295 kr",15],["Farge bryn","350 kr",15]]],
+      ["Annet", [["Vask og føhn","fra 655 kr",30],["Vask og legg","fra 755 kr",45],["Konsultasjon 15 min","250 kr",15]]],
+    ],
+    ekstra: "Salongen leier også ut frisørstol til selvstendige frisører og et eget behandlingsrom for hudpleie og kosmetiske behandlinger. Spørsmål om utleie: ta imot navn og nummer, så ringer Gitte tilbake. Alle priser er veiledende; eksakt pris avtales med frisøren før behandlingen.",
+  },
+};
+const KUNDE = KUNDER[new URLSearchParams(location.search).get("firma")] || KUNDER.dejavu;
+
+/* ================= Fakta om tjenesten (for spørsmål fra salongeieren) ================= */
+const PRODUKT = `
+Tjenesten heter KI-sekretær og leveres av Orvelo, ved Preben Hilleren (e-post hilleren.bedrift@gmail.com).
+Det personen opplever akkurat nå, er hvordan sekretæren kan ta telefonen for salongen.
+
+Hva den gjør: Svarer kundene døgnet rundt, også når alle står med kunder i stolen. Den booker timer rett i kalenderen, svarer på spørsmål om priser, behandlinger og åpningstider, sender SMS-bekreftelse og påminnelse til kunden, tar imot beskjeder og sender dem videre til salongen. Den kan svare på engelsk og andre språk. Den sier alltid fra at den er en digital assistent.
+
+Pakker (alle priser i kroner, eksklusive mva):
+- Start: 1 490 kr i måneden, oppstart 9 900 kr engangs, 3 måneders binding. Sekretær i chat på nettsiden som svarer hele døgnet og sender henvendelsene videre på e-post eller SMS.
+- Pro: 2 990 kr i måneden, oppstart 19 900 kr engangs, 6 måneders binding. Alt i Start, pluss booking rett i kalenderen, SMS-bekreftelse og påminnelse til kunden, flere språk og en månedsrapport med antall henvendelser og bookinger.
+- Komplett: 5 990 kr i måneden, oppstart 39 900 kr engangs, 12 måneders binding. Alt i Pro, pluss KI-telefonsvarer som tar telefonen når ingen i salongen rekker det (det personen prøver nå), sammendrag av samtalen på SMS, og at den ber fornøyde kunder om en Google-anmeldelse.
+Etter bindingstiden går avtalen videre måned for måned.
+
+Oppstart: Preben trenger rundt 30 minutter med salongen. Så setter han opp resten: behandlinger og priser, åpningstider, frisørene og vanlige spørsmål.
+Hvem bestemmer: Sekretæren gir aldri andre priser enn prislisten, og salongen bestemmer hva den kan si og gjøre.
+
+Si alltid at prisene er eksklusive mva.
+Salongen har et oppfølgingsmøte med Preben mandag 10. november klokka halv tre.
+Ting du IKKE vet sikkert, og som du derfor skal si at Preben svarer på (gjerne på det møtet): hvilket bookingsystem den kobles mot og hvordan, personvern og hvor dataene lagres, telefonnummer og viderekobling, rabatter eller tilpassede pakker, og alt annet som ikke står her. Ikke dikt opp detaljer.`;
+
+/* ================= Innstillinger ================= */
+const P = new URLSearchParams(location.search);
+const TOKEN_URL = P.get("api") || "/token";       // samme adresse som siden (Cloudflare Worker)
+const DEMO_KODE = P.get("k") || "";
+const MODEL = "grok-voice-latest";
+const VOICE = P.get("stemme") || "ara";
+const MAX_MIN = 10;          // samtalen avsluttes automatisk etter 10 min
+const STILLE_SEK = 75;       // og etter 75 sekunder uten at noen sier noe
+const TZ = "Europe/Oslo";
+
+/* ================= Hjelpere ================= */
+const $ = (id) => document.getElementById(id);
+const DAGNAVN = ["søndag","mandag","tirsdag","onsdag","torsdag","fredag","lørdag"];
+const MND = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
+function osloNow(){
+  const f = new Intl.DateTimeFormat("en-CA",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false});
+  const p = Object.fromEntries(f.formatToParts(new Date()).map(x=>[x.type,x.value]));
+  return {iso:`${p.year}-${p.month}-${p.day}`, tid:`${p.hour==="24"?"00":p.hour}:${p.minute}`};
+}
+function dateFromIso(iso){const [y,m,d]=iso.split("-").map(Number);return new Date(Date.UTC(y,m-1,d,12));}
+function isoFromDate(dt){return dt.toISOString().slice(0,10);}
+function addDays(iso,n){const d=dateFromIso(iso);d.setUTCDate(d.getUTCDate()+n);return isoFromDate(d);}
+function dow(iso){return dateFromIso(iso).getUTCDay();}
+function pent(iso){const d=dateFromIso(iso);return `${DAGNAVN[d.getUTCDay()]} ${d.getUTCDate()}. ${MND[d.getUTCMonth()]}`;}
+const toMin = (t)=>{const [h,m]=t.split(":").map(Number);return h*60+m;};
+const toTid = (m)=>`${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+/* ================= Kalender (simulert) ================= */
+const I_DAG = osloNow().iso;
+const DAGER = Array.from({length:14},(_,i)=>addDays(I_DAG,i));
+const KAL = {}; // iso -> [{fra,til,hva,hvem,ny}]
+function rng(seed){let s=seed;return()=>{s=(s*1103515245+12345)%2147483648;return s/2147483648;};}
+(function fyllKalender(){
+  const navn=["Kari","Ingrid","Nora","Emma","Sofie","Maja","Thea","Ola","Lars","Hanne","Silje","Mona","Anders","Line","Tone"];
+  const hva=["Klipp 30 min","Farge, ettervekst","Balayage","Klipp 45 min","Vask og føhn","Striper","Klipp 15 min","Farge og nappe bryn"];
+  for(const iso of DAGER){
+    KAL[iso]=[];
+    const a=KUNDE.apent[dow(iso)]; if(!Array.isArray(a)) continue;
+    const r=rng(Number(iso.replaceAll("-",""))); let t=toMin(a[0]); const slutt=toMin(a[1]);
+    while(t<slutt-30){
+      if(r()<0.5){const len=[30,45,60,90,120][Math.floor(r()*5)];if(t+len>slutt)break;
+        KAL[iso].push({fra:t,til:t+len,hva:hva[Math.floor(r()*hva.length)],hvem:navn[Math.floor(r()*navn.length)]});t+=len;}
+      else t+=30;
+    }
+  }
+})();
+function ledige(iso,varighet){
+  const a=KUNDE.apent[dow(iso)];
+  if(!Array.isArray(a)) return null;
+  const opptatt=KAL[iso]||[]; const ut=[]; const naa=osloNow();
+  for(let t=toMin(a[0]);t+varighet<=toMin(a[1]);t+=30){
+    if(iso===naa.iso && t<toMin(naa.tid)+60) continue;
+    if(!opptatt.some(b=>t<b.til && t+varighet>b.fra)) ut.push(toTid(t));
+  }
+  return ut;
+}
+let valgtDag=DAGER.find(d=>Array.isArray(KUNDE.apent[dow(d)]))||I_DAG;
+function tegnKalender(){
+  $("days").innerHTML=DAGER.map(iso=>{const d=dateFromIso(iso);const nye=(KAL[iso]||[]).filter(b=>b.ny).length;
+    const st=!Array.isArray(KUNDE.apent[dow(iso)]);
+    return `<button class="day${iso===valgtDag?" sel":""}${st?" closed":""}" data-d="${iso}">${DAGNAVN[d.getUTCDay()].slice(0,3)}<b>${d.getUTCDate()}.</b>${nye?`<span class="n">+${nye} ny</span>`:""}</button>`;}).join("");
+  const a=KUNDE.apent[dow(valgtDag)];
+  const liste=(KAL[valgtDag]||[]).slice().sort((x,y)=>x.fra-y.fra);
+  $("slots").innerHTML = !Array.isArray(a)
+    ? `<div class="slot busy"><time>${esc(pent(valgtDag))}</time>${a==="avtale"?"Bare etter avtale":"Stengt"}</div>`
+    : (liste.length?liste:[]).map(b=>`<div class="slot ${b.ny?"new":"busy"}"><time>${toTid(b.fra)}–${toTid(b.til)}</time><span>${esc(b.hva)} · ${esc(b.hvem)}${b.ny?" · <b>ny</b>":""}</span></div>`).join("") || `<div class="slot"><time>Hele dagen</time>Ledig</div>`;
+  const sel=$("days").querySelector(".sel"); if(sel) sel.scrollIntoView({block:"nearest",inline:"nearest"});
+}
+$("days").addEventListener("click",e=>{const b=e.target.closest(".day");if(b){valgtDag=b.dataset.d;tegnKalender();}});
+
+function logg(type,tittel,html){
+  const el=document.createElement("div");el.className="ev "+type;el.innerHTML=`<b>${esc(tittel)}</b>${html}`;
+  $("log").prepend(el);
+}
+
+/* ================= Verktøy sekretæren kan bruke ================= */
+const TOOLS = [
+  {type:"function",name:"finn_ledige_tider",description:"Finn ledige tider i salongens kalender en bestemt dato. Bruk ALLTID denne før du foreslår eller bekrefter et klokkeslett.",
+   parameters:{type:"object",properties:{dato:{type:"string",description:"Datoen i formatet ÅÅÅÅ-MM-DD"},behandling:{type:"string"},varighet_min:{type:"number",description:"Omtrentlig varighet i minutter"}},required:["dato"]}},
+  {type:"function",name:"bestill_time",description:"Bestill en time når kunden har bekreftet behandling, dato, klokkeslett, navn og mobilnummer.",
+   parameters:{type:"object",properties:{navn:{type:"string"},mobil:{type:"string"},behandling:{type:"string"},dato:{type:"string",description:"ÅÅÅÅ-MM-DD"},klokkeslett:{type:"string",description:"TT:MM"},varighet_min:{type:"number"},frisor:{type:"string"},notat:{type:"string"}},required:["navn","mobil","behandling","dato","klokkeslett"]}},
+  {type:"function",name:"legg_igjen_beskjed",description:"Send en beskjed til salongen, for eksempel om noe du ikke kan svare på, avbestilling, flytting av time eller utleie.",
+   parameters:{type:"object",properties:{navn:{type:"string"},mobil:{type:"string"},beskjed:{type:"string"}},required:["beskjed"]}},
+];
+function varighetFor(behandling, v){
+  if(v && v>=15 && v<=240) return Math.round(v/15)*15;
+  const b=(behandling||"").toLowerCase();
+  for(const [,liste] of KUNDE.tjenester) for(const [n,,min] of liste) if(b && n.toLowerCase()===b.trim()) return min;
+  if(/barn/.test(b)&&/klipp/.test(b)) return 30;
+  if(/45/.test(b)) return 45;
+  if(/balayage|foil|stripe|highlight|bleking|perman/.test(b)) return 150;
+  if(/farge/.test(b)) return 90;
+  return 30;
+}
+function runTool(name,a){
+  if(name==="finn_ledige_tider"){
+    const iso=String(a.dato||"").slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return {feil:"Ugyldig dato. Bruk ÅÅÅÅ-MM-DD."};
+    if(iso<I_DAG) return {feil:"Datoen har vært."};
+    if(!KAL[iso]) return {feil:"Kalenderen i demoen viser bare de neste 14 dagene."};
+    const v=varighetFor(a.behandling,a.varighet_min); const l=ledige(iso,v);
+    valgtDag=iso; tegnKalender();
+    logg("","Sjekket kalenderen",`${esc(pent(iso))}${a.behandling?" · "+esc(a.behandling):""}`);
+    if(l===null) return {dato:iso,dag:pent(iso),ledige:[],info:KUNDE.apent[dow(iso)]==="avtale"?"Mandag er bare etter avtale. Tilby å legge igjen beskjed så salongen ringer tilbake, eller foreslå tirsdag.":"Salongen er stengt denne dagen."};
+    // gi modellen et lite, spredt utvalg
+    const utvalg = l.length<=6 ? l : [0,.2,.4,.6,.8,1].map(f=>l[Math.round(f*(l.length-1))]).filter((x,i,arr)=>arr.indexOf(x)===i);
+    return {dato:iso,dag:pent(iso),varighet_min:v,ledige:utvalg,antall_ledige:l.length};
+  }
+  if(name==="bestill_time"){
+    const iso=String(a.dato||"").slice(0,10); const v=varighetFor(a.behandling,a.varighet_min);
+    const t=String(a.klokkeslett||"").slice(0,5);
+    if(!KAL[iso]||!/^\d{2}:\d{2}$/.test(t)) return {feil:"Ugyldig dato eller klokkeslett."};
+    const l=ledige(iso,v)||[];
+    if(!l.includes(t)) return {feil:`${t} er ikke ledig den dagen. Bruk finn_ledige_tider og foreslå en annen tid.`};
+    const fra=toMin(t);
+    KAL[iso].push({fra,til:fra+v,hva:a.behandling,hvem:a.navn,ny:true});
+    valgtDag=iso; tegnKalender();
+    logg("","Ny time i kalenderen",`${esc(a.behandling)} · ${esc(pent(iso))} kl. ${esc(t)}<br>${esc(a.navn)}, ${esc(a.mobil)}${a.frisor?" · hos "+esc(a.frisor):""}${a.notat?`<br><span class="q">${esc(a.notat)}</span>`:""}`);
+    const sms=`Hei ${a.navn}! Du har time hos ${KUNDE.navn} ${pent(iso)} kl. ${t} (${a.behandling}). Adresse: ${KUNDE.adresse.split(" (")[0]}. Trenger du å endre? Svar på denne meldingen. Velkommen!`;
+    setTimeout(()=>logg("sms",`SMS til ${a.mobil} (simulert)`,`<span class="q">«${esc(sms)}»</span>`),900);
+    setTimeout(()=>logg("sms","Påminnelse planlagt (simulert)",`SMS sendes til kunden dagen før timen.`),1600);
+    return {ok:true,bekreftet:`${a.behandling}, ${pent(iso)} klokka ${t}`,sms_sendt:true};
+  }
+  if(name==="legg_igjen_beskjed"){
+    logg("note","Beskjed til salongen",`${a.navn?esc(a.navn):"Ukjent"}${a.mobil?", "+esc(a.mobil):""}<br><span class="q">«${esc(a.beskjed)}»</span>`);
+    return {ok:true,info:"Beskjeden er sendt til salongen på SMS."};
+  }
+  return {feil:"Ukjent verktøy"};
+}
+
+/* ================= Instruksjoner til sekretæren ================= */
+function instruksjoner(){
+  const n=osloNow();
+  const prisliste=KUNDE.tjenester.map(([kat,l])=>`${kat}: `+l.map(([x,p,m])=>`${x} ${p} (ca. ${m} min)`).join("; ")).join("\n");
+  const uke=DAGER.slice(0,8).map(iso=>`${pent(iso)} = ${iso}`).join(", ");
+  return `# Rolle
+Du er den digitale sekretæren til ${KUNDE.navn}, en frisørsalong i ${KUNDE.adresse}. Du tar telefonen for salongen, booker timer og svarer på spørsmål. Du er vennlig, varm og effektiv, som en erfaren resepsjonist i Bergen.
+
+# Språk og stil
+- Snakk alltid norsk bokmål, med naturlig og avslappet tone. Bytt språk bare hvis personen snakker et annet språk.
+- Dette er en telefonsamtale: svar kort, vanligvis én til to setninger. Still ett spørsmål om gangen.
+- Si klokkeslett slik folk sier dem: "klokka ti", "halv tre", "kvart over elleve". Si priser som "åtte hundre og førtifem kroner".
+- Si datoer som "fredag sjuende november", ikke tall med bindestrek. Ikke les opp lister med mer enn tre valg.
+- Ikke bruk emojier, punktlister eller markdown.
+
+# Tid
+I dag er det ${pent(n.iso)} (${n.iso}), og klokka er ${n.tid}. Kommende dager: ${uke}.
+
+# Salongen
+Navn: ${KUNDE.navn}. Adresse: ${KUNDE.adresse}. Telefon: ${KUNDE.telefon}. E-post: ${KUNDE.epost}.
+Åpningstider: ${KUNDE.apentTekst}
+Frisører: ${KUNDE.frisorer.join(" og ")}.
+${KUNDE.ekstra}
+
+# Prisliste (veiledende)
+${prisliste}
+
+# Slik booker du
+1. Finn ut hvilken behandling kunden vil ha. Spør om hårlengde hvis det påvirker pris eller tid.
+2. Spør hvilken dag som passer, og bruk verktøyet finn_ledige_tider. Foreslå to eller tre av de ledige tidene. Finn aldri på tider selv.
+3. Når kunden har valgt tid: spør om fornavn og mobilnummer, og gjenta nummeret kort for å sjekke.
+4. Bruk bestill_time. Bekreft med én setning, og si at kunden får en SMS med bekreftelse.
+Avbestilling, flytting av time, klager, utleie av stol eller rom, og ting du ikke vet: bruk legg_igjen_beskjed, og si at salongen ringer tilbake.
+
+# Når det er salongeieren som spør om tjenesten
+Personen som ringer kan være ${KUNDE.kontaktperson} eller andre fra salongen som prøver ut denne demoen. Hvis de spør om deg selv, hva du koster, hvordan du fungerer eller hvordan det settes opp, så svar ærlig og kort ut fra faktaene under. Gå så gjerne tilbake til rollen som sekretær hvis de vil prøve mer.
+${PRODUKT}
+
+# Regler
+- Du er en digital assistent og sier det hvis noen spør. Lat aldri som du er et menneske.
+- Gi aldri andre priser enn prislisten, og lov aldri noe salongen ikke har sagt.
+- Dette er en demo: SMS og beskjeder sendes ikke på ekte, men det skal du bare nevne hvis noen spør.
+- Hvis noen snakker om noe som ikke har med salongen eller tjenesten å gjøre, styr høflig tilbake.`;
+}
+
+/* ================= Lyd og sanntidstilkobling ================= */
+let ws=null, ctx=null, micStream=null, micNode=null, srcNode=null, analyser=null;
+let playHead=0, sources=[], muted=false, connected=false, callActive=false, aiTalking=false;
+let startTid=0, sisteAktivitet=0, timerId=0, curAiEl=null, curAiText="", meterId=0;
+const RATES=[8000,16000,22050,24000,32000,44100,48000];
+
+function setStatus(kind,text){$("status").className="status "+kind;$("statusText").textContent=text;}
+function sys(t){fjernTom();const el=document.createElement("div");el.className="sys";el.textContent=t;$("chat").append(el);scrollChat();}
+function fjernTom(){const e=$("empty");if(e)e.remove();}
+function scrollChat(){const c=$("chat");c.scrollTop=c.scrollHeight;}
+function bubble(who,text){fjernTom();const el=document.createElement("div");el.className="msg "+(who==="ai"?"ai":"me");
+  el.innerHTML=`<small>${who==="ai"?"Sekretæren":"Deg"}</small><span></span>`;el.querySelector("span").textContent=text;$("chat").append(el);scrollChat();return el;}
+
+const WORKLET=`class Mic extends AudioWorkletProcessor{constructor(){super();this.b=new Float32Array(2048);this.i=0;}
+process(inp){const ch=inp[0]&&inp[0][0];if(!ch)return true;for(let k=0;k<ch.length;k++){this.b[this.i++]=ch[k];if(this.i===this.b.length){this.port.postMessage(this.b.slice(0));this.i=0;}}return true;}}
+registerProcessor("mic",Mic);`;
+
+function b64FromInt16(f32){
+  const pcm=new Int16Array(f32.length);let sum=0;
+  for(let i=0;i<f32.length;i++){const s=Math.max(-1,Math.min(1,f32[i]));sum+=s*s;pcm[i]=s<0?s*0x8000:s*0x7fff;}
+  const u=new Uint8Array(pcm.buffer);let bin="";for(let i=0;i<u.length;i+=0x8000)bin+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));
+  return {b64:btoa(bin),rms:Math.sqrt(sum/f32.length)};
+}
+function playChunk(b64){
+  if(!ctx) return;
+  const bin=atob(b64);const n=bin.length>>1;const buf=ctx.createBuffer(1,n,24000);const ch=buf.getChannelData(0);
+  for(let i=0;i<n;i++){let v=bin.charCodeAt(2*i)|(bin.charCodeAt(2*i+1)<<8);if(v>=32768)v-=65536;ch[i]=v/32768;}
+  const s=ctx.createBufferSource();s.buffer=buf;s.connect(outGain);
+  const t=Math.max(ctx.currentTime+0.03,playHead);s.start(t);playHead=t+buf.duration;
+  sources.push(s);s.onended=()=>{sources=sources.filter(x=>x!==s);};
+}
+let outGain=null;
+function stopPlayback(){for(const s of sources){try{s.stop();}catch{}}sources=[];if(ctx)playHead=ctx.currentTime;}
+function isPlaying(){return ctx && playHead>ctx.currentTime+0.02;}
+
+async function hentToken(){
+  const r=await fetch(TOKEN_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({k:DEMO_KODE})});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok||!d.value) throw new Error(d.feil||("Kunne ikke starte samtalen ("+r.status+")"));
+  return d.value;
+}
+
+async function kobleTil(medMikrofon){
+  if(connected) return;
+  setStatus("wait","Kobler til …"); $("orb").disabled=true;
+  try{
+    if(!ctx){ctx=new (window.AudioContext||window.webkitAudioContext)();outGain=ctx.createGain();outGain.connect(ctx.destination);
+      analyser=ctx.createAnalyser();analyser.fftSize=512;outGain.connect(analyser);}
+    await ctx.resume();
+    let inRate=RATES.includes(ctx.sampleRate)?ctx.sampleRate:48000;
+    if(medMikrofon){
+      micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
+    }
+    const token=await hentToken();
+    ws=new WebSocket(`wss://api.x.ai/v1/realtime?model=${MODEL}`,[`xai-client-secret.${token}`]);
+    await new Promise((ok,feil)=>{ws.onopen=ok;ws.onerror=()=>feil(new Error("Fikk ikke kontakt med sekretæren"));setTimeout(()=>feil(new Error("Tidsavbrudd")),12000);});
+    connected=true; startTid=Date.now(); sisteAktivitet=Date.now();
+    ws.onmessage=(m)=>{try{onEvent(JSON.parse(m.data));}catch(e){console.warn(e);}};
+    ws.onclose=()=>{if(connected) avslutt("Samtalen ble avsluttet.");};
+    ws.send(JSON.stringify({type:"session.update",session:{
+      voice:VOICE, instructions:instruksjoner(), tools:TOOLS,
+      turn_detection:{type:"server_vad"},
+      audio:{input:{format:{type:"audio/pcm",rate:inRate},transcription:{language_hint:"no",keyterms:["Deja Vu","balayage","foilayage","lowlights","highlights","Danmarksplass","Solheimsgaten","Orvelo","Komplett","Gitte","Jessica"]}},
+             output:{format:{type:"audio/pcm",rate:24000}}},
+    }}));
+    if(micStream) await startMic();
+    // fast hilsen uten modellkall
+    ws.send(JSON.stringify({type:"conversation.item.create",item:{type:"force_message",role:"assistant",interruptible:true,
+      content:[{type:"output_text",text:`Hei, du har kommet til ${KUNDE.navn}! Jeg er salongens digitale assistent. Hva kan jeg hjelpe deg med?`}]}}));
+    timerId=setInterval(sjekkTid,1000);
+    meter();
+    setStatus("live", micStream?"I samtale · snakk når du vil":"Tilkoblet · skriv under");
+  }catch(e){
+    console.error(e); rydd();
+    const msg = e && e.name==="NotAllowedError" ? "Du må tillate mikrofonen for å snakke. Du kan også skrive i feltet under." : (e.message||"Noe gikk galt");
+    setStatus("err",msg); sys(msg);
+  }finally{$("orb").disabled=false;oppdaterOrb();}
+}
+async function startMic(){
+  const url=URL.createObjectURL(new Blob([WORKLET],{type:"application/javascript"}));
+  await ctx.audioWorklet.addModule(url);
+  srcNode=ctx.createMediaStreamSource(micStream);
+  micNode=new AudioWorkletNode(ctx,"mic");
+  micNode.port.onmessage=(e)=>{
+    if(!connected||ws.readyState!==1) return;
+    const {b64,rms}=b64FromInt16(e.data);
+    // Mot ekko på høyttaler: mens sekretæren snakker, slipp bare gjennom tydelig tale
+    if(isPlaying() && rms<0.045) return;
+    ws.send(JSON.stringify({type:"input_audio_buffer.append",audio:b64}));
+  };
+  const mute=ctx.createGain();mute.gain.value=0;
+  srcNode.connect(micNode);micNode.connect(mute);mute.connect(ctx.destination);
+  callActive=true;
+}
+function onEvent(e){
+  const t=e.type;
+  if(t==="response.output_audio.delta"||t==="response.audio.delta"){if(!muted)playChunk(e.delta);return;}
+  if(t==="input_audio_buffer.speech_started"){stopPlayback();sisteAktivitet=Date.now();return;}
+  if(t==="response.output_audio_transcript.delta"||t==="response.audio_transcript.delta"){
+    if(!curAiEl){curAiEl=bubble("ai","");curAiText="";}
+    curAiText+=e.delta||"";curAiEl.querySelector("span").textContent=curAiText;scrollChat();return;}
+  if(t==="response.output_audio_transcript.done"||t==="response.audio_transcript.done"){
+    if(!curAiEl) curAiEl=bubble("ai","");
+    curAiEl.querySelector("span").textContent=e.transcript||curAiText;curAiEl=null;curAiText="";scrollChat();sisteAktivitet=Date.now();return;}
+  if(t.includes("input_audio_transcription.completed")){
+    if(e.transcript&&e.transcript.trim()){
+      // legg brukerens tekst før sekretærens svar hvis svaret allerede har startet
+      const el=bubble("me",e.transcript.trim()); if(curAiEl) $("chat").insertBefore(el,curAiEl);
+    }
+    sisteAktivitet=Date.now();return;}
+  if(t==="response.function_call_arguments.done"){
+    let args={};try{args=JSON.parse(e.arguments||"{}");}catch{}
+    const res=runTool(e.name,args);
+    ws.send(JSON.stringify({type:"conversation.item.create",item:{type:"function_call_output",call_id:e.call_id,output:JSON.stringify(res)}}));
+    ws.send(JSON.stringify({type:"response.create"}));
+    sisteAktivitet=Date.now();return;}
+  if(t==="error"){console.warn("xAI:",e);const m=(e.error&&e.error.message)||"";if(/credit|quota|billing|limit/i.test(m)) sys("Demoen er midlertidig utilgjengelig. Kontakt Preben.");return;}
+}
+function sjekkTid(){
+  if(!connected) return;
+  const gaatt=(Date.now()-startTid)/1000;
+  if(gaatt>MAX_MIN*60) return avslutt(`Demoen avslutter samtaler etter ${MAX_MIN} minutter. Ring gjerne igjen!`);
+  if(!isPlaying() && (Date.now()-sisteAktivitet)/1000>STILLE_SEK) return avslutt("Samtalen ble avsluttet fordi det var stille en stund.");
+}
+function meter(){
+  cancelAnimationFrame(meterId);
+  const data=new Uint8Array(analyser?analyser.fftSize:0);
+  const loop=()=>{if(!connected){$("orb").style.setProperty("--lvl",0);return;}
+    let lvl=0;if(analyser&&isPlaying()){analyser.getByteTimeDomainData(data);let s=0;for(const v of data){const x=(v-128)/128;s+=x*x;}lvl=Math.min(1,Math.sqrt(s/data.length)*4);}
+    const talking=isPlaying(); if(talking!==aiTalking){aiTalking=talking;oppdaterOrb();}
+    $("orb").style.setProperty("--lvl",lvl.toFixed(3));meterId=requestAnimationFrame(loop);};
+  loop();
+}
+function oppdaterOrb(){
+  const o=$("orb");o.classList.toggle("on",connected);o.classList.toggle("speaking",connected&&aiTalking);
+  o.setAttribute("aria-label",connected?"Legg på":"Ring sekretæren");
+  o.innerHTML = connected
+    ? `<span>Legg på</span>`
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>`;
+  if(connected && micStream) setStatus("live", aiTalking?"Sekretæren snakker …":"Lytter … snakk når du vil");
+}
+function rydd(){
+  connected=false;callActive=false;clearInterval(timerId);stopPlayback();
+  try{ws&&ws.close();}catch{} ws=null;
+  try{srcNode&&srcNode.disconnect();micNode&&micNode.disconnect();}catch{}
+  if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null;}
+  curAiEl=null;curAiText="";aiTalking=false;
+}
+function avslutt(tekst){rydd();oppdaterOrb();setStatus("","Trykk for å ringe igjen");if(tekst)sys(tekst);}
+
+$("orb").addEventListener("click",()=>{ if(connected) avslutt("Du la på."); else kobleTil(true); });
+$("mute").addEventListener("click",()=>{muted=!muted;$("mute").textContent=muted?"🔇":"🔊";if(muted)stopPlayback();});
+async function sendTekst(txt){
+  txt=txt.trim(); if(!txt) return;
+  if(!connected){ await kobleTil(!!micStream); if(!connected) return; }
+  if(isPlaying()){stopPlayback();ws.send(JSON.stringify({type:"response.cancel"}));}
+  bubble("me",txt); sisteAktivitet=Date.now();
+  ws.send(JSON.stringify({type:"conversation.item.create",item:{type:"message",role:"user",content:[{type:"input_text",text:txt}]}}));
+  ws.send(JSON.stringify({type:"response.create"}));
+}
+$("compose").addEventListener("submit",(e)=>{e.preventDefault();const v=$("text").value;$("text").value="";sendTekst(v);});
+
+/* ================= Tekst på siden ================= */
+const CHIPS = [
+  ["Prøv som kunde", ["Har dere ledig time til klipp på fredag?","Hva koster balayage på langt hår?","Jeg vil flytte timen min","Har dere åpent på mandag?"]],
+  ["Spør om tjenesten", ["Hva koster dette i måneden?","Hvordan kommer vi i gang?","Hva skjer når ingen rekker å ta telefonen?"]],
+];
+$("chips").innerHTML=CHIPS.map(([g,l])=>`<div class="chipgroup">${esc(g)}</div>`+l.map(x=>`<button class="chip" type="button">${esc(x)}</button>`).join("")).join("");
+$("chips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(b)sendTekst(b.textContent);});
+$("who").textContent=KUNDE.navn;
+$("whoSub").textContent="Digital sekretær · "+KUNDE.adresse.split(",")[0];
+document.title=`Snakk med sekretæren til ${KUNDE.navn} · Orvelo`;
+if(KUNDE.kontaktperson){$("hTitle").textContent=`Hei ${KUNDE.kontaktperson}! Ring den nye sekretæren til ${KUNDE.kortnavn}`;}
+$("hLead").textContent="Trykk på den lilla knappen og snakk som en kunde som vil bestille time. Du kan også spørre henne om hvordan tjenesten fungerer og hva den koster. Hun svarer med salongens ekte priser og åpningstider.";
+if(!window.WebSocket||!(window.AudioContext||window.webkitAudioContext)){const b=$("banner");b.style.display="block";b.textContent="Nettleseren din støtter ikke tale her. Prøv Chrome, Edge eller Safari.";}
+else if(!navigator.mediaDevices||!window.isSecureContext){$("hint").textContent="Mikrofonen er ikke tilgjengelig her. Du kan fortsatt skrive.";}
+tegnKalender();
+</script>
+</body>
+</html>
