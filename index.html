@@ -442,7 +442,7 @@ footer .fine{opacity:.7;font-size:.75rem}
       cust:"Hei Ola! Befaring for elbillader er booket torsdag kl. 09:00. Du får fast pris etter befaringen. Hilsen {firm}"
     },
     snekker: {
-      label:"🪚 Snekker / tømrer", firm:"Larsen Bygg AS", caller:"Ingrid Moe",
+      label:"🪚 Snekker / tømrer", firm:"Larsen Bygg AS", caller:"Anne Eriksen",
       prio:"ok", prioText:"Tilbud",
       steps:[
         ["sys","Innkommende anrop · 476 12 909 · kl. 21:40"],
@@ -453,21 +453,21 @@ footer .fine{opacity:.7;font-size:.75rem}
         ["set","problem","Ny terrasse ~30 m², bakkeplan, royalimpregnert"],
         ["prio"],
         ["ai","Notert. Hva heter du, og hvor bor du?"],
-        ["cust","Ingrid Moe, Kolbotnveien 7."],
-        ["set","navn","Ingrid Moe"],["set","adresse","Kolbotnveien 7, Nordre Follo"],["set","tlf","476 12 909"],
-        ["ai","Takk, Ingrid. Kan snekkeren komme på befaring mandag klokka 16?"],
+        ["cust","Anne Eriksen, Kolbotnveien 7."],
+        ["set","navn","Anne Eriksen"],["set","adresse","Kolbotnveien 7, Nordre Follo"],["set","tlf","476 12 909"],
+        ["ai","Takk, Anne. Kan snekkeren komme på befaring mandag klokka 16?"],
         ["cust","Ja, det går fint."],
-        ["set","tid","Mandag kl. 16:00 (befaring)"],["cal","16:00","Ingrid Moe · befaring terrasse"],
+        ["set","tid","Mandag kl. 16:00 (befaring)"],["cal","16:00","Anne Eriksen · befaring terrasse"],
         ["ai","Supert. Du får en bekreftelse på SMS. Takk for at du ringte, og god kveld!"],
         ["sys","Samtale avsluttet · tatt utenom arbeidstid"],
         ["done"]
       ],
       busy:[["08:00","Kjøkken, Oppegård"],["12:30","Vindusbytte, Ski"]],
-      sms:"Ny forespørsel (kveld): Ingrid Moe, 476 12 909\nKolbotnveien 7\nTerrasse ~30 m², royalimpregnert\nBefaring mandag kl. 16:00",
-      cust:"Hei Ingrid! Befaring for ny terrasse er booket mandag kl. 16:00. Hilsen {firm}"
+      sms:"Ny forespørsel (kveld): Anne Eriksen, 476 12 909\nKolbotnveien 7\nTerrasse ~30 m², royalimpregnert\nBefaring mandag kl. 16:00",
+      cust:"Hei Anne! Befaring for ny terrasse er booket mandag kl. 16:00. Hilsen {firm}"
     },
     maler: {
-      label:"🎨 Maler", firm:"Fjeld Maling AS", caller:"Sofie Dahl",
+      label:"🎨 Maler", firm:"Pedersen Maling AS", caller:"Hilde Jensen",
       prio:"ok", prioText:"Tilbud",
       steps:[
         ["sys","Innkommende anrop · 932 41 778"],
@@ -478,21 +478,21 @@ footer .fine{opacity:.7;font-size:.75rem}
         ["set","problem","Utvendig maling enebolig ~140 m², noe skraping"],
         ["prio"],
         ["ai","Da bør maleren se på det før han gir pris. Hva er navnet og adressen din?"],
-        ["cust","Sofie Dahl, Granåsen 3 i Asker."],
-        ["set","navn","Sofie Dahl"],["set","adresse","Granåsen 3, Asker"],["set","tlf","932 41 778"],
-        ["ai","Takk, Sofie. Passer det med befaring onsdag klokka 15?"],
+        ["cust","Hilde Jensen, Granåsen 3 i Asker."],
+        ["set","navn","Hilde Jensen"],["set","adresse","Granåsen 3, Asker"],["set","tlf","932 41 778"],
+        ["ai","Takk, Hilde. Passer det med befaring onsdag klokka 15?"],
         ["cust","Ja, det passer bra."],
-        ["set","tid","Onsdag kl. 15:00 (befaring)"],["cal","15:00","Sofie Dahl · befaring fasade"],
+        ["set","tid","Onsdag kl. 15:00 (befaring)"],["cal","15:00","Hilde Jensen · befaring fasade"],
         ["ai","Da er det booket. Du får en bekreftelse på SMS nå. Ha en fin dag!"],
         ["sys","Samtale avsluttet"],
         ["done"]
       ],
       busy:[["08:00","Stue og gang, Bærum"],["11:30","Rekkverk, Asker"]],
-      sms:"Ny befaring: Sofie Dahl, 932 41 778\nGranåsen 3, Asker\nUtvendig maling ~140 m², skraping solside\nOnsdag kl. 15:00",
-      cust:"Hei Sofie! Befaring for utvendig maling er booket onsdag kl. 15:00. Hilsen {firm}"
+      sms:"Ny befaring: Hilde Jensen, 932 41 778\nGranåsen 3, Asker\nUtvendig maling ~140 m², skraping solside\nOnsdag kl. 15:00",
+      cust:"Hei Hilde! Befaring for utvendig maling er booket onsdag kl. 15:00. Hilsen {firm}"
     },
     tak: {
-      label:"🏠 Taktekker", firm:"Nordtak AS", caller:"Erik Strand",
+      label:"🏠 Taktekker", firm:"Andersen Tak AS", caller:"Per Halvorsen",
       prio:"hi", prioText:"Haster",
       steps:[
         ["sys","Innkommende anrop · 905 67 314 · lørdag"],
@@ -503,21 +503,21 @@ footer .fine{opacity:.7;font-size:.75rem}
         ["set","problem","Takstein blåst av, drypp inn på loft"],
         ["prio"],
         ["ai","Bra. Jeg merker saken som hastesak. Hva heter du, og hvor er huset?"],
-        ["cust","Erik Strand, Sjøskogenveien 41 i Ski."],
-        ["set","navn","Erik Strand"],["set","adresse","Sjøskogenveien 41, Nordre Follo"],["set","tlf","905 67 314"],
-        ["ai","Takk, Erik. Vakthavende kan komme mandag klokka 07:30 og legge provisorisk tetting. Jeg varsler ham nå i tilfelle han kan komme før. Er det greit?"],
+        ["cust","Per Halvorsen, Sjøskogenveien 41 i Ski."],
+        ["set","navn","Per Halvorsen"],["set","adresse","Sjøskogenveien 41, Nordre Follo"],["set","tlf","905 67 314"],
+        ["ai","Takk, Per. Vakthavende kan komme mandag klokka 07:30 og legge provisorisk tetting. Jeg varsler ham nå i tilfelle han kan komme før. Er det greit?"],
         ["cust","Ja, takk!"],
-        ["set","tid","Mandag kl. 07:30 (vakt varslet)"],["cal","07:30","Erik Strand · tak lekker (haster)"],
+        ["set","tid","Mandag kl. 07:30 (vakt varslet)"],["cal","07:30","Per Halvorsen · tak lekker (haster)"],
         ["ai","Da er det registrert. Du får SMS når taktekkeren er på vei. God helg så langt det går!"],
         ["sys","Samtale avsluttet · tatt i helgen"],
         ["done"]
       ],
       busy:[["09:00","Takrenner, Oppegård"],["12:00","Takbytte, Ås"]],
-      sms:"HASTER: Erik Strand, 905 67 314\nSjøskogenveien 41, Ski\nTakstein blåst av, drypp på loft\nBooket mandag kl. 07:30, ring hvis du kan før",
-      cust:"Hei Erik! Saken er registrert som hastesak. Taktekker kommer mandag kl. 07:30, eller tidligere hvis mulig. Hilsen {firm}"
+      sms:"HASTER: Per Halvorsen, 905 67 314\nSjøskogenveien 41, Ski\nTakstein blåst av, drypp på loft\nBooket mandag kl. 07:30, ring hvis du kan før",
+      cust:"Hei Per! Saken er registrert som hastesak. Taktekker kommer mandag kl. 07:30, eller tidligere hvis mulig. Hilsen {firm}"
     },
     flis: {
-      label:"🧱 Murer / flislegger", firm:"Solberg Flis & Mur AS", caller:"Maria Haugen",
+      label:"🧱 Murer / flislegger", firm:"Solberg Flis og Mur AS", caller:"Maria Haugen",
       prio:"ok", prioText:"Tilbud",
       steps:[
         ["sys","Innkommende anrop · 948 20 156"],
@@ -542,7 +542,7 @@ footer .fine{opacity:.7;font-size:.75rem}
       cust:"Hei Maria! Befaring for nytt bad er booket tirsdag kl. 14:00. Hilsen {firm}"
     },
     varme: {
-      label:"❄️ Varmepumpe / ventilasjon", firm:"Klimaservice Øst AS", caller:"Jonas Berg",
+      label:"❄️ Varmepumpe / ventilasjon", firm:"Karlsen Varme AS", caller:"Jon Kristiansen",
       prio:"ok", prioText:"Service",
       steps:[
         ["sys","Innkommende anrop · 461 83 220"],
@@ -553,18 +553,18 @@ footer .fine{opacity:.7;font-size:.75rem}
         ["set","problem","Varmepumpe blinker rødt, blåser kaldt. Service ~2 år siden"],
         ["prio"],
         ["ai","Da anbefaler jeg service og feilsøking samtidig. Hva er navnet og adressen din?"],
-        ["cust","Jonas Berg, Løkkeveien 18 i Sandvika."],
-        ["set","navn","Jonas Berg"],["set","adresse","Løkkeveien 18, Bærum"],["set","tlf","461 83 220"],
-        ["ai","Takk, Jonas. Vi har ledig fredag klokka 10. Passer det?"],
+        ["cust","Jon Kristiansen, Løkkeveien 18 i Sandvika."],
+        ["set","navn","Jon Kristiansen"],["set","adresse","Løkkeveien 18, Bærum"],["set","tlf","461 83 220"],
+        ["ai","Takk, Jon. Vi har ledig fredag klokka 10. Passer det?"],
         ["cust","Ja, fredag er fint."],
-        ["set","tid","Fredag kl. 10:00 (service)"],["cal","10:00","Jonas Berg · varmepumpe feil"],
+        ["set","tid","Fredag kl. 10:00 (service)"],["cal","10:00","Jon Kristiansen · varmepumpe feil"],
         ["ai","Da er det booket. Tips: rens gjerne filteret i mellomtiden. Du får en bekreftelse på SMS. Ha en fin dag!"],
         ["sys","Samtale avsluttet"],
         ["done"]
       ],
       busy:[["08:00","Balansert ventilasjon, Asker"],["13:00","Montering, Bærum"]],
-      sms:"Ny service: Jonas Berg, 461 83 220\nLøkkeveien 18, Sandvika\nVarmepumpe (Mitsubishi) blinker rødt, blåser kaldt\nFredag kl. 10:00",
-      cust:"Hei Jonas! Service på varmepumpen er booket fredag kl. 10:00. Hilsen {firm}"
+      sms:"Ny service: Jon Kristiansen, 461 83 220\nLøkkeveien 18, Sandvika\nVarmepumpe (Mitsubishi) blinker rødt, blåser kaldt\nFredag kl. 10:00",
+      cust:"Hei Jon! Service på varmepumpen er booket fredag kl. 10:00. Hilsen {firm}"
     }
   };
 

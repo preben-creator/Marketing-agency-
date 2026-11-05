@@ -1,0 +1,130 @@
+{
+  "ror": {
+    "firm": "Hansen Rør AS",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16,
+      17,
+      18
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "eve"
+    }
+  },
+  "el": {
+    "firm": "Berg Elektro AS",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "leo"
+    }
+  },
+  "snekker": {
+    "firm": "Larsen Bygg AS",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "eve"
+    }
+  },
+  "maler": {
+    "firm": "Pedersen Maling AS",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "eve"
+    }
+  },
+  "tak": {
+    "firm": "Andersen Tak AS",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "leo"
+    }
+  },
+  "flis": {
+    "firm": "Solberg Flis og Mur AS",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "eve"
+    }
+  },
+  "varme": {
+    "firm": "Karlsen Varme AS",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "leo"
+    }
+  }
+}

@@ -12,7 +12,9 @@ const KEY = process.env.XAI_API_KEY;
 if (!KEY) { console.error("Mangler XAI_API_KEY i miljøet."); process.exit(1); }
 
 const AI_VOICE = process.env.AI_VOICE || "ara";     // sekretæren
-const CUST_VOICE = process.env.CUST_VOICE || "leo"; // kunden
+const CUST_VOICE = process.env.CUST_VOICE || "leo"; // kunden (mann)
+const CUST_VOICE_F = process.env.CUST_VOICE_F || "eve"; // kunden (kvinne)
+const FEMALE = /^(Kari|Anne|Hilde|Maria|Ingrid|Sofie|Nina|Silje|Kristin|Ida)\b/;
 const LANGUAGE = process.env.TTS_LANGUAGE || "no";  // norsk er ikke offisielt støttet; prøv "no", ellers "auto"
 
 const root = new URL("../", import.meta.url);
@@ -27,6 +29,7 @@ function speakable(text) {
   return text
     .replace(/klokka (\d{1,2}):30/g, (_, h) => `klokka halv ${NUM[(+h + 1) % 24]}`)
     .replace(/klokka (\d{1,2})(?![:\d])/g, (_, h) => `klokka ${NUM[+h]}`)
+    .replace(/(klokka [a-zæøå]+ (?:og|til)) (\d{1,2})(?![:\d])/g, (_, a, h) => `${a} ${NUM[+h]}`)
     .replace(/(\d+) ?kr\b/g, "$1 kroner");
 }
 
@@ -72,15 +75,16 @@ for (const k of keys) {
   const dir = new URL(`audio/${k}/`, root);
   mkdirSync(dir, { recursive: true });
   const done = [];
+  const cust = FEMALE.test(s.caller || "") ? CUST_VOICE_F : CUST_VOICE;
   for (const [i, step] of s.steps.entries()) {
     if (step[0] !== "ai" && step[0] !== "cust") continue;
     const text = step[1].replaceAll("{firm}", s.firm);
     chars += text.length;
-    writeFileSync(new URL(`${i}.mp3`, dir), await tts(text, step[0] === "ai" ? AI_VOICE : CUST_VOICE));
+    writeFileSync(new URL(`${i}.mp3`, dir), await tts(text, step[0] === "ai" ? AI_VOICE : cust));
     done.push(i);
     process.stdout.write(".");
   }
-  manifest[k] = { firm: s.firm, steps: done, voices: { ai: AI_VOICE, cust: CUST_VOICE } };
+  manifest[k] = { firm: s.firm, steps: done, voices: { ai: AI_VOICE, cust } };
   console.log(` ${k}: ${done.length} replikker`);
 }
 writeFileSync(manifestUrl, JSON.stringify(manifest, null, 2) + "\n");
