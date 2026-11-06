@@ -9,6 +9,12 @@
 //                         og lagrer den. Svarer med en ferdig demolenke: /?kunde=<id>&k=<DEMO_KODE>
 //   POST /lagre        -> lagrer en profil Preben har rettet på (krever ADMIN_KODE)
 //   GET  /kunde?id=..  -> profilen demosiden bruker
+//   GET  /avtale/ny    -> Prebens side for å lage tilbud og avtale med signeringslenke (krever ADMIN_KODE)
+//   POST /avtale/ny    -> lagrer tilbudet med en låst kopi av vilkårene (avtale/vilkar.html), svarer med lenke
+//   POST /avtale/liste -> alle tilbud og om de er signert (krever ADMIN_KODE)
+//   GET  /avtale?id=..&t=.. -> kundens side: les tilbudet, velg alternativ og signer
+//   GET  /avtale/data  -> tilbudet som JSON (krever id + t)
+//   POST /avtale/signer-> lagrer signaturen (navn, tid, IP, kontrollsum) og varsler Preben på e-post
 //
 // Innstillinger (Cloudflare: Worker -> Settings -> Variables and Secrets):
 //   XAI_API_KEY  (Secret, påkrevd)  xAI-nøkkelen din
@@ -21,6 +27,7 @@
 
 const LAG_URL_DEFAULT =
   "https://raw.githubusercontent.com/preben-creator/marketing-agency-/main/snakk/lag.html";
+const GH_RAW = "https://raw.githubusercontent.com/preben-creator/marketing-agency-/main/";
 const PAGE_URL_DEFAULT =
   "https://raw.githubusercontent.com/preben-creator/marketing-agency-/main/snakk/index.html";
 
@@ -56,7 +63,7 @@ function json(body, status, origin) {
 
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin");
 
@@ -145,6 +152,10 @@ export default {
         console.log("lag feilet", e && e.stack);
         return json({ feil: e.message || "Noe gikk galt." }, 500);
       }
+    }
+
+    if (url.pathname === "/avtale" || url.pathname.startsWith("/avtale/")) {
+      return avtaleRute(request, env, ctx, url);
     }
 
     if (url.pathname === "/" || url.pathname === "/index.html") {
@@ -409,3 +420,176 @@ $("lagre").addEventListener("click",async()=>{let p;try{p=JSON.parse($("json").v
   try{const d=await post("/lagre",{kode:$("kode").value,id,profil:p});vis(d);$("msg2").className="msg ok";$("msg2").textContent="Lagret.";}catch(err){$("msg2").className="msg err";$("msg2").textContent=err.message;}});
 $("kopier").addEventListener("click",()=>{navigator.clipboard.writeText($("lenke").textContent).then(()=>{$("kopier").textContent="Kopiert!";setTimeout(()=>$("kopier").textContent="Kopier lenke",1800);});});
 </script></div></body></html>`;
+
+// ======================================================================
+// Tilbud og avtale med digital signering (/avtale)
+// ======================================================================
+// Lagres i samme KV-lager (KUNDER) under nøkkelen avtale:<id>. Ingen nye innstillinger trengs.
+// Valgfritt: VARSEL_EPOST (Text) = e-posten som får beskjed når noe er signert (standard hilleren.bedrift@gmail.com).
+
+const HTML_HODER = { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache", "X-Robots-Tag": "noindex" };
+
+async function hentFraGitHub(fil, env) {
+  const r = await fetch((env.GH_RAW || GH_RAW) + fil, { cf: { cacheTtl: 60 } }).catch(() => null);
+  if (!r || !r.ok) throw new Error("Fant ikke " + fil + " på GitHub.");
+  return r.text();
+}
+
+async function sha256(tekst) {
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(tekst));
+  return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+const tilfeldig = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map((x) => "abcdefghijkmnpqrstuvwxyz23456789"[x % 32]).join("");
+const tall = (v, maks = 10000000) => Math.max(0, Math.min(maks, Math.round(Number(v) || 0)));
+const datoStr = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || "")) ? v : "");
+
+function rensAvtale(a) {
+  const k = a.kunde || {}, l = a.leverandor || {}, p = a.pris || {};
+  return {
+    tittel: tekst(a.tittel, 120) || "Tilbud og avtale: KI-sekretær",
+    dato: datoStr(a.dato) || new Date().toISOString().slice(0, 10),
+    gyldigTil: datoStr(a.gyldigTil),
+    bindingMnd: tall(a.bindingMnd, 60) || 12,
+    kunde: { firma: tekst(k.firma, 120), orgnr: tekst(k.orgnr, 20), adresse: tekst(k.adresse, 160), kontaktperson: tekst(k.kontaktperson, 100), epost: tekst(k.epost, 120), telefon: tekst(k.telefon, 30) },
+    leverandor: { navn: tekst(l.navn, 120), orgnr: tekst(l.orgnr, 20), adresse: tekst(l.adresse, 160), epost: tekst(l.epost, 120), telefon: tekst(l.telefon, 30), signatar: tekst(l.signatar, 100) },
+    innledning: tekst(a.innledning, 2000),
+    tjenester: (Array.isArray(a.tjenester) ? a.tjenester : []).slice(0, 20).map((t) => ({ t: tekst(t && t.t, 80), b: tekst(t && t.b, 600) })).filter((t) => t.b),
+    pris: {
+      oppstart: tall(p.oppstart),
+      alternativer: (Array.isArray(p.alternativer) ? p.alternativer : []).slice(0, 3).map((x, i) => ({
+        kode: tekst(x.kode, 3) || "ABC"[i], navn: tekst(x.navn, 60), mnd: tall(x.mnd), prosent: Math.min(100, Math.max(0, Number(x.prosent) || 0)), passer: tekst(x.passer, 160),
+      })),
+    },
+    regneeksempel: tekst(a.regneeksempel, 600),
+    merknad: tekst(a.merknad, 400),
+  };
+}
+
+function utenHemmelig(rec) {
+  const { token, ...rest } = rec;
+  return rest;
+}
+
+async function varsle(env, emne, linjer) {
+  const til = env.VARSEL_EPOST || "hilleren.bedrift@gmail.com";
+  try {
+    await fetch("https://formsubmit.co/ajax/" + encodeURIComponent(til), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json", Referer: "https://orvelo-sekretar.workers.dev/avtale", Origin: "https://orvelo-sekretar.workers.dev" },
+      body: JSON.stringify({ _subject: emne, _template: "box", _captcha: "false", melding: linjer.join("\n") }),
+    });
+  } catch (e) { console.log("varsel feilet", e && e.message); }
+}
+
+async function avtaleRute(request, env, ctx, url) {
+  const p = url.pathname;
+  const get = request.method === "GET";
+
+  if (get && (p === "/avtale" || p === "/avtale/")) {
+    try { return new Response(await hentFraGitHub("avtale/index.html", env), { headers: HTML_HODER }); }
+    catch (e) { return new Response(e.message, { status: 502 }); }
+  }
+  if (get && p === "/avtale/ny") {
+    try { return new Response(await hentFraGitHub("avtale/ny.html", env), { headers: HTML_HODER }); }
+    catch (e) { return new Response(e.message, { status: 502 }); }
+  }
+  if (get && p === "/avtale/vilkar") {
+    try { return new Response(await hentFraGitHub("avtale/vilkar.html", env), { headers: HTML_HODER }); }
+    catch (e) { return new Response(e.message, { status: 502 }); }
+  }
+
+  if (!env.KUNDER) return json({ feil: "KV-lageret KUNDER er ikke koblet til workeren." }, 500);
+
+  if (get && p === "/avtale/data") {
+    const id = (url.searchParams.get("id") || "").replace(/[^a-z0-9-]/g, "").slice(0, 60);
+    const rec = id && (await env.KUNDER.get("avtale:" + id, "json"));
+    if (!rec || rec.token !== url.searchParams.get("t")) return json({ feil: "Fant ikke tilbudet. Sjekk at du har hele lenken." }, 404);
+    return json(utenHemmelig(rec), 200);
+  }
+
+  if (request.method !== "POST") return new Response("Ikke funnet", { status: 404 });
+  const origin = request.headers.get("Origin");
+  if (origin && origin !== url.origin) return json({ feil: "Ikke tillatt" }, 403);
+  let body = {};
+  try { body = await request.json(); } catch {}
+
+  if (p === "/avtale/ny" || p === "/avtale/liste") {
+    if (!env.ADMIN_KODE || body.kode !== env.ADMIN_KODE) return json({ feil: "Feil admin-kode." }, 401);
+
+    if (p === "/avtale/liste") {
+      const ut = [];
+      let cursor;
+      do {
+        const l = await env.KUNDER.list({ prefix: "avtale:", cursor });
+        for (const k of l.keys) ut.push({ id: k.name.slice(7), ...(k.metadata || {}) });
+        cursor = l.list_complete ? null : l.cursor;
+      } while (cursor);
+      ut.sort((a, b) => String(b.opprettet || "").localeCompare(String(a.opprettet || "")));
+      return json({ avtaler: ut }, 200);
+    }
+
+    const a = rensAvtale(body.avtale || {});
+    if (!a.kunde.firma) return json({ feil: "Skriv inn firmanavnet til kunden." }, 400);
+    if (!a.pris.alternativer.length) return json({ feil: "Velg minst ett prisalternativ." }, 400);
+    let vilkar;
+    try { vilkar = (await hentFraGitHub("avtale/vilkar.html", env)).replace(/<!--[\s\S]*?-->/g, "").trim(); }
+    catch (e) { return json({ feil: "Fant ikke vilkårene (avtale/vilkar.html) på GitHub." }, 502); }
+    const versjon = (vilkar.match(/data-versjon="([^"]+)"/) || [])[1] || "";
+
+    const aar = new Date().getFullYear();
+    const teller = tall(await env.KUNDER.get("teller:avtale:" + aar)) + 1;
+    await env.KUNDER.put("teller:avtale:" + aar, String(teller));
+    const nr = `${aar}-${String(teller).padStart(3, "0")}`;
+    const base = a.kunde.firma.toLowerCase().replace(/æ/g, "ae").replace(/ø/g, "o").replace(/å/g, "a").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24) || "kunde";
+    const id = `${nr}-${base}`;
+    const token = tilfeldig(12);
+    const opprettet = new Date().toISOString();
+    const rec = { id, nr, token, opprettet, ...a, vilkar, vilkarVersjon: versjon, signatur: null };
+    const lenke = `${url.origin}/avtale?id=${id}&t=${token}`;
+    await env.KUNDER.put("avtale:" + id, JSON.stringify(rec), { metadata: { nr, firma: a.kunde.firma, opprettet, lenke, signert: null } });
+    return json({ id, nr, lenke }, 200);
+  }
+
+  if (p === "/avtale/signer") {
+    const id = String(body.id || "").replace(/[^a-z0-9-]/g, "").slice(0, 60);
+    const rec = id && (await env.KUNDER.get("avtale:" + id, "json"));
+    if (!rec || rec.token !== body.t) return json({ feil: "Fant ikke tilbudet." }, 404);
+    if (rec.signatur) return json(utenHemmelig(rec), 200);
+    if (rec.gyldigTil && new Date(rec.gyldigTil + "T23:59:59+01:00") < new Date()) return json({ feil: "Tilbudet har gått ut. Ta kontakt med Orvelo for et nytt." }, 410);
+    if (!body.godtar || !body.fullmakt) return json({ feil: "Du må krysse av for at du godtar vilkårene og har rett til å signere." }, 400);
+    const navn = tekst(body.navn, 100), rolle = tekst(body.rolle, 80), firma = tekst(body.firma, 120), epost = tekst(body.epost, 120);
+    const orgnr = tekst(body.orgnr, 20).replace(/\s/g, "");
+    if (navn.length < 3 || !rolle || !firma) return json({ feil: "Fyll inn navn, rolle og firmanavn." }, 400);
+    if (!/^\d{9}$/.test(orgnr)) return json({ feil: "Org.nr. må ha 9 siffer." }, 400);
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(epost)) return json({ feil: "Skriv inn en gyldig e-post." }, 400);
+    const alt = rec.pris.alternativer;
+    const valgt = alt.length === 1 ? alt[0].kode : tekst(body.valgt, 3);
+    if (!alt.some((x) => x.kode === valgt)) return json({ feil: "Velg et prisalternativ." }, 400);
+    let tegning = typeof body.tegning === "string" ? body.tegning : "";
+    if (tegning && (!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(tegning) || tegning.length > 200000)) tegning = "";
+
+    const tid = new Date().toISOString();
+    const orgnrFin = orgnr.replace(/(\d{3})(\d{3})(\d{3})/, "$1 $2 $3");
+    const { token, signatur, ...dokument } = rec;
+    const hash = await sha256(JSON.stringify({ dokument, valgt, kunde: { firma, orgnr: orgnrFin, epost }, navn, tid }));
+    rec.signatur = {
+      navn, rolle, firma, orgnr: orgnrFin, epost, valgt, tid, hash, tegning,
+      ip: request.headers.get("CF-Connecting-IP") || "", ua: tekst(request.headers.get("User-Agent") || "", 300),
+    };
+    await env.KUNDER.put("avtale:" + id, JSON.stringify(rec), {
+      metadata: { nr: rec.nr, firma, opprettet: rec.opprettet, lenke: `${url.origin}/avtale?id=${id}&t=${rec.token}`, signert: tid, valgt },
+    });
+    const v = alt.find((x) => x.kode === valgt);
+    const varsel = varsle(env, `Signert: tilbud ${rec.nr} fra ${firma}`, [
+      `${navn} (${rolle}) har signert tilbud ${rec.nr} for ${firma}, org.nr. ${orgnrFin}.`,
+      `Valgt: alternativ ${valgt} (${v.navn}), ${v.mnd} kr/mnd${v.prosent ? ` + ${v.prosent} % av bookinger` : ""}. Oppstart ${rec.pris.oppstart} kr.`,
+      `E-post: ${epost}`,
+      `Signert kopi: ${url.origin}/avtale?id=${id}&t=${rec.token}`,
+    ]);
+    if (ctx && ctx.waitUntil) ctx.waitUntil(varsel); else await varsel;
+    return json(utenHemmelig(rec), 200);
+  }
+
+  return new Response("Ikke funnet", { status: 404 });
+}
