@@ -50,3 +50,22 @@ og bruke `?firma=<nøkkel>&k=<kode>`.
 ## Teste lokalt
 
 `XAI_API_KEY=... node tools/dev-snakk.mjs` og åpne http://localhost:8787/?k=test
+
+## Tilbud og avtale med digital signering (`/avtale`)
+
+Samme worker lager tilbud med 12 måneders avtale som kunden signerer på nett. Det bruker KV-lageret `KUNDER` og `ADMIN_KODE`
+som allerede er satt opp, så det eneste du må gjøre er å lime inn den nye `worker/sekretar-worker.js` og trykke **Deploy**.
+
+1. Åpne `https://orvelo-sekretar.<ditt-navn>.workers.dev/avtale/ny`, fyll inn kunden og prisene, og skriv admin-koden.
+   «Forhåndsvis» viser dokumentet før du lager det.
+2. Trykk **Lag tilbud og signeringslenke**. Du får en lenke `/avtale?id=..&t=..` og et forslag til e-post (åpnes i Gmail, sendes ikke av seg selv).
+3. Kunden åpner lenken, leser tilbudet og vilkårene, velger alternativ A eller B, fyller inn navn, rolle, org.nr. og e-post,
+   tegner signatur (valgfritt) og trykker **Signer avtalen**.
+4. Workeren lagrer navn, tidspunkt, IP-adresse og en SHA-256-kontrollsum av avtaleteksten, og sender deg en e-post via FormSubmit.
+   Kunden ser den signerte avtalen med en gang og kan lagre den som PDF. Samme lenke viser alltid den signerte kopien.
+5. Listen nederst på `/avtale/ny` viser alle tilbud og om de er signert.
+
+Vilkårene ligger i `avtale/vilkar.html`. En kopi låses inn i hvert tilbud når det lages, så endringer gjelder bare nye tilbud.
+Valgfritt: `VARSEL_EPOST` (Text) hvis varslene skal til en annen e-post enn hilleren.bedrift@gmail.com.
+
+PDF-maler (tom mal for papir og utfylt Deja Vu-eksempel): `node tools/lag-avtale-pdf.mjs [utmappe]`.

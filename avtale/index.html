@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tilbud og avtale · Orvelo</title><meta name="robots" content="noindex">
+<!-- Serveres av workeren orvelo-sekretar på /avtale?id=..&t=.. (hentes fra GitHub).
+     Viser tilbudet med avtalevilkår, lar kunden signere digitalt, og viser signert kopi etterpå.
+     «Last ned PDF» bruker nettleserens utskrift (Lagre som PDF). Uten signatur får utskriften tomme signaturlinjer,
+     så samme side kan også skrives ut og signeres på papir. tools/lag-avtale-pdf.mjs lager PDF-malene herfra. -->
+<style>
+:root{--ink:#14131f;--muted:#5d5a73;--line:#dddbe8;--soft:#f5f4fb;--acc:#6b4dff;--acc2:#00b8e0;--ok:#11875a;--warn:#b25b00;color-scheme:light}
+*{box-sizing:border-box}
+html{background:#e9e8f1}
+body{margin:0;color:var(--ink);font:15px/1.55 "Segoe UI",system-ui,-apple-system,sans-serif}
+.ark{max-width:820px;margin:24px auto;background:#fff;padding:44px 52px 56px;border-radius:6px;box-shadow:0 2px 18px rgba(20,19,31,.08)}
+@media(max-width:700px){.ark{margin:0;padding:24px 16px 40px;border-radius:0}}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:3px solid transparent;border-image:linear-gradient(90deg,var(--acc),var(--acc2)) 1;padding-bottom:16px;margin-bottom:24px}
+header svg{width:150px;height:auto;display:block}
+.meta{text-align:right;font-size:13px;color:var(--muted)}
+.meta b{color:var(--ink)}
+h1{font-size:26px;margin:0 0 4px;letter-spacing:-.01em}
+h2{font-size:18px;margin:30px 0 10px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+h3{font-size:14.5px;margin:18px 0 4px}
+p{margin:0 0 10px}ul,ol{margin:0 0 10px;padding-left:22px}li{margin-bottom:4px}
+.liten{font-size:12.5px;color:var(--muted)}
+.parter{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:8px 0 6px}
+@media(max-width:600px){.parter{grid-template-columns:1fr}}
+.part{background:var(--soft);border-radius:8px;padding:12px 14px;font-size:14px}
+.part .rolle{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--acc)}
+.part .navn{font-weight:700;font-size:15.5px}
+.tom{display:inline-block;min-width:150px;border-bottom:1px solid #9b98b0;color:transparent}
+table{width:100%;border-collapse:collapse;margin:8px 0 12px;font-size:14.5px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--soft);font-size:13px}
+td.n,th.n{text-align:right;width:32%}
+.alt-head{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--acc)}
+.boks{border:1px solid var(--line);border-left:4px solid var(--acc);border-radius:6px;padding:10px 14px;background:#fbfaff;font-size:14px;margin:8px 0 12px}
+.vilkar{font-size:13.5px}
+.vilkar h2{font-size:16px}
+.vilkar h3{font-size:13.5px}
+.sign{margin-top:34px;page-break-inside:avoid;break-inside:avoid}
+.sigrad{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:12px}
+@media(max-width:600px){.sigrad{grid-template-columns:1fr}}
+.sigfelt{font-size:13.5px}
+.sigfelt .linje{height:58px;border-bottom:1px solid #6f6c86;display:flex;align-items:flex-end;padding-bottom:4px}
+.sigfelt .linje img{max-height:54px;max-width:100%}
+.sigfelt .linje .skrift{font:italic 24px/1 "Segoe Script","Brush Script MT","Snell Roundhand",cursive;color:#1f2a6b}
+.sigfelt dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:6px 0 0}
+.sigfelt dt{color:var(--muted)}.sigfelt dd{margin:0}
+form.signer{background:var(--soft);border-radius:10px;padding:18px;margin-top:14px}
+form.signer .g{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){form.signer .g{grid-template-columns:1fr}}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--muted)}
+input[type=text],input[type=email]{font:inherit;color:var(--ink);background:#fff;border:1px solid #c9c6da;border-radius:8px;padding:9px 11px;width:100%}
+.valg{display:grid;gap:8px;margin:4px 0 14px}
+.valg label{flex-direction:row;align-items:flex-start;gap:10px;font-size:14.5px;font-weight:400;color:var(--ink);background:#fff;border:1px solid #c9c6da;border-radius:8px;padding:10px 12px;cursor:pointer}
+.valg input{margin-top:4px}
+.kryss{flex-direction:row!important;align-items:flex-start;gap:10px;font-size:14px!important;font-weight:400!important;color:var(--ink)!important;margin-top:10px}
+.kryss input{margin-top:4px}
+canvas{width:100%;height:130px;background:#fff;border:1px dashed #a9a6bf;border-radius:8px;touch-action:none;display:block}
+.knapper{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
+button,.btn{font:inherit;font-weight:600;border-radius:8px;padding:10px 16px;border:1px solid #c9c6da;background:#fff;color:var(--ink);cursor:pointer;text-decoration:none}
+button.p{background:linear-gradient(90deg,var(--acc),#4f7bff);border-color:transparent;color:#fff}
+button:disabled{opacity:.55;cursor:wait}
+.msg{font-size:14px}.err{color:#b3261e}.ok{color:var(--ok)}
+.status{border-radius:8px;padding:12px 14px;margin:0 0 20px;font-size:14.5px}
+.status.ok{background:#e7f7ef;color:#0b5e3e}.status.warn{background:#fff3e0;color:#7a3e00}
+.verktoy{max-width:820px;margin:16px auto 0;display:flex;gap:10px;justify-content:flex-end;padding:0 16px}
+.hash{font-family:Consolas,ui-monospace,monospace;font-size:11px;word-break:break-all;color:var(--muted)}
+footer{margin-top:34px;padding-top:10px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+#laster{max-width:820px;margin:60px auto;text-align:center;color:var(--muted)}
+@media print{
+  html,body{background:#fff}
+  .ark{margin:0;padding:0;box-shadow:none;max-width:none}
+  .verktoy,form.signer,.skjul-utskrift{display:none!important}
+  h2{break-after:avoid}h3{break-after:avoid}
+  a{color:inherit;text-decoration:none}
+  @page{size:A4;margin:16mm 16mm 18mm}
+}
+</style></head><body>
+<div id="laster">Henter tilbudet …</div>
+<div class="verktoy skjul-utskrift" id="verktoy" hidden><button type="button" onclick="window.print()">Last ned PDF / skriv ut</button></div>
+<main class="ark" id="ark" hidden></main>
+<script>
+const LOGO=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 160" role="img" aria-label="Orvelo"><defs><linearGradient id="og" x1="20" y1="140" x2="140" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7c5cff"/><stop offset="1" stop-color="#00d4ff"/></linearGradient></defs><g><path d="M133.6,60.5 A57 57 0 1 1 99.5,26.4" fill="none" stroke="url(#og)" stroke-width="13" stroke-linecap="round"/><circle cx="120.3" cy="39.7" r="8" fill="url(#og)"/><path d="M70,58 L70,102 L106,80 Z" fill="url(#og)" stroke="url(#og)" stroke-width="8" stroke-linejoin="round"/></g><g fill="none" stroke="#0a0b10" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"><circle cx="200" cy="80" r="23.5"/><path d="M250.5,103.5 V56.5 M250.5,80 A23.5 23.5 0 0 1 274,56.5 H278"/><path d="M300.5,56.5 L324,103.5 L347.5,56.5"/><path d="M366.5,80 H413.5 A23.5 23.5 0 1 0 406.6,96.6"/><path d="M440,26.5 V103.5"/><circle cx="490" cy="80" r="23.5"/></g></svg>`;
+const $=id=>document.getElementById(id);
+const q=new URLSearchParams(location.search);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const v=(s,min)=>s&&String(s).trim()?esc(s):`<span class="tom" style="min-width:${min||150}px">.</span>`;
+const kr=n=>(Number(n)||0).toLocaleString("nb-NO")+" kr";
+const dato=d=>{if(!d)return "";const x=new Date(d.length<=10?d+"T12:00:00":d);return isNaN(x)?esc(d):x.toLocaleDateString("nb-NO",{day:"numeric",month:"long",year:"numeric"});};
+const tid=d=>new Date(d).toLocaleString("nb-NO",{day:"numeric",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit",timeZone:"Europe/Oslo"});
+let A=null;
+
+async function last(){
+  try{
+    if(window.AVTALE_DATA){A=window.AVTALE_DATA;}
+    else if(q.get("forhandsvis")){
+      // Forhåndsvisning fra /avtale/ny: utkastet ligger i denne nettleseren, vilkårene hentes ferske fra GitHub
+      let u=null;try{u=JSON.parse(localStorage.getItem("orvelo-avtale-utkast")||"null");}catch{}
+      if(!u)throw new Error("Fant ikke noe utkast å forhåndsvise.");
+      const r=await fetch("/avtale/vilkar",{cache:"no-store"});
+      u.vilkar=r.ok?await r.text():"<p><i>(Fant ikke vilkårene)</i></p>";
+      window.AVTALE_DATA=A=u;
+    }
+    else{
+      const r=await fetch(`/avtale/data?id=${encodeURIComponent(q.get("id")||"")}&t=${encodeURIComponent(q.get("t")||"")}`,{cache:"no-store"});
+      const d=await r.json().catch(()=>({feil:"Ugyldig svar"}));
+      if(!r.ok)throw new Error(d.feil||"Fant ikke tilbudet.");
+      A=d;
+    }
+    tegn();
+  }catch(e){$("laster").innerHTML=`<b>${esc(e.message)}</b><br>Ta kontakt med Orvelo på hilleren.bedrift@gmail.com.`;}
+}
+
+function prisTabell(p){
+  const alt=p.alternativer||[];
+  const head=alt.map(a=>`<th class="n"><div class="alt-head">Alternativ ${esc(a.kode)}</div>${esc(a.navn)}</th>`).join("");
+  const rad=(t,f)=>`<tr><td>${t}</td>${alt.map(a=>`<td class="n">${f(a)}</td>`).join("")}</tr>`;
+  let h=`<table><thead><tr><th></th>${head}</tr></thead><tbody>`;
+  h+=rad("Oppstart (én gang)",()=>kr(p.oppstart));
+  h+=rad("Månedspris",a=>kr(a.mnd));
+  if(alt.some(a=>Number(a.prosent)>0))h+=rad("I tillegg",a=>Number(a.prosent)>0?`${esc(a.prosent)} % av verdien på timer bestilt via sekretæren`:"Ingenting");
+  if(alt.some(a=>a.passer))h+=rad("Passer best når",a=>esc(a.passer||""));
+  return h+"</tbody></table>";
+}
+
+function sigFelt(rolle,navn,firma,linje,ekstra){
+  return `<div class="sigfelt"><div class="alt-head">${rolle}</div><div class="linje">${linje||""}</div>
+  <dl><dt>Navn</dt><dd>${v(navn,180)}</dd><dt>For</dt><dd>${v(firma,180)}</dd>${ekstra||`<dt>Dato</dt><dd>${v("",120)}</dd><dt>Sted</dt><dd>${v("",120)}</dd>`}</dl></div>`;
+}
+
+function tegn(){
+  const L=A.leverandor||{},K=A.kunde||{},P=A.pris||{},S=A.signatur;
+  const alt=P.alternativer||[];
+  const valgt=S&&alt.find(a=>a.kode===S.valgt);
+  const utlopt=!S&&A.gyldigTil&&new Date(A.gyldigTil+"T23:59:59")<new Date();
+  document.title=`${S?"Signert avtale":"Tilbud"} ${A.nr||""} · ${K.firma||"Orvelo"}`;
+  let h="";
+  if(S)h+=`<div class="status ok skjul-utskrift"><b>Signert ${tid(S.tid)}</b> av ${esc(S.navn)}. Dette er den signerte avtalen. Trykk «Last ned PDF» for å lagre en kopi.</div>`;
+  else if(utlopt)h+=`<div class="status warn skjul-utskrift">Tilbudet gikk ut ${dato(A.gyldigTil)}. Ta kontakt med Orvelo for et nytt tilbud.</div>`;
+  h+=`<header>${LOGO}<div class="meta"><b>${S?"Avtale":"Tilbud"} nr. ${v(A.nr,70)}</b><br>Dato: ${A.dato?dato(A.dato):v("",90)}<br>${S?"Signert: "+dato(S.tid):"Gyldig til: "+(A.gyldigTil?dato(A.gyldigTil):v("",90))}</div></header>`;
+  h+=`<h1>${esc(A.tittel||"Tilbud og avtale: KI-sekretær")}</h1>`;
+  h+=`<div class="parter">
+    <div class="part"><div class="rolle">Leverandør</div><div class="navn">${v(L.navn)}</div>Org.nr. ${v(L.orgnr,90)}<br>${L.adresse?esc(L.adresse)+"<br>":""}${v(L.epost)}${L.telefon?"<br>Tlf. "+esc(L.telefon):""}</div>
+    <div class="part"><div class="rolle">Kunde</div><div class="navn">${v(S&&S.firma||K.firma)}</div>Org.nr. ${v(S&&S.orgnr||K.orgnr,90)}<br>${v(K.adresse,200)}<br>Kontakt: ${v(K.kontaktperson,130)}<br>${v(S&&S.epost||K.epost,180)}</div>
+  </div>`;
+  if(A.innledning)h+=`<p style="margin-top:16px">${esc(A.innledning).replace(/\n/g,"<br>")}</p>`;
+  if((A.tjenester||[]).length){h+=`<h2>Dette får dere</h2><ul>`+A.tjenester.map(t=>`<li>${t.t?`<b>${esc(t.t)}:</b> `:""}${esc(t.b)}</li>`).join("")+`</ul>`;}
+  h+=`<h2>Pris</h2>`;
+  if(alt.length>1&&!S)h+=`<p>Oppstarten koster ${kr(P.oppstart)} én gang. Deretter velger dere ett av alternativene for månedsprisen.</p>`;
+  h+=prisTabell(P);
+  if(valgt)h+=`<div class="boks"><b>Valgt: Alternativ ${esc(valgt.kode)} (${esc(valgt.navn)}).</b> Oppstart ${kr(P.oppstart)}, deretter ${kr(valgt.mnd)} per måned${Number(valgt.prosent)>0?` pluss ${esc(valgt.prosent)} % av verdien på timer bestilt via sekretæren`:""}.</div>`;
+  if(A.regneeksempel)h+=`<p class="liten"><b>Regneeksempel:</b> ${esc(A.regneeksempel)}</p>`;
+  h+=`<h2>Hovedpunkter</h2><ul>
+    <li><b>Bindingstid:</b> ${esc(A.bindingMnd||12)} måneder fra oppstartsdato. Deretter fortsetter avtalen måned for måned med 1 måneds oppsigelse.</li>
+    <li><b>Fakturering:</b> oppstart faktureres ved oppstart, månedsprisen forskuddsvis hver måned${alt.some(a=>Number(a.prosent)>0)?", og en eventuell andel av bookinger etterskuddsvis for måneden før":""}. Betalingsfrist 14 dager.</li>
+    <li><b>Mva:</b> prisene er uten mva. Mva kommer i tillegg hvis Orvelo er eller blir mva-registrert.</li>
+    ${A.merknad?`<li><b>Merknad:</b> ${esc(A.merknad)}</li>`:""}
+  </ul>`;
+  h+=A.vilkar||"";
+  // Signaturer
+  h+=`<section class="sign"><h2>Signaturer</h2>`;
+  if(S){
+    h+=`<p>Avtalen er inngått ved at kunden har godtatt tilbudet fra leverandøren og signert elektronisk.</p><div class="sigrad">`;
+    h+=sigFelt("For leverandøren",L.signatar||L.navn,L.navn,`<span class="skrift">${esc(L.signatar||"")}</span>`,`<dt>Tilbud gitt</dt><dd>${dato(A.dato)}</dd>`);
+    h+=sigFelt("For kunden",S.navn,S.firma||K.firma,S.tegning?`<img src="${esc(S.tegning)}" alt="Signatur">`:`<span class="skrift">${esc(S.navn)}</span>`,
+      `<dt>Rolle</dt><dd>${esc(S.rolle||"")}</dd><dt>Signert</dt><dd>${tid(S.tid)}</dd><dt>E-post</dt><dd>${esc(S.epost||"")}</dd>`);
+    h+=`</div><p class="liten" style="margin-top:16px">Elektronisk signert via Orvelo. IP-adresse: ${esc(S.ip||"")}. Kontrollsum (SHA-256) av avtaleteksten og valgt alternativ:</p><p class="hash">${esc(S.hash||"")}</p>`;
+  }else{
+    h+=`<p class="liten">Tilbudet er bindende for Orvelo til og med gyldighetsdatoen. Avtalen er inngått når kunden har signert.</p><div class="sigrad">`;
+    h+=sigFelt("For leverandøren",L.signatar,L.navn,L.signatar&&A.dato?`<span class="skrift">${esc(L.signatar)}</span>`:"",A.dato?`<dt>Dato</dt><dd>${dato(A.dato)}</dd><dt>Sted</dt><dd>Bergen</dd>`:"");
+    h+=sigFelt("For kunden","",K.firma,"",alt.length>1?`<dt>Valgt alternativ</dt><dd>${v("",80)}</dd><dt>Dato</dt><dd>${v("",120)}</dd>`:"");
+    h+="</div>";
+    if(!window.AVTALE_DATA&&!utlopt)h+=skjema(alt,K);
+  }
+  h+=`</section><footer><span>${esc(L.navn||"Orvelo")} · Org.nr. ${esc(L.orgnr||"")} · ${esc(L.epost||"")}</span><span>${S?"Avtale":"Tilbud"} nr. ${esc(A.nr||"")}</span></footer>`;
+  $("ark").innerHTML=h;$("laster").hidden=true;$("ark").hidden=false;$("verktoy").hidden=!!window.AVTALE_DATA&&!q.get("forhandsvis");
+  if(!S&&!window.AVTALE_DATA&&!utlopt)koble(alt);
+  window.KLAR=true;
+}
+
+function skjema(alt,K){
+  return `<form class="signer" id="sf"><h3 style="margin-top:0">Signer digitalt</h3>
+  ${alt.length>1?`<div class="valg">${alt.map(a=>`<label><input type="radio" name="valgt" value="${esc(a.kode)}" required><span><b>Alternativ ${esc(a.kode)}: ${esc(a.navn)}</b><br>${kr(a.mnd)} per måned${Number(a.prosent)>0?` + ${esc(a.prosent)} % av bookinger`:""}</span></label>`).join("")}</div>`:""}
+  <div class="g">
+    <label>Fullt navn<input type="text" id="navn" required autocomplete="name"></label>
+    <label>Rolle i firmaet<input type="text" id="rolle" placeholder="Daglig leder / eier" required></label>
+    <label>Firmanavn<input type="text" id="firma" value="${esc(K.firma||"")}" required></label>
+    <label>Org.nr.<input type="text" id="orgnr" value="${esc(K.orgnr||"")}" inputmode="numeric" required pattern="[0-9 ]{9,11}"></label>
+    <label>E-post (for kopi og faktura)<input type="email" id="epost" value="${esc(K.epost||"")}" required autocomplete="email"></label>
+  </div>
+  <label style="margin-top:12px">Signatur (tegn med finger eller mus, valgfritt)<canvas id="lerret"></canvas></label>
+  <div class="knapper" style="margin-top:6px"><button type="button" id="visk">Visk ut</button></div>
+  <label class="kryss"><input type="checkbox" id="godtar" required><span>Jeg har lest tilbudet og avtalevilkårene, inkludert databehandleravtalen, og godtar dem på vegne av firmaet.</span></label>
+  <label class="kryss"><input type="checkbox" id="fullmakt" required><span>Jeg har rett til å inngå avtaler for firmaet (for eksempel som daglig leder, eier eller med fullmakt).</span></label>
+  <div class="knapper"><button class="p" id="signBtn">Signer avtalen</button><span class="msg" id="msg"></span></div>
+  <p class="liten" style="margin-top:10px">Når du signerer, lagres navnet ditt, tidspunktet, IP-adressen og en kontrollsum av avtaleteksten. Du får se den signerte avtalen med en gang og kan lagre den som PDF.</p>
+  </form>`;
+}
+
+function koble(alt){
+  const c=$("lerret"),ctx=c.getContext("2d");let tegnet=false,ned=false;
+  const tilpass=()=>{const r=c.getBoundingClientRect(),d=window.devicePixelRatio||1;c.width=r.width*d;c.height=r.height*d;ctx.scale(d,d);ctx.lineWidth=2.4;ctx.lineCap="round";ctx.lineJoin="round";ctx.strokeStyle="#1f2a6b";tegnet=false;};
+  tilpass();
+  const pos=e=>{const r=c.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];};
+  c.addEventListener("pointerdown",e=>{ned=true;c.setPointerCapture(e.pointerId);const[x,y]=pos(e);ctx.beginPath();ctx.moveTo(x,y);});
+  c.addEventListener("pointermove",e=>{if(!ned)return;const[x,y]=pos(e);ctx.lineTo(x,y);ctx.stroke();tegnet=true;});
+  c.addEventListener("pointerup",()=>ned=false);c.addEventListener("pointercancel",()=>ned=false);
+  $("visk").onclick=()=>{ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,c.width,c.height);tilpass();};
+  $("sf").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const valgt=alt.length>1?(document.querySelector('input[name=valgt]:checked')||{}).value:(alt[0]||{}).kode;
+    let tegning="";
+    if(tegnet){const s=document.createElement("canvas");s.width=480;s.height=Math.round(480*c.height/c.width);s.getContext("2d").drawImage(c,0,0,s.width,s.height);tegning=s.toDataURL("image/png");}
+    const body={id:q.get("id"),t:q.get("t"),valgt,navn:$("navn").value,rolle:$("rolle").value,firma:$("firma").value,orgnr:$("orgnr").value,epost:$("epost").value,godtar:$("godtar").checked,fullmakt:$("fullmakt").checked,tegning};
+    $("signBtn").disabled=true;$("msg").className="msg";$("msg").textContent="Signerer …";
+    try{
+      const r=await fetch("/avtale/signer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const d=await r.json().catch(()=>({feil:"Ugyldig svar"}));
+      if(!r.ok)throw new Error(d.feil||"Noe gikk galt.");
+      A=d;tegn();window.scrollTo({top:0,behavior:"smooth"});
+    }catch(err){$("msg").className="msg err";$("msg").textContent=err.message;$("signBtn").disabled=false;}
+  });
+}
+last();
+</script>
+</body></html>
