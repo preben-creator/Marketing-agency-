@@ -163,7 +163,13 @@ async function koblSamtale(env, twilioWs) {
   let kunde = {};
   let xai = null;
   let lenkeSendt = false;
-  let notert = false;
+  let notat = null; // sammendraget agenten skriver
+  let rapportSendt = false;
+  const logg = []; // hele samtalen, som tekst
+  const tid = () => {
+    const sek = Math.round((Date.now() - startet) / 1000);
+    return `${Math.floor(sek / 60)}:${String(sek % 60).padStart(2, "0")}`;
+  };
   const startet = Date.now();
   const ventende = []; // lyd fra kunden før Grok er klar
 
@@ -186,12 +192,7 @@ async function koblSamtale(env, twilioWs) {
       return r.ok ? { ok: true, melding: "SMS med bookinglenke er sendt." } : { ok: false, melding: "SMS feilet. Si at Preben sender lenken." };
     }
     if (navn === "noter_for_preben") {
-      notert = true;
-      await varsle(env, `Orvelo-samtale: ${kunde.firma || kunde.til} (${args.interesse || "?"})`, {
-        Nummer: kunde.til, Navn: kunde.navn || "", Firma: kunde.firma || "",
-        Interesse: args.interesse || "", Bransje: args.bransje || "", "Ønsket tid": args.onsket_tid || "",
-        Sammendrag: args.sammendrag || "", "Bookinglenke sendt": lenkeSendt ? "ja" : "nei",
-      });
+      notat = args;
       return { ok: true };
     }
     if (navn === "legg_paa") {
@@ -243,6 +244,14 @@ async function koblSamtale(env, twilioWs) {
         if (streamSid) tilTwilio({ event: "media", streamSid, media: { payload: e.delta } });
         return;
       }
+      if (t === "response.output_audio_transcript.done" || t === "response.audio_transcript.done") {
+        if (e.transcript && e.transcript.trim()) logg.push(`[${tid()}] Ara: ${e.transcript.trim()}`);
+        return;
+      }
+      if (t.includes("input_audio_transcription.completed")) {
+        if (e.transcript && e.transcript.trim()) logg.push(`[${tid()}] Kunde: ${e.transcript.trim()}`);
+        return;
+      }
       if (t === "input_audio_buffer.speech_started") {
         if (streamSid) tilTwilio({ event: "clear", streamSid });
         return;
@@ -285,17 +294,29 @@ async function koblSamtale(env, twilioWs) {
     }
     if (e.event === "stop") {
       try { xai && xai.close(1000, "lagt på"); } catch {}
-      if (!notert) {
-        await varsle(env, `Orvelo-samtale avsluttet: ${kunde.firma || kunde.til}`, {
-          Nummer: kunde.til || "", Navn: kunde.navn || "", Firma: kunde.firma || "",
-          Varighet: `${Math.round((Date.now() - startet) / 1000)} sek`,
-          "Bookinglenke sendt": lenkeSendt ? "ja" : "nei",
-          Merknad: "Agenten skrev ikke sammendrag (kunden la kanskje på).",
-        });
-      }
+      await sendRapport();
     }
   });
-  twilioWs.addEventListener("close", () => { try { xai && xai.close(1000, "lagt på"); } catch {} });
+  twilioWs.addEventListener("close", async () => {
+    try { xai && xai.close(1000, "lagt på"); } catch {}
+    await sendRapport();
+  });
+
+  // Én e-post per samtale: sammendrag + hele samtalen som tekst.
+  async function sendRapport() {
+    if (rapportSendt || !kunde.til) return;
+    rapportSendt = true;
+    const n = notat || {};
+    await varsle(env, `Orvelo-samtale: ${kunde.firma || kunde.til} (interesse: ${n.interesse || "ukjent"})`, {
+      Nummer: kunde.til, Navn: kunde.navn || "", Firma: kunde.firma || "",
+      Tidspunkt: new Date(startet).toISOString(),
+      Varighet: tid(),
+      Interesse: n.interesse || "", Bransje: n.bransje || "", "Ønsket tid": n.onsket_tid || "",
+      Sammendrag: n.sammendrag || "Agenten skrev ikke sammendrag (kunden la kanskje på).",
+      "Bookinglenke sendt": lenkeSendt ? "ja" : "nei",
+      Samtale: logg.length ? logg.join("\n") : "(ingen tekst registrert)",
+    });
+  }
 }
 
 // ---------- endepunkter ----------
