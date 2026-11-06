@@ -19,6 +19,8 @@
 // Binding (Worker -> Settings -> Bindings -> KV namespace):
 //   KUNDER       KV-lageret der profilene lagres
 
+const LAG_URL_DEFAULT =
+  "https://raw.githubusercontent.com/preben-creator/marketing-agency-/main/snakk/lag.html";
 const PAGE_URL_DEFAULT =
   "https://raw.githubusercontent.com/preben-creator/marketing-agency-/main/snakk/index.html";
 
@@ -110,7 +112,9 @@ export default {
     }
 
     if (url.pathname === "/lag" && request.method === "GET") {
-      return new Response(ADMIN_HTML, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache", "X-Robots-Tag": "noindex" } });
+      // Siden hentes fra GitHub (snakk/lag.html), så den kan endres uten å røre Cloudflare. ADMIN_HTML er reserve.
+      const lagSide = await fetch(env.LAG_URL || LAG_URL_DEFAULT, { cf: { cacheTtl: 60 } }).catch(() => null);
+      return new Response(lagSide && lagSide.ok ? await lagSide.text() : ADMIN_HTML, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache", "X-Robots-Tag": "noindex" } });
     }
 
     if ((url.pathname === "/lag" || url.pathname === "/lagre") && request.method === "POST") {
