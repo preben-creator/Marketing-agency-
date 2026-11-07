@@ -40,6 +40,9 @@ details summary{cursor:pointer;color:var(--muted);font-weight:600;margin-top:6px
     <label>Admin-kode<input id="kode" type="password" required autocomplete="current-password"></label>
   </div>
   <div class="row"><button class="p" id="lagBtn">Lag sekretær</button><span class="msg" id="msg"></span></div>
+  <details style="margin-top:14px"><summary>Åpne en sekretær du har laget før</summary>
+    <div class="row"><input id="hentId" placeholder="id, f.eks. deja-vu-frisor-089t" style="flex:1;min-width:220px"><button type="button" id="hentBtn">Åpne</button></div>
+  </details>
 </form>
 
 <div class="card" id="res" hidden>
@@ -47,6 +50,9 @@ details summary{cursor:pointer;color:var(--muted);font-weight:600;margin-top:6px
   <div class="mail"><div class="subj" id="emne"></div><div id="tekst"></div></div>
   <div class="row"><a class="btn p" id="gmail" target="_blank" rel="noopener">Åpne i Gmail</a><button type="button" id="kopierTekst">Kopier tekst</button><a class="btn" id="apne" target="_blank" rel="noopener">Test sekretæren</a><span class="msg" id="msg3"></span></div>
   <div id="usikker"></div>
+  <div class="row"><button type="button" id="retteBtn">Lenke kunden kan rette selv</button><span class="msg" id="msg4"></span></div>
+  <div id="retteBoks" hidden style="margin-top:10px"><p class="lead" style="margin:0 0 6px">Kunden kan rette tjenester, priser, varighet og åpningstider her. Du får e-post når noe endres, og forrige versjon lagres.</p>
+    <div class="link" id="retteLenke"></div><div class="row"><button type="button" id="kopierRette">Kopier</button><a class="btn" id="apneRette" target="_blank" rel="noopener">Åpne</a></div></div>
   <details>
     <summary>2. Rett opplysningene (valgfritt)</summary>
     <p class="lead" style="margin:10px 0 6px">Lenken er den samme etter at du lagrer.</p>
@@ -102,7 +108,7 @@ function visEpost(lenke){
   $("emne").textContent="Emne: "+emne;$("tekst").textContent=tekst;
   $("gmail").href="https://mail.google.com/mail/?authuser="+encodeURIComponent(FRA)+"&view=cm&fs=1&to="+encodeURIComponent($("til").value.trim())+"&su="+encodeURIComponent(emne)+"&body="+encodeURIComponent(tekst);
 }
-function vis(d){id=d.id;profil=d.profil;$("res").hidden=false;$("lenke").textContent=d.lenke;$("apne").href=d.lenke;
+function vis(d){id=d.id;profil=d.profil;$("retteBoks").hidden=true;$("res").hidden=false;$("lenke").textContent=d.lenke;$("apne").href=d.lenke;
   const usikkert=d.profil.usikkert||[];$("json").value=JSON.stringify(d.profil,null,2);
   $("usikker").innerHTML=usikkert.length?'<p class="msg err" style="margin:12px 0 0">Grok måtte gjette på dette. Sjekk det gjerne under «Rett opplysningene» før du sender:</p><ul>'+usikkert.map(x=>"<li>"+x.replace(/[<>&]/g,"")+"</li>").join("")+"</ul>":'<p class="msg ok" style="margin-top:12px">Grok fant det meste på nettsiden.</p>';
   visEpost(d.lenke);}
@@ -118,6 +124,17 @@ $("f").addEventListener("submit",e=>{e.preventDefault();lag();});
 $("lagre").addEventListener("click",async()=>{let p;try{p=JSON.parse($("json").value);}catch{$("msg2").className="msg err";$("msg2").textContent="Teksten er ikke gyldig JSON. Sjekk komma og anførselstegn.";return;}
   try{const d=await post("/lagre",{kode:$("kode").value,id,profil:p});vis(d);$("msg2").className="msg ok";$("msg2").textContent="Lagret.";}catch(err){$("msg2").className="msg err";$("msg2").textContent=err.message;}});
 function kopi(t,el,ok){navigator.clipboard.writeText(t).then(()=>{const o=el.textContent;el.textContent=ok;setTimeout(()=>el.textContent=o,1800);}).catch(()=>{});}
+async function retteLenke(){$("msg4").className="msg";$("msg4").textContent="Lager lenke …";
+  try{const d=await post("/rediger/lenke",{kode:$("kode").value,id});$("retteLenke").textContent=d.rediger;$("apneRette").href=d.rediger;$("retteBoks").hidden=false;$("msg4").textContent="";}
+  catch(err){$("msg4").className="msg err";$("msg4").textContent=err.message;}}
+$("retteBtn").addEventListener("click",retteLenke);
+$("kopierRette").addEventListener("click",()=>kopi($("retteLenke").textContent,$("kopierRette"),"Kopiert!"));
+$("hentBtn").addEventListener("click",async()=>{$("msg").className="msg";$("msg").textContent="Henter …";
+  try{try{localStorage.setItem("orvelo-admin",$("kode").value);}catch{}
+    const d=await post("/rediger/lenke",{kode:$("kode").value,id:$("hentId").value.trim()});
+    $("firma").value=d.profil.navn||"";vis(d);$("retteLenke").textContent=d.rediger;$("apneRette").href=d.rediger;$("retteBoks").hidden=false;
+    $("msg").className="msg ok";$("msg").textContent="Åpnet.";$("res").scrollIntoView({behavior:"smooth"});}
+  catch(err){$("msg").className="msg err";$("msg").textContent=err.message;}});
 $("kopier").addEventListener("click",()=>kopi($("lenke").textContent,$("kopier"),"Kopiert!"));
 $("kopierTekst").addEventListener("click",()=>kopi($("tekst").textContent,$("kopierTekst"),"Kopiert!"));
 if(q.get("auto")==="1"&&$("firma").value){if($("kode").value)lag();else{$("msg").className="msg err";$("msg").textContent="Skriv inn admin-koden én gang og trykk «Lag sekretær». Etter det husker nettleseren den.";$("kode").focus();}}
