@@ -84,6 +84,12 @@ async function twilio(env, sti, felter) {
   return { ok: r.ok, status: r.status, tekst };
 }
 
+// Gjør Twilios feilsvar om til en kort tekst, f.eks. «Twilio 21408: Permission to send an SMS has not been enabled ...».
+function twilioFeil(r) {
+  try { const d = JSON.parse(r.tekst); return `Twilio ${d.code || r.status}: ${d.message || ""}`.trim(); } catch {}
+  return `HTTP ${r.status}`;
+}
+
 // SMS sendes med avsendernavnet «Orvelo» (Norge godtar alfanumerisk avsender).
 // Hvis Twilio avviser det, prøver vi på nytt fra Twilio-nummeret.
 async function sendSms(env, til, tekst) {
@@ -346,7 +352,7 @@ async function kodeEndepunkt(request, env) {
   const sig = await hmac(env.TWILIO_AUTH_TOKEN, `kode|${til}|${kode}|${ts}`);
   if (test) return json({ ok: true, billett: `${ts}.${sig}`, test: true });
   const r = await sendSms(env, til, `Din kode fra Orvelo: ${kode}`);
-  if (!r.ok) return json({ feil: "Fikk ikke sendt SMS. Sjekk nummeret og prøv igjen." }, 502);
+  if (!r.ok) return json({ feil: `Fikk ikke sendt SMS (${twilioFeil(r)}).` }, 502);
   return json({ ok: true, billett: `${ts}.${sig}` });
 }
 
@@ -376,7 +382,7 @@ async function ringEndepunkt(request, env, url) {
     `<Parameter name="firma" value="${xmlEsc(firma)}"/></Stream></Connect></Response>`;
 
   const r = await twilio(env, "Calls.json", { To: til, From: env.TWILIO_FROM, Twiml: twiml, TimeLimit: String(MAKS_SEK) });
-  if (!r.ok) return json({ feil: "Fikk ikke ringt akkurat nå. Prøv igjen om litt." }, 502);
+  if (!r.ok) return json({ feil: `Fikk ikke ringt (${twilioFeil(r)}).` }, 502);
 
   // Samtykkelogg: Preben får en e-post per samtykke (tidspunkt, nummer, tekst de krysset av for).
   await varsle(env, `Samtykke: ${firma || til} ba om å bli ringt`, {
