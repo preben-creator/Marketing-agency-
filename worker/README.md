@@ -69,3 +69,17 @@ Vilkårene ligger i `avtale/vilkar.html`. En kopi låses inn i hvert tilbud når
 Valgfritt: `VARSEL_EPOST` (Text) hvis varslene skal til en annen e-post enn hilleren.bedrift@gmail.com.
 
 PDF-maler (tom mal for papir og utfylt Deja Vu-eksempel): `node tools/lag-avtale-pdf.mjs [utmappe]`.
+
+## Kunden retter sin egen sekretær (/rediger)
+
+Kunden kan selv rette tjenester, priser, varighet (hvor lang tid som settes av i kalenderen), åpningstider,
+ansatte, kontaktinfo og «dette bør sekretæren vite». Firmanavn, bransje og type kan bare du endre.
+
+1. Åpne `/lag`, skriv admin-koden, og åpne sekretæren (enten rett etter at du har laget den, eller under
+   «Åpne en sekretær du har laget før» med id-en, f.eks. `deja-vu-frisor-089t`).
+2. Trykk **Lenke kunden kan rette selv**. Du får en lenke som `/rediger?kunde=<id>&r=<rettekode>`. Send den til kunden.
+3. Når kunden lagrer, får du e-post (via FormSubmit til `VARSEL_EPOST`) med hva som er endret.
+   De 10 forrige versjonene ligger i KV under `historikk:<id>`.
+
+Rettekoden ligger i KV under `rediger:<id>` og er en annen enn `DEMO_KODE`, så de som bare har demolenken kan ikke endre noe.
+Siden hentes fra `snakk/rediger.html` på GitHub. Ingen nye innstillinger trengs, men den nye workerkoden må limes inn i Cloudflare én gang.

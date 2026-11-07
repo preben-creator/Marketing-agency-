@@ -1,5 +1,5 @@
 // Lokal test av den snakkbare demoen: XAI_API_KEY=... node tools/dev-snakk.mjs  ->  http://localhost:8787/?k=test
-// /lag og /avtale/ny virker lokalt med admin-koden "admin" (alt lagres bare i minnet).
+// /lag, /rediger og /avtale/ny virker lokalt med admin-koden "admin" (alt lagres bare i minnet).
 // Filer fra GitHub (snakk/lag.html, avtale/*.html) leses fra denne mappen i stedet, og e-postvarsler skrives bare ut i terminalen.
 import http from "http"; import fs from "fs";
 import worker from "../worker/sekretar-worker.js";

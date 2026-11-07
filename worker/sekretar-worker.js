@@ -15,6 +15,10 @@
 //   GET  /avtale?id=..&t=.. -> kundens side: les tilbudet, velg alternativ og signer
 //   GET  /avtale/data  -> tilbudet som JSON (krever id + t)
 //   POST /avtale/signer-> lagrer signaturen (navn, tid, IP, kontrollsum) og varsler Preben på e-post
+//   GET  /rediger?kunde=..&r=.. -> kundens egen side for å rette tjenester, priser, varighet og åpningstider
+//   GET  /rediger/data  -> profilen som kunden kan rette (krever kunde + r)
+//   POST /rediger/lagre -> lagrer kundens endringer (tar vare på de 10 forrige versjonene) og varsler Preben
+//   POST /rediger/lenke -> Prebens knapp: lager (eller henter) kundens rette-lenke (krever ADMIN_KODE)
 //
 // Innstillinger (Cloudflare: Worker -> Settings -> Variables and Secrets):
 //   XAI_API_KEY  (Secret, påkrevd)  xAI-nøkkelen din
@@ -152,6 +156,10 @@ export default {
         console.log("lag feilet", e && e.stack);
         return json({ feil: e.message || "Noe gikk galt." }, 500);
       }
+    }
+
+    if (url.pathname === "/rediger" || url.pathname.startsWith("/rediger/")) {
+      return redigerRute(request, env, ctx, url);
     }
 
     if (url.pathname === "/avtale" || url.pathname.startsWith("/avtale/")) {
@@ -589,6 +597,116 @@ async function avtaleRute(request, env, ctx, url) {
     ]);
     if (ctx && ctx.waitUntil) ctx.waitUntil(varsel); else await varsel;
     return json(utenHemmelig(rec), 200);
+  }
+
+  return new Response("Ikke funnet", { status: 404 });
+}
+
+// ======================================================================
+// Kunden retter sin egen sekretær (/rediger)
+// ======================================================================
+// Kunden får en egen lenke /rediger?kunde=<id>&r=<rettekode>. Rettekoden ligger i KV under rediger:<id>,
+// og er en annen enn DEMO_KODE, så bare den som har fått rette-lenken kan endre profilen.
+// Kunden kan endre tjenester, priser, varighet, åpningstider, ansatte, kontaktinfo og «dette bør sekretæren vite».
+// Navn, bransje og type kan bare Preben endre (på /lag).
+
+const KUNDE_KAN_ENDRE = ["tjenester", "apent", "apentTekst", "ansatte", "ekstra", "telefon", "epost", "adresse", "omraade"];
+const redigerTreff = new Map();
+
+const rensId = (v) => String(v || "").replace(/[^a-z0-9-]/g, "").slice(0, 60);
+
+function demoLenke(url, env, id) {
+  return `${url.origin}/?kunde=${id}` + (env.DEMO_KODE ? `&k=${encodeURIComponent(env.DEMO_KODE)}` : "");
+}
+
+function hvaErEndret(gml, ny) {
+  const ut = [];
+  const tj = (p) => new Map(p.tjenester.flatMap(([kat, l]) => l.map(([n, pris, min]) => [kat + " / " + n, pris + " · " + min + " min"])));
+  const a = tj(gml), b = tj(ny);
+  for (const [k, v] of b) if (!a.has(k)) ut.push("Ny: " + k + " (" + v + ")"); else if (a.get(k) !== v) ut.push("Endret: " + k + ": " + a.get(k) + " → " + v);
+  for (const k of a.keys()) if (!b.has(k)) ut.push("Fjernet: " + k);
+  if (JSON.stringify(gml.apent) !== JSON.stringify(ny.apent) || gml.apentTekst !== ny.apentTekst) ut.push("Åpningstider: " + ny.apentTekst);
+  for (const f of ["ansatte", "ekstra", "telefon", "epost", "adresse", "omraade"]) {
+    if (JSON.stringify(gml[f]) !== JSON.stringify(ny[f])) ut.push(f[0].toUpperCase() + f.slice(1) + ": " + (Array.isArray(ny[f]) ? ny[f].join(", ") : ny[f] || "(tomt)"));
+  }
+  return ut;
+}
+
+async function redigerRute(request, env, ctx, url) {
+  const p = url.pathname;
+  const get = request.method === "GET";
+
+  if (get && (p === "/rediger" || p === "/rediger/")) {
+    try { return new Response(await hentFraGitHub("snakk/rediger.html", env), { headers: HTML_HODER }); }
+    catch (e) { return new Response(e.message, { status: 502 }); }
+  }
+  if (!env.KUNDER) return json({ feil: "KV-lageret KUNDER er ikke koblet til workeren." }, 500);
+
+  const sjekk = async (id, r) => {
+    if (!id || !r) return null;
+    const kode = await env.KUNDER.get("rediger:" + id);
+    if (!kode || kode !== r) return null;
+    return env.KUNDER.get("kunde:" + id, "json");
+  };
+
+  if (get && p === "/rediger/data") {
+    const id = rensId(url.searchParams.get("kunde"));
+    const profil = await sjekk(id, url.searchParams.get("r"));
+    if (!profil) return json({ feil: "Fant ikke sekretæren. Sjekk at du har hele lenken, eller spør Preben om en ny." }, 404);
+    const { usikkert, kilder, ...rest } = profil;
+    return json({ profil: rest, demo: demoLenke(url, env, id) }, 200);
+  }
+
+  if (request.method !== "POST") return new Response("Ikke funnet", { status: 404 });
+  const origin = request.headers.get("Origin");
+  if (origin && origin !== url.origin) return json({ feil: "Ikke tillatt" }, 403);
+  let body = {};
+  try { body = await request.json(); } catch {}
+
+  if (p === "/rediger/lenke") {
+    if (!env.ADMIN_KODE || body.kode !== env.ADMIN_KODE) return json({ feil: "Feil admin-kode." }, 401);
+    const id = rensId(body.id);
+    const profil = id && (await env.KUNDER.get("kunde:" + id, "json"));
+    if (!profil) return json({ feil: "Fant ingen sekretær med id «" + id + "»." }, 404);
+    let kode = await env.KUNDER.get("rediger:" + id);
+    if (!kode || body.ny) { kode = tilfeldig(10); await env.KUNDER.put("rediger:" + id, kode); }
+    return json({ id, profil, lenke: demoLenke(url, env, id), rediger: `${url.origin}/rediger?kunde=${id}&r=${kode}` }, 200);
+  }
+
+  if (p === "/rediger/lagre") {
+    const ip = request.headers.get("CF-Connecting-IP") || "ukjent";
+    const nu = Date.now();
+    const liste = (redigerTreff.get(ip) || []).filter((t) => nu - t < 10 * 60 * 1000);
+    if (liste.length >= 30) return json({ feil: "Mange lagringer på kort tid. Vent litt og prøv igjen." }, 429);
+    liste.push(nu); redigerTreff.set(ip, liste); if (redigerTreff.size > 5000) redigerTreff.clear();
+
+    const id = rensId(body.kunde);
+    const gml = await sjekk(id, body.r);
+    if (!gml) return json({ feil: "Fant ikke sekretæren. Sjekk at du har hele lenken." }, 404);
+    const inn = body.profil || {};
+    const flettet = { ...gml };
+    for (const f of KUNDE_KAN_ENDRE) if (f in inn) flettet[f] = inn[f];
+    const ny = normaliser(flettet);
+    ny.id = id;
+    ny.oppdatert = new Date().toISOString();
+    ny.endretAvKunde = ny.oppdatert;
+    const endringer = hvaErEndret(normaliser(gml), ny);
+    if (!endringer.length) return json({ profil: ny, endringer }, 200);
+
+    const hist = (await env.KUNDER.get("historikk:" + id, "json")) || [];
+    hist.unshift({ tid: gml.oppdatert || "", profil: gml });
+    await env.KUNDER.put("historikk:" + id, JSON.stringify(hist.slice(0, 10)));
+    await env.KUNDER.put("kunde:" + id, JSON.stringify(ny));
+
+    const varsel = varsle(env, `${ny.kortnavn || ny.navn} har rettet KI-sekretæren sin`, [
+      `${ny.navn} har endret sekretæren sin (${id}):`, "",
+      ...endringer.slice(0, 40).map((x) => "- " + x), "",
+      `Test den: ${demoLenke(url, env, id)}`,
+      "Forrige versjon er lagret og kan hentes tilbake.",
+    ]);
+    if (ctx && ctx.waitUntil) ctx.waitUntil(varsel); else await varsel;
+    const { usikkert, kilder, ...rest } = ny;
+    return json({ profil: rest, endringer }, 200);
   }
 
   return new Response("Ikke funnet", { status: 404 });
