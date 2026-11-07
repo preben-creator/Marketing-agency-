@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rett din KI-sekretær · Orvelo</title><meta name="robots" content="noindex">
+<!-- Serveres av workeren orvelo-sekretar på /rediger?kunde=<id>&r=<rettekode> (hentes fra GitHub).
+     Kunden retter selv tjenester, priser, varighet og åpningstider. Preben lager lenken på /lag («Lenke kunden kan rette selv»). -->
+<style>
+:root{--bg:#0f0e17;--card:#1a1928;--ink:#eeedf7;--muted:#a3a0bd;--line:#2e2c44;--acc:#8f78ff;--acc2:#2fd0ee;--ok:#5fd59a;--warn:#ffb547;--field:#13121e;color-scheme:dark}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:24px 16px 120px}
+.brand{font-weight:800;letter-spacing:.02em;color:var(--muted);font-size:13px;text-transform:uppercase}
+h1{font-size:clamp(24px,5vw,32px);line-height:1.2;margin:6px 0 6px}h1 span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-size:19px;margin:0 0 4px}
+p.lead{color:var(--muted);margin:0 0 18px}
+p.hint{color:var(--muted);margin:0 0 14px;font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--muted)}
+input,textarea,select{font:inherit;font-size:16px;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%;min-width:0}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--acc);outline-offset:1px;border-color:transparent}
+textarea{min-height:90px;resize:vertical}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:620px){.g{grid-template-columns:1fr}}
+button,a.btn{font:inherit;font-weight:600;border-radius:10px;padding:10px 15px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;min-height:44px}
+button.p,a.p{background:var(--acc);border-color:var(--acc);color:#0f0e17}
+button.liten{min-height:36px;padding:6px 11px;font-size:14px}
+button.x{min-height:40px;min-width:40px;justify-content:center;padding:0;color:var(--muted)}
+button:disabled{opacity:.5;cursor:wait}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+/* åpningstider */
+.dag{display:grid;grid-template-columns:90px 150px 1fr;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.dag:first-of-type{border-top:0}
+.dag b{font-weight:600}
+.tider{display:flex;gap:6px;align-items:center}.tider input{width:auto;flex:1}
+@media(max-width:560px){.dag{grid-template-columns:1fr 1fr}.dag .tider{grid-column:1/-1}}
+/* tjenester */
+.kat{border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px;background:rgba(255,255,255,.015)}
+.kathode{display:flex;gap:8px;align-items:center;margin-bottom:8px}.kathode input{font-weight:700}
+.tj{display:grid;grid-template-columns:1fr 150px 130px 40px;gap:8px;align-items:center;margin-bottom:8px}
+.tjhode{display:grid;grid-template-columns:1fr 150px 130px 40px;gap:8px;font-size:12px;color:var(--muted);font-weight:600;margin:0 0 4px}
+@media(max-width:620px){.tjhode{display:none}.tj{grid-template-columns:1fr 1fr 40px;padding:10px 0;border-top:1px solid var(--line)}.tj .navn{grid-column:1/-1}}
+/* lagre-felt nederst */
+.bar{position:fixed;left:0;right:0;bottom:0;background:rgba(15,14,23,.94);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
+.bar .in{max-width:860px;margin:0 auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.msg{font-size:14px;flex:1;min-width:160px}.err{color:var(--warn)}.ok{color:var(--ok)}
+.feil{padding:30px 0;color:var(--warn)}
+ul.endr{margin:8px 0 0;padding-left:20px;color:var(--muted);font-size:14px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style></head><body><div class="wrap">
+<div class="brand">Orvelo · KI-sekretær</div>
+<h1>Rett <span id="navn">din KI-sekretær</span></h1>
+<p class="lead">Her bestemmer dere selv hva sekretæren vet: tjenester, priser, hvor lang tid hver behandling tar, og når dere har åpent. Trykk «Lagre» nederst når du er ferdig. Endringene gjelder fra neste samtale.</p>
+<div id="laster" class="card">Henter sekretæren …</div>
+
+<div id="skjema" hidden>
+  <section class="card">
+    <h2>Tjenester og priser</h2>
+    <p class="hint">Varigheten bestemmer hvor lang tid sekretæren setter av i kalenderen. Pris kan skrives fritt, f.eks. «fra 2 200 kr» eller «pris etter befaring».</p>
+    <div id="kategorier"></div>
+    <button type="button" class="liten" id="nyKat">+ Ny kategori</button>
+  </section>
+
+  <section class="card">
+    <h2>Åpningstider</h2>
+    <p class="hint">Sekretæren tilbyr bare ledige tider innenfor disse.</p>
+    <div id="dager"></div>
+    <label class="f" style="margin-top:14px">Slik sier sekretæren åpningstidene i telefonen
+      <textarea id="apentTekst" rows="3"></textarea></label>
+    <div class="row" style="margin-top:8px"><button type="button" class="liten" id="lagTekst">Lag teksten på nytt fra tidene over</button></div>
+  </section>
+
+  <section class="card">
+    <h2>Om dere</h2>
+    <div class="g">
+      <label class="f">Telefon<input id="telefon" inputmode="tel"></label>
+      <label class="f">E-post<input id="epost" type="email"></label>
+      <label class="f">Adresse<input id="adresse"></label>
+      <label class="f">Område dere dekker<input id="omraade" placeholder="f.eks. Bergen sentrum"></label>
+    </div>
+    <label class="f" style="margin-top:12px">Ansatte sekretæren kan nevne (skill med komma)<input id="ansatte" placeholder="Jessica, Gitte"></label>
+    <label class="f" style="margin-top:12px">Dette bør sekretæren vite
+      <textarea id="ekstra" rows="5" placeholder="f.eks. Vi tar ikke drop-in på mandager. Balayage på langt hår tar ofte 3–4 timer. Spør om hårlengde før du gir pris."></textarea></label>
+  </section>
+  <p class="hint">Firmanavn og bransje endres av Preben. Ta kontakt på hilleren.bedrift@gmail.com hvis noe der er feil.</p>
+</div>
+</div>
+
+<div class="bar" id="bar" hidden><div class="in">
+  <button class="p" id="lagre">Lagre</button>
+  <a class="btn" id="test" target="_blank" rel="noopener">Test sekretæren</a>
+  <span class="msg" id="msg" role="status" aria-live="polite"></span>
+</div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const q=new URLSearchParams(location.search);const KUNDE=q.get("kunde")||"",R=q.get("r")||"";
+const DAGNAVN=["Søndag","Mandag","Tirsdag","Onsdag","Torsdag","Fredag","Lørdag"];
+const REKKE=[1,2,3,4,5,6,0];
+let profil=null,endret=false;
+const VARIGHET=[];for(let m=15;m<=480;m+=15)VARIGHET.push(m);
+const minTekst=m=>{const t=Math.floor(m/60),r=m%60;return t?(t+" t"+(r?" "+r+" min":"")):(r+" min");};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function merkEndret(){endret=true;$("msg").className="msg";$("msg").textContent="Ikke lagret ennå";}
+addEventListener("beforeunload",e=>{if(endret){e.preventDefault();e.returnValue="";}});
+
+/* ---------- tjenester ---------- */
+function varighetSelect(v){const near=VARIGHET.reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a,60);
+  return `<select class="min" aria-label="Varighet">${VARIGHET.map(m=>`<option value="${m}"${m===near?" selected":""}>${minTekst(m)}</option>`).join("")}</select>`;}
+function tjRad(t=["","",30]){const d=document.createElement("div");d.className="tj";
+  d.innerHTML=`<input class="navn" aria-label="Tjeneste" placeholder="Tjeneste" value="${esc(t[0])}"><input class="pris" aria-label="Pris" placeholder="Pris" value="${esc(t[1])}">${varighetSelect(Number(t[2])||30)}<button type="button" class="x" title="Fjern tjenesten" aria-label="Fjern tjenesten">✕</button>`;
+  d.querySelector(".x").onclick=()=>{d.remove();merkEndret();};return d;}
+function katBoks(k=["",[["","",30]]]){const d=document.createElement("div");d.className="kat";
+  d.innerHTML=`<div class="kathode"><input class="katnavn" aria-label="Kategori" placeholder="Kategori, f.eks. Klipp" value="${esc(k[0])}"><button type="button" class="x" title="Fjern hele kategorien" aria-label="Fjern kategorien">✕</button></div>
+  <div class="tjhode"><span>Tjeneste</span><span>Pris</span><span>Varighet</span><span></span></div><div class="rader"></div>
+  <button type="button" class="liten ny">+ Legg til tjeneste</button>`;
+  const rader=d.querySelector(".rader");k[1].forEach(t=>rader.appendChild(tjRad(t)));
+  d.querySelector(".ny").onclick=()=>{const r=tjRad();rader.appendChild(r);r.querySelector("input").focus();merkEndret();};
+  d.querySelector(".kathode .x").onclick=()=>{if(confirm("Fjerne hele kategorien «"+(d.querySelector(".katnavn").value||"uten navn")+"»?")){d.remove();merkEndret();}};
+  return d;}
+function lesTjenester(){return[...document.querySelectorAll(".kat")].map(k=>[k.querySelector(".katnavn").value.trim()||"Tjenester",
+  [...k.querySelectorAll(".tj")].map(r=>[r.querySelector(".navn").value.trim(),r.querySelector(".pris").value.trim(),Number(r.querySelector(".min").value)]).filter(t=>t[0])]).filter(k=>k[1].length);}
+
+/* ---------- åpningstider ---------- */
+function dagRad(d,v){const el=document.createElement("div");el.className="dag";el.dataset.d=d;
+  const modus=Array.isArray(v)?"apen":v==="avtale"?"avtale":"stengt";const [fra,til]=Array.isArray(v)?v:["09:00","17:00"];
+  el.innerHTML=`<b>${DAGNAVN[d]}</b><select class="modus" aria-label="${DAGNAVN[d]}"><option value="apen">Åpent</option><option value="avtale">Etter avtale</option><option value="stengt">Stengt</option></select>
+  <div class="tider"><input type="time" class="fra" step="900" value="${fra}" aria-label="Fra"> – <input type="time" class="til" step="900" value="${til}" aria-label="Til"></div>`;
+  el.querySelector(".modus").value=modus;
+  const vis=()=>{el.querySelector(".tider").style.display=el.querySelector(".modus").value==="apen"?"":"none";};vis();
+  el.addEventListener("change",()=>{vis();$("apentTekst").value=lagApentTekst();});return el;}
+function lesApent(){const a={};document.querySelectorAll(".dag").forEach(el=>{const m=el.querySelector(".modus").value,d=el.dataset.d;
+  a[d]=m==="apen"?[el.querySelector(".fra").value,el.querySelector(".til").value]:m==="avtale"?"avtale":null;});return a;}
+function kl(t){const[h,m]=t.split(":");return String(Number(h))+(m!=="00"?"."+m:"");}
+function lagApentTekst(){const a=lesApent(),deler=[];let i=0;
+  const lik=(x,y)=>JSON.stringify(x)===JSON.stringify(y);
+  while(i<REKKE.length){let j=i;while(j+1<REKKE.length&&lik(a[REKKE[j+1]],a[REKKE[i]]))j++;
+    const navn=i===j?DAGNAVN[REKKE[i]]:DAGNAVN[REKKE[i]]+" til "+DAGNAVN[REKKE[j]].toLowerCase();const v=a[REKKE[i]];
+    deler.push(navn+": "+(Array.isArray(v)?kl(v[0])+" til "+kl(v[1]):v==="avtale"?"etter avtale":"stengt"));i=j+1;}
+  return deler.join(". ")+".";}
+
+/* ---------- last og lagre ---------- */
+function fyll(p){profil=p;$("navn").textContent=p.kortnavn||p.navn;document.title="Rett "+(p.kortnavn||p.navn)+" · Orvelo";
+  $("kategorier").innerHTML="";p.tjenester.forEach(k=>$("kategorier").appendChild(katBoks(k)));
+  $("dager").innerHTML="";REKKE.forEach(d=>$("dager").appendChild(dagRad(d,p.apent[d])));
+  $("apentTekst").value=p.apentTekst||"";
+  ["telefon","epost","adresse","omraade","ekstra"].forEach(f=>$(f).value=p[f]||"");$("ansatte").value=(p.ansatte||[]).join(", ");
+  endret=false;}
+async function last(){
+  if(!KUNDE||!R){$("laster").innerHTML='<div class="feil">Lenken er ikke komplett. Bruk hele lenken du fikk fra Preben.</div>';return;}
+  try{const r=await fetch("/rediger/data?kunde="+encodeURIComponent(KUNDE)+"&r="+encodeURIComponent(R));const d=await r.json();
+    if(!r.ok)throw new Error(d.feil||"Noe gikk galt.");
+    fyll(d.profil);$("test").href=d.demo;$("laster").hidden=true;$("skjema").hidden=false;$("bar").hidden=false;}
+  catch(e){$("laster").innerHTML='<div class="feil">'+esc(e.message)+'</div>';}}
+async function lagre(){const b=$("lagre");b.disabled=true;$("msg").className="msg";$("msg").textContent="Lagrer …";
+  const p={tjenester:lesTjenester(),apent:lesApent(),apentTekst:$("apentTekst").value.trim(),ansatte:$("ansatte").value.split(",").map(s=>s.trim()).filter(Boolean),
+    ekstra:$("ekstra").value.trim(),telefon:$("telefon").value.trim(),epost:$("epost").value.trim(),adresse:$("adresse").value.trim(),omraade:$("omraade").value.trim()};
+  for(const [d,v] of Object.entries(p.apent))if(Array.isArray(v)&&!(v[0]&&v[1]&&v[0]<v[1])){$("msg").className="msg err";$("msg").textContent=DAGNAVN[d]+": «fra» må være før «til».";b.disabled=false;return;}
+  if(!p.tjenester.length){$("msg").className="msg err";$("msg").textContent="Legg inn minst én tjeneste.";b.disabled=false;return;}
+  try{const r=await fetch("/rediger/lagre",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({kunde:KUNDE,r:R,profil:p})});
+    const d=await r.json().catch(()=>({feil:"Uventet svar ("+r.status+")"}));if(!r.ok)throw new Error(d.feil||r.status);
+    fyll(d.profil);$("msg").className="msg ok";
+    $("msg").textContent=d.endringer.length?"Lagret! "+d.endringer.length+" endring"+(d.endringer.length>1?"er":"")+". Sekretæren bruker dem fra neste samtale.":"Ingen endringer å lagre.";}
+  catch(e){$("msg").className="msg err";$("msg").textContent=e.message;}finally{b.disabled=false;}}
+$("lagre").onclick=lagre;
+$("nyKat").onclick=()=>{const k=katBoks();$("kategorier").appendChild(k);k.querySelector("input").focus();merkEndret();};
+$("lagTekst").onclick=()=>{$("apentTekst").value=lagApentTekst();merkEndret();};
+document.addEventListener("input",e=>{if(e.target.closest("#skjema"))merkEndret();});
+document.addEventListener("change",e=>{if(e.target.closest("#skjema"))merkEndret();});
+last();
+</script></body></html>

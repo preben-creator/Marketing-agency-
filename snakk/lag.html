@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lag KI-sekretær · Orvelo</title><meta name="robots" content="noindex">
+<!-- Serveres av workeren orvelo-sekretar på /lag (hentes fra GitHub, så endringer her trenger ikke Cloudflare).
+     Lenke fra kontrollrommet: /lag?firma=..&nettside=..&bransje=..&kontaktperson=..&til=post@firma.no&variant=ny|ja&auto=1
+     auto=1 lager sekretæren med en gang (bruker admin-koden som er lagret i denne nettleseren). -->
+<style>
+:root{--bg:#0f0e17;--card:#1a1928;--ink:#eeedf7;--muted:#a3a0bd;--line:#2e2c44;--acc:#8f78ff;--acc2:#2fd0ee;--ok:#5fd59a;--warn:#ffb547;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:28px 16px 60px}
+h1{font-size:28px;margin:0 0 4px}h1 span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-size:18px;margin:0 0 10px}
+p.lead{color:var(--muted);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+input,textarea,select{font:inherit;text-transform:none;letter-spacing:0;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 11px;width:100%}
+textarea{font-family:Consolas,ui-monospace,monospace;font-size:12.5px;min-height:300px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:620px){.g{grid-template-columns:1fr}}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
+button,a.btn{font:inherit;font-weight:600;border-radius:9px;padding:9px 14px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;text-decoration:none;display:inline-block}
+.p{background:var(--acc);border-color:var(--acc);color:#0f0e17}
+button:disabled{opacity:.5;cursor:wait}
+.msg{font-size:14px}.err{color:var(--warn)}.ok{color:var(--ok)}
+.link{font-family:Consolas,monospace;font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px;word-break:break-all}
+.mail{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px;font-size:14px;max-height:420px;overflow:auto}
+.subj{font-weight:700;margin-bottom:8px}
+ul{margin:6px 0 0;padding-left:20px;color:var(--warn)}
+details summary{cursor:pointer;color:var(--muted);font-weight:600;margin-top:6px}
+</style></head><body><div class="wrap">
+<h1>Lag en <span>egen KI-sekretær</span></h1>
+<p class="lead">Skriv inn firmaet og nettsiden. Grok leser nettsiden og lager en sekretær med firmaets tjenester, priser og åpningstider. Etterpå får du en ferdig e-post med lenken, klar til å sendes fra Gmail.</p>
+<form class="card" id="f">
+  <div class="g">
+    <label>Firma<input id="firma" required placeholder="Berg Rør AS"></label>
+    <label>Nettside<input id="nettside" placeholder="bergror.no"></label>
+    <label>Fag / bransje<input id="bransje" placeholder="Rørlegger"></label>
+    <label>Kontaktperson<input id="kontaktperson" placeholder="Fornavn (valgfritt)"></label>
+    <label>E-post til<input id="til" type="email" placeholder="post@firma.no"></label>
+    <label>Mottaker<select id="variant"><option value="ny">Ny kunde (AS, med avmelding)</option><option value="ja">Har sagt ja / bedt om info</option></select></label>
+    <label>Admin-kode<input id="kode" type="password" required autocomplete="current-password"></label>
+  </div>
+  <div class="row"><button class="p" id="lagBtn">Lag sekretær</button><span class="msg" id="msg"></span></div>
+  <details style="margin-top:14px"><summary>Åpne en sekretær du har laget før</summary>
+    <div class="row"><input id="hentId" placeholder="id, f.eks. deja-vu-frisor-089t" style="flex:1;min-width:220px"><button type="button" id="hentBtn">Åpne</button></div>
+  </details>
+</form>
+
+<div class="card" id="res" hidden>
+  <h2>1. E-posten</h2>
+  <div class="mail"><div class="subj" id="emne"></div><div id="tekst"></div></div>
+  <div class="row"><a class="btn p" id="gmail" target="_blank" rel="noopener">Åpne i Gmail</a><button type="button" id="kopierTekst">Kopier tekst</button><a class="btn" id="apne" target="_blank" rel="noopener">Test sekretæren</a><span class="msg" id="msg3"></span></div>
+  <div id="usikker"></div>
+  <div class="row"><button type="button" id="retteBtn">Lenke kunden kan rette selv</button><span class="msg" id="msg4"></span></div>
+  <div id="retteBoks" hidden style="margin-top:10px"><p class="lead" style="margin:0 0 6px">Kunden kan rette tjenester, priser, varighet og åpningstider her. Du får e-post når noe endres, og forrige versjon lagres.</p>
+    <div class="link" id="retteLenke"></div><div class="row"><button type="button" id="kopierRette">Kopier</button><a class="btn" id="apneRette" target="_blank" rel="noopener">Åpne</a></div></div>
+  <details>
+    <summary>2. Rett opplysningene (valgfritt)</summary>
+    <p class="lead" style="margin:10px 0 6px">Lenken er den samme etter at du lagrer.</p>
+    <div class="link" id="lenke"></div>
+    <textarea id="json" spellcheck="false" style="margin-top:10px"></textarea>
+    <div class="row"><button type="button" id="lagre">Lagre endringer</button><button type="button" id="kopier">Kopier lenke</button><span class="msg" id="msg2"></span></div>
+  </details>
+</div>
+<script>
+const $=id=>document.getElementById(id);let id="",profil=null;
+const FRA="hilleren.bedrift@gmail.com", BOOK="https://calendar.app.google/24niGvpRRwPqNqr28";
+const PAKKER=[
+  ["Start","1 490 kr/mnd + 9 900 kr i oppstart, 3 mnd binding","Chat på nettsiden som svarer hele døgnet og sender dere en ferdig arbeidsordre på SMS eller e-post."],
+  ["Pro","2 990 kr/mnd + 19 900 kr i oppstart, 6 mnd binding","Alt i Start, pluss booking rett i kalenderen, SMS-bekreftelse og påminnelse til kunden, bilder fra kunden, flere språk og månedsrapport."],
+  ["Komplett","5 990 kr/mnd + 39 900 kr i oppstart, 12 mnd binding","Alt i Pro, pluss KI-telefonsvarer som tar telefonen når ingen svarer, tilbuds- og fakturautkast, ferdigmelding med bilder og automatisk forespørsel om Google-anmeldelse."]];
+const q=new URLSearchParams(location.search);
+["firma","nettside","bransje","kontaktperson","til","variant"].forEach(k=>{if(q.get(k))$(k).value=q.get(k);});
+try{$("kode").value=localStorage.getItem("orvelo-admin")||"";}catch{}
+
+function epost(lenke){
+  const firma=(profil&&profil.navn)||$("firma").value.trim()||"firmaet";
+  const navn=$("kontaktperson").value.trim().split(" ")[0];
+  const befaring=profil&&profil.type==="befaring";
+  const ny=$("variant").value==="ny";
+  const emne=ny?`${firma}: jeg har laget en KI-sekretær til dere som dere kan ringe nå`:`KI-sekretæren til ${firma} er klar, prøv den her`;
+  const L=[navn?`Hei ${navn},`:"Hei,",""];
+  if(ny) L.push(`Jeg heter Preben Hilleren og driver Orvelo i Bergen. Når man står midt i en jobb er det vanskelig å ta telefonen, og mange kunder ringer bare én gang før de prøver noen andre.`,"");
+  else L.push("Takk for praten! Som lovet har jeg laget en KI-sekretær til dere.","");
+  L.push(`Jeg har laget en KI-sekretær som allerede kjenner ${firma}: tjenestene, prisene og åpningstidene deres. Ring den rett fra nettleseren og snakk med den som om du var en kunde:`,
+    lenke,
+    `Trykk på den lilla knappen og tillat mikrofonen, eller skriv til den. Prøv for eksempel å ${befaring?"be om en befaring":"bestille en time"}, eller spør hva den koster.`,"",
+    "HVA KI-SEKRETÆREN GJØR",
+    "- Svarer kundene døgnet rundt på norsk, også når dere står i jobb eller har stengt",
+    befaring?"- Finner ut hva jobben gjelder, adresse og hvor mye det haster":"- Booker timer rett i kalenderen og svarer på spørsmål om priser og behandlinger",
+    "- Sender dere en kort oppsummering på SMS eller e-post",
+    "- Sier alltid fra at den er en digital assistent, og gir aldri andre priser enn deres egne","",
+    "PAKKER (alle priser eks. mva.)",
+    ...PAKKER.map(([n,p,h])=>`- ${n}: ${p}. ${h}`),
+    "Etter bindingstiden går avtalen videre måned for måned.","",
+    "SLIK KOMMER DERE I GANG",
+    "1. Et kort møte (ca. 20 min) der vi går gjennom hvordan dere vil at telefonen skal besvares",
+    "2. 30 minutter med dere til oppstart. Resten setter jeg opp",
+    "3. Sekretæren er i gang, og henvendelsene kommer rett på mobilen","",
+    "Vil du høre mer? Book et kort møte når det passer:",BOOK,
+    "Eller svar på denne e-posten, så tar jeg kontakt.","",
+    "Vennlig hilsen","Preben Hilleren","Orvelo · KI-sekretær for håndverkere",FRA,"Org.nr. 938 720 673");
+  if(ny) L.push("","--",`Du får denne e-posten fordi ${firma} er et aksjeselskap, og den er sendt til firmaets e-postadresse. Vil du ikke få flere e-poster fra Orvelo? Svar «Avmeld», så fjerner jeg dere fra listen med en gang.`);
+  else L.push("","--","Vil du ikke ha flere e-poster fra Orvelo, svar «Avmeld».");
+  return {emne,tekst:L.join("\n")};
+}
+function visEpost(lenke){
+  const {emne,tekst}=epost(lenke);
+  $("emne").textContent="Emne: "+emne;$("tekst").textContent=tekst;
+  $("gmail").href="https://mail.google.com/mail/?authuser="+encodeURIComponent(FRA)+"&view=cm&fs=1&to="+encodeURIComponent($("til").value.trim())+"&su="+encodeURIComponent(emne)+"&body="+encodeURIComponent(tekst);
+}
+function vis(d){id=d.id;profil=d.profil;$("retteBoks").hidden=true;$("res").hidden=false;$("lenke").textContent=d.lenke;$("apne").href=d.lenke;
+  const usikkert=d.profil.usikkert||[];$("json").value=JSON.stringify(d.profil,null,2);
+  $("usikker").innerHTML=usikkert.length?'<p class="msg err" style="margin:12px 0 0">Grok måtte gjette på dette. Sjekk det gjerne under «Rett opplysningene» før du sender:</p><ul>'+usikkert.map(x=>"<li>"+x.replace(/[<>&]/g,"")+"</li>").join("")+"</ul>":'<p class="msg ok" style="margin-top:12px">Grok fant det meste på nettsiden.</p>';
+  visEpost(d.lenke);}
+async function post(path,body){const r=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const d=await r.json().catch(()=>({feil:"Uventet svar ("+r.status+")"}));if(!r.ok)throw new Error(d.feil||r.status);return d;}
+async function lag(){const b=$("lagBtn");b.disabled=true;$("msg").className="msg";$("msg").textContent="Leser nettsiden og lager sekretæren (10–40 sek) …";
+  try{try{localStorage.setItem("orvelo-admin",$("kode").value);}catch{}
+    const d=await post("/lag",{kode:$("kode").value,firma:$("firma").value,nettside:$("nettside").value,bransje:$("bransje").value,kontaktperson:$("kontaktperson").value});
+    vis(d);$("msg").className="msg ok";$("msg").textContent="Ferdig! Se over e-posten og trykk «Åpne i Gmail».";$("res").scrollIntoView({behavior:"smooth"});}
+  catch(err){$("msg").className="msg err";$("msg").textContent=err.message;}finally{b.disabled=false;}}
+$("f").addEventListener("submit",e=>{e.preventDefault();lag();});
+["variant","til","kontaktperson"].forEach(k=>$(k).addEventListener("input",()=>{if(id)visEpost($("lenke").textContent);}));
+$("lagre").addEventListener("click",async()=>{let p;try{p=JSON.parse($("json").value);}catch{$("msg2").className="msg err";$("msg2").textContent="Teksten er ikke gyldig JSON. Sjekk komma og anførselstegn.";return;}
+  try{const d=await post("/lagre",{kode:$("kode").value,id,profil:p});vis(d);$("msg2").className="msg ok";$("msg2").textContent="Lagret.";}catch(err){$("msg2").className="msg err";$("msg2").textContent=err.message;}});
+function kopi(t,el,ok){navigator.clipboard.writeText(t).then(()=>{const o=el.textContent;el.textContent=ok;setTimeout(()=>el.textContent=o,1800);}).catch(()=>{});}
+async function retteLenke(){$("msg4").className="msg";$("msg4").textContent="Lager lenke …";
+  try{const d=await post("/rediger/lenke",{kode:$("kode").value,id});$("retteLenke").textContent=d.rediger;$("apneRette").href=d.rediger;$("retteBoks").hidden=false;$("msg4").textContent="";}
+  catch(err){$("msg4").className="msg err";$("msg4").textContent=err.message;}}
+$("retteBtn").addEventListener("click",retteLenke);
+$("kopierRette").addEventListener("click",()=>kopi($("retteLenke").textContent,$("kopierRette"),"Kopiert!"));
+$("hentBtn").addEventListener("click",async()=>{$("msg").className="msg";$("msg").textContent="Henter …";
+  try{try{localStorage.setItem("orvelo-admin",$("kode").value);}catch{}
+    const d=await post("/rediger/lenke",{kode:$("kode").value,id:$("hentId").value.trim()});
+    $("firma").value=d.profil.navn||"";vis(d);$("retteLenke").textContent=d.rediger;$("apneRette").href=d.rediger;$("retteBoks").hidden=false;
+    $("msg").className="msg ok";$("msg").textContent="Åpnet.";$("res").scrollIntoView({behavior:"smooth"});}
+  catch(err){$("msg").className="msg err";$("msg").textContent=err.message;}});
+$("kopier").addEventListener("click",()=>kopi($("lenke").textContent,$("kopier"),"Kopiert!"));
+$("kopierTekst").addEventListener("click",()=>kopi($("tekst").textContent,$("kopierTekst"),"Kopiert!"));
+if(q.get("auto")==="1"&&$("firma").value){if($("kode").value)lag();else{$("msg").className="msg err";$("msg").textContent="Skriv inn admin-koden én gang og trykk «Lag sekretær». Etter det husker nettleseren den.";$("kode").focus();}}
+</script></div></body></html>

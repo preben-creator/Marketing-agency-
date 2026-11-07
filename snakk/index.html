@@ -105,14 +105,14 @@ h1,h2,h3{font-family:var(--font-head);line-height:1.15;margin:0 0 .4em;letter-sp
   <div class="banner" id="banner"></div>
 
   <section class="hello">
-    <h1 id="hTitle">Ring den nye sekretæren til salongen</h1>
-    <p id="hLead">Trykk på knappen og snakk som en kunde som vil bestille time. Du kan også spørre om hvordan tjenesten fungerer og hva den koster.</p>
+    <h1 id="hTitle">Ring den nye KI-sekretæren</h1>
+    <p id="hLead">Trykk på knappen og snakk som en kunde. Du kan også spørre om hvordan tjenesten fungerer og hva den koster.</p>
   </section>
 
   <div class="grid">
     <section class="card" aria-label="Samtale">
       <div class="callhead">
-        <div class="who" id="who">Salongen</div>
+        <div class="who" id="who">Laster …</div>
         <div class="sub" id="whoSub">Digital sekretær</div>
         <button class="orb" id="orb" aria-label="Ring sekretæren">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="orbIcon"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
@@ -133,8 +133,8 @@ h1,h2,h3{font-family:var(--font-head);line-height:1.15;margin:0 0 .4em;letter-sp
 
     <aside class="side">
       <section class="card pad" aria-label="Kalender">
-        <h2>Salongens kalender</h2>
-        <p class="lead">Slik ser salongen det. Nye timer dukker opp her med en gang.</p>
+        <h2 id="kalH">Kalenderen</h2>
+        <p class="lead" id="kalLead">Slik ser bedriften det. Nye avtaler dukker opp her med en gang.</p>
         <div class="days" id="days"></div>
         <div class="slots" id="slots"></div>
       </section>
@@ -146,7 +146,7 @@ h1,h2,h3{font-family:var(--font-head);line-height:1.15;margin:0 0 .4em;letter-sp
     </aside>
   </div>
 
-  <p class="foot">Dette er en demo laget av Orvelo. Timer som bestilles her lagres ikke og havner ikke i salongens ekte system.<br>Spørsmål? Kontakt Preben på <a href="mailto:hilleren.bedrift@gmail.com">hilleren.bedrift@gmail.com</a>.</p>
+  <p class="foot">Dette er en demo laget av Orvelo. Timer som bestilles her lagres ikke og havner ikke i <span id="footSted">bedriftens</span> ekte system.<br>Spørsmål? Kontakt Preben på <a href="mailto:hilleren.bedrift@gmail.com">hilleren.bedrift@gmail.com</a>.</p>
 </div>
 
 <script>
@@ -156,6 +156,9 @@ const KUNDER = {
   dejavu: {
     navn: "Deja Vu Frisør",
     kortnavn: "Deja Vu",
+    bransje: "frisørsalong",
+    type: "time",
+    sted: "salongen",
     kontaktperson: "Jessica",
     adresse: "Solheimsgaten 78, 5054 Bergen (Danmarksplass)",
     telefon: "55 59 09 54",
@@ -163,7 +166,11 @@ const KUNDER = {
     // 0 = søndag ... 6 = lørdag. null = stengt. "avtale" = bare etter avtale.
     apent: {0:null, 1:"avtale", 2:["10:00","17:00"], 3:["10:00","17:00"], 4:["10:00","17:00"], 5:["10:00","17:00"], 6:["10:00","15:00"]},
     apentTekst: "Mandag: etter avtale (ingen drop-in). Tirsdag til fredag: 10 til 17. Lørdag: 10 til 15. Søndag: stengt. Tirsdag til fredag kan timer avtales utenom vanlig åpningstid etter avtale med frisøren.",
-    frisorer: ["Jessica", "Gitte"],
+    ansatte: ["Jessica", "Gitte"],
+    mote: "Salongen har et oppfølgingsmøte med Preben mandag 9. november klokka halv tre.",
+    stikkord: ["Deja Vu","balayage","foilayage","lowlights","highlights","Danmarksplass","Solheimsgaten","Gitte","Jessica"],
+    tips: "Spør om hårlengde hvis det påvirker pris eller tid.",
+    chips: ["Har dere ledig time til klipp på fredag?","Hva koster balayage på langt hår?","Jeg vil flytte timen min","Har dere åpent på mandag?"],
     tjenester: [
       ["Klipp", [["Klipp 15 min, uten vask","495 kr",15],["Klipp 30 min","845 kr",30],["Klipp 45 min","1 095 kr",45],["Klipp barn (opptil 10 år), uten vask","675 kr",30],["Lugg","200 kr",15],["Ny lugg","400 kr",15]]],
       ["Farge", [["Farge, ettervekst","fra 1 200 kr",90],["Farge, kort hår","fra 1 650 kr",90],["Farge, langt hår","fra 2 200 kr",120],["Fargeskyll","fra 550 kr",45]]],
@@ -176,27 +183,35 @@ const KUNDER = {
     ekstra: "Salongen leier også ut frisørstol til selvstendige frisører og et eget behandlingsrom for hudpleie og kosmetiske behandlinger. Spørsmål om utleie: ta imot navn og nummer, så ringer Gitte tilbake. Alle priser er veiledende; eksakt pris avtales med frisøren før behandlingen.",
   },
 };
-const KUNDE = KUNDER[new URLSearchParams(location.search).get("firma")] || KUNDER.dejavu;
+let KUNDE = KUNDER[new URLSearchParams(location.search).get("firma")] || KUNDER.dejavu;
+// Ord som avhenger av bedriften (settes på nytt når en egen profil er lastet)
+let STED="salongen", ORD="time";
+function settOrd(){
+  STED = KUNDE.sted || (KUNDE.type==="befaring" ? "firmaet" : "salongen");
+  ORD = KUNDE.type==="befaring" ? "befaring" : "time";
+  KUNDE.ansatte = KUNDE.ansatte || KUNDE.frisorer || [];
+}
+settOrd();
 
 /* ================= Fakta om tjenesten (for spørsmål fra salongeieren) ================= */
-const PRODUKT = `
+function produkt(){ return `
 Tjenesten heter KI-sekretær og leveres av Orvelo, ved Preben Hilleren (e-post hilleren.bedrift@gmail.com).
-Det personen opplever akkurat nå, er hvordan sekretæren kan ta telefonen for salongen.
+Det personen opplever akkurat nå, er hvordan sekretæren kan ta telefonen for ${STED}.
 
-Hva den gjør: Svarer kundene døgnet rundt, også når alle står med kunder i stolen. Den booker timer rett i kalenderen, svarer på spørsmål om priser, behandlinger og åpningstider, sender SMS-bekreftelse og påminnelse til kunden, tar imot beskjeder og sender dem videre til salongen. Den kan svare på engelsk og andre språk. Den sier alltid fra at den er en digital assistent.
+Hva den gjør: Svarer kundene døgnet rundt, også når alle er opptatt med jobb. Den ${ORD==="befaring"?"booker befaring":"booker timer"} rett i kalenderen, svarer på spørsmål om priser, tjenester og åpningstider, sender SMS-bekreftelse og påminnelse til kunden, tar imot beskjeder og sender dem videre. Den kan svare på engelsk og andre språk. Den sier alltid fra at den er en digital assistent.
 
 Pakker (alle priser i kroner, eksklusive mva):
 - Start: 1 490 kr i måneden, oppstart 9 900 kr engangs, 3 måneders binding. Sekretær i chat på nettsiden som svarer hele døgnet og sender henvendelsene videre på e-post eller SMS.
 - Pro: 2 990 kr i måneden, oppstart 19 900 kr engangs, 6 måneders binding. Alt i Start, pluss booking rett i kalenderen, SMS-bekreftelse og påminnelse til kunden, flere språk og en månedsrapport med antall henvendelser og bookinger.
-- Komplett: 5 990 kr i måneden, oppstart 39 900 kr engangs, 12 måneders binding. Alt i Pro, pluss KI-telefonsvarer som tar telefonen når ingen i salongen rekker det (det personen prøver nå), sammendrag av samtalen på SMS, og at den ber fornøyde kunder om en Google-anmeldelse.
+- Komplett: 5 990 kr i måneden, oppstart 39 900 kr engangs, 12 måneders binding. Alt i Pro, pluss KI-telefonsvarer som tar telefonen når ingen rekker det (det personen prøver nå), sammendrag av samtalen på SMS, og at den ber fornøyde kunder om en Google-anmeldelse.
 Etter bindingstiden går avtalen videre måned for måned.
 
-Oppstart: Preben trenger rundt 30 minutter med salongen. Så setter han opp resten: behandlinger og priser, åpningstider, frisørene og vanlige spørsmål.
-Hvem bestemmer: Sekretæren gir aldri andre priser enn prislisten, og salongen bestemmer hva den kan si og gjøre.
+Oppstart: Preben trenger rundt 30 minutter med ${STED}. Så setter han opp resten: tjenester og priser, åpningstider, de ansatte og vanlige spørsmål.
+Hvem bestemmer: Sekretæren gir aldri andre priser enn prislisten, og ${STED} bestemmer hva den kan si og gjøre.
 
 Si alltid at prisene er eksklusive mva.
-Salongen har et oppfølgingsmøte med Preben mandag 10. november klokka halv tre.
-Ting du IKKE vet sikkert, og som du derfor skal si at Preben svarer på (gjerne på det møtet): hvilket bookingsystem den kobles mot og hvordan, personvern og hvor dataene lagres, telefonnummer og viderekobling, rabatter eller tilpassede pakker, og alt annet som ikke står her. Ikke dikt opp detaljer.`;
+${KUNDE.mote||"Vil de vite mer eller komme i gang, kan de booke et møte med Preben via lenken i e-posten de fikk, eller sende ham en e-post."}
+Ting du IKKE vet sikkert, og som du derfor skal si at Preben svarer på: hvilket bookingsystem den kobles mot og hvordan, personvern og hvor dataene lagres, telefonnummer og viderekobling, rabatter eller tilpassede pakker, og alt annet som ikke står her. Ikke dikt opp detaljer.`; }
 
 /* ================= Innstillinger ================= */
 const P = new URLSearchParams(location.search);
@@ -231,9 +246,10 @@ const I_DAG = osloNow().iso;
 const DAGER = Array.from({length:14},(_,i)=>addDays(I_DAG,i));
 const KAL = {}; // iso -> [{fra,til,hva,hvem,ny}]
 function rng(seed){let s=seed;return()=>{s=(s*1103515245+12345)%2147483648;return s/2147483648;};}
-(function fyllKalender(){
+function fyllKalender(){
   const navn=["Kari","Ingrid","Nora","Emma","Sofie","Maja","Thea","Ola","Lars","Hanne","Silje","Mona","Anders","Line","Tone"];
-  const hva=["Klipp 30 min","Farge, ettervekst","Balayage","Klipp 45 min","Vask og føhn","Striper","Klipp 15 min","Farge og nappe bryn"];
+  const hva=KUNDE.tjenester.flatMap(([,l])=>l.map(t=>t[0])).slice(0,12);
+  if(!hva.length) hva.push(ORD==="befaring"?"Befaring":"Time");
   for(const iso of DAGER){
     KAL[iso]=[];
     const a=KUNDE.apent[dow(iso)]; if(!Array.isArray(a)) continue;
@@ -244,7 +260,7 @@ function rng(seed){let s=seed;return()=>{s=(s*1103515245+12345)%2147483648;retur
       else t+=30;
     }
   }
-})();
+}
 function ledige(iso,varighet){
   const a=KUNDE.apent[dow(iso)];
   if(!Array.isArray(a)) return null;
@@ -255,7 +271,7 @@ function ledige(iso,varighet){
   }
   return ut;
 }
-let valgtDag=DAGER.find(d=>Array.isArray(KUNDE.apent[dow(d)]))||I_DAG;
+let valgtDag=I_DAG;
 function tegnKalender(){
   $("days").innerHTML=DAGER.map(iso=>{const d=dateFromIso(iso);const nye=(KAL[iso]||[]).filter(b=>b.ny).length;
     const st=!Array.isArray(KUNDE.apent[dow(iso)]);
@@ -276,22 +292,23 @@ function logg(type,tittel,html){
 
 /* ================= Verktøy sekretæren kan bruke ================= */
 const TOOLS = [
-  {type:"function",name:"finn_ledige_tider",description:"Finn ledige tider i salongens kalender en bestemt dato. Bruk ALLTID denne før du foreslår eller bekrefter et klokkeslett.",
+  {type:"function",name:"finn_ledige_tider",description:"Finn ledige tider i kalenderen en bestemt dato. Bruk ALLTID denne før du foreslår eller bekrefter et klokkeslett.",
    parameters:{type:"object",properties:{dato:{type:"string",description:"Datoen i formatet ÅÅÅÅ-MM-DD"},behandling:{type:"string"},varighet_min:{type:"number",description:"Omtrentlig varighet i minutter"}},required:["dato"]}},
-  {type:"function",name:"bestill_time",description:"Bestill en time når kunden har bekreftet behandling, dato, klokkeslett, navn og mobilnummer.",
-   parameters:{type:"object",properties:{navn:{type:"string"},mobil:{type:"string"},behandling:{type:"string"},dato:{type:"string",description:"ÅÅÅÅ-MM-DD"},klokkeslett:{type:"string",description:"TT:MM"},varighet_min:{type:"number"},frisor:{type:"string"},notat:{type:"string"}},required:["navn","mobil","behandling","dato","klokkeslett"]}},
-  {type:"function",name:"legg_igjen_beskjed",description:"Send en beskjed til salongen, for eksempel om noe du ikke kan svare på, avbestilling, flytting av time eller utleie.",
+  {type:"function",name:"bestill_time",description:"Bestill en time eller befaring når kunden har bekreftet hva det gjelder, dato, klokkeslett, navn og mobilnummer (og adresse ved befaring).",
+   parameters:{type:"object",properties:{navn:{type:"string"},mobil:{type:"string"},behandling:{type:"string"},dato:{type:"string",description:"ÅÅÅÅ-MM-DD"},klokkeslett:{type:"string",description:"TT:MM"},varighet_min:{type:"number"},frisor:{type:"string",description:"Ansatt kunden ønsker, hvis noen"},adresse:{type:"string",description:"Adressen ved befaring"},notat:{type:"string"}},required:["navn","mobil","behandling","dato","klokkeslett"]}},
+  {type:"function",name:"legg_igjen_beskjed",description:"Send en beskjed videre, for eksempel om noe du ikke kan svare på, avbestilling, flytting, akutte saker eller klager.",
    parameters:{type:"object",properties:{navn:{type:"string"},mobil:{type:"string"},beskjed:{type:"string"}},required:["beskjed"]}},
 ];
 function varighetFor(behandling, v){
   if(v && v>=15 && v<=240) return Math.round(v/15)*15;
   const b=(behandling||"").toLowerCase();
   for(const [,liste] of KUNDE.tjenester) for(const [n,,min] of liste) if(b && n.toLowerCase()===b.trim()) return min;
+  if(ORD==="befaring") return 60;
   if(/barn/.test(b)&&/klipp/.test(b)) return 30;
   if(/45/.test(b)) return 45;
   if(/balayage|foil|stripe|highlight|bleking|perman/.test(b)) return 150;
   if(/farge/.test(b)) return 90;
-  return 30;
+  return ORD==="befaring" ? 60 : 30;
 }
 function runTool(name,a){
   if(name==="finn_ledige_tider"){
@@ -302,7 +319,7 @@ function runTool(name,a){
     const v=varighetFor(a.behandling,a.varighet_min); const l=ledige(iso,v);
     valgtDag=iso; tegnKalender();
     logg("","Sjekket kalenderen",`${esc(pent(iso))}${a.behandling?" · "+esc(a.behandling):""}`);
-    if(l===null) return {dato:iso,dag:pent(iso),ledige:[],info:KUNDE.apent[dow(iso)]==="avtale"?"Mandag er bare etter avtale. Tilby å legge igjen beskjed så salongen ringer tilbake, eller foreslå tirsdag.":"Salongen er stengt denne dagen."};
+    if(l===null) return {dato:iso,dag:pent(iso),ledige:[],info:KUNDE.apent[dow(iso)]==="avtale"?`Denne dagen er bare etter avtale. Tilby å legge igjen beskjed så ${STED} ringer tilbake, eller foreslå en annen dag.`:`${STED} har stengt denne dagen.`};
     // gi modellen et lite, spredt utvalg
     const utvalg = l.length<=6 ? l : [0,.2,.4,.6,.8,1].map(f=>l[Math.round(f*(l.length-1))]).filter((x,i,arr)=>arr.indexOf(x)===i);
     return {dato:iso,dag:pent(iso),varighet_min:v,ledige:utvalg,antall_ledige:l.length};
@@ -316,15 +333,17 @@ function runTool(name,a){
     const fra=toMin(t);
     KAL[iso].push({fra,til:fra+v,hva:a.behandling,hvem:a.navn,ny:true});
     valgtDag=iso; tegnKalender();
-    logg("","Ny time i kalenderen",`${esc(a.behandling)} · ${esc(pent(iso))} kl. ${esc(t)}<br>${esc(a.navn)}, ${esc(a.mobil)}${a.frisor?" · hos "+esc(a.frisor):""}${a.notat?`<br><span class="q">${esc(a.notat)}</span>`:""}`);
-    const sms=`Hei ${a.navn}! Du har time hos ${KUNDE.navn} ${pent(iso)} kl. ${t} (${a.behandling}). Adresse: ${KUNDE.adresse.split(" (")[0]}. Trenger du å endre? Svar på denne meldingen. Velkommen!`;
+    logg("",ORD==="befaring"?"Ny befaring i kalenderen":"Ny time i kalenderen",`${esc(a.behandling)} · ${esc(pent(iso))} kl. ${esc(t)}<br>${esc(a.navn)}, ${esc(a.mobil)}${a.adresse?" · "+esc(a.adresse):""}${a.frisor?" · hos "+esc(a.frisor):""}${a.notat?`<br><span class="q">${esc(a.notat)}</span>`:""}`);
+    const sms = ORD==="befaring"
+      ? `Hei ${a.navn}! ${KUNDE.kortnavn||KUNDE.navn} kommer på befaring ${pent(iso)} kl. ${t}${a.adresse?" til "+a.adresse:""} (${a.behandling}). Trenger du å endre? Svar på denne meldingen.`
+      : `Hei ${a.navn}! Du har time hos ${KUNDE.navn} ${pent(iso)} kl. ${t} (${a.behandling}).${KUNDE.adresse?" Adresse: "+KUNDE.adresse.split(" (")[0]+".":""} Trenger du å endre? Svar på denne meldingen. Velkommen!`;
     setTimeout(()=>logg("sms",`SMS til ${a.mobil} (simulert)`,`<span class="q">«${esc(sms)}»</span>`),900);
-    setTimeout(()=>logg("sms","Påminnelse planlagt (simulert)",`SMS sendes til kunden dagen før timen.`),1600);
+    setTimeout(()=>logg("sms","Påminnelse planlagt (simulert)",`SMS sendes til kunden dagen før.`),1600);
     return {ok:true,bekreftet:`${a.behandling}, ${pent(iso)} klokka ${t}`,sms_sendt:true};
   }
   if(name==="legg_igjen_beskjed"){
-    logg("note","Beskjed til salongen",`${a.navn?esc(a.navn):"Ukjent"}${a.mobil?", "+esc(a.mobil):""}<br><span class="q">«${esc(a.beskjed)}»</span>`);
-    return {ok:true,info:"Beskjeden er sendt til salongen på SMS."};
+    logg("note","Beskjed til "+(KUNDE.kortnavn||KUNDE.navn),`${a.navn?esc(a.navn):"Ukjent"}${a.mobil?", "+esc(a.mobil):""}<br><span class="q">«${esc(a.beskjed)}»</span>`);
+    return {ok:true,info:`Beskjeden er sendt til ${STED} på SMS.`};
   }
   return {feil:"Ukjent verktøy"};
 }
@@ -334,8 +353,18 @@ function instruksjoner(){
   const n=osloNow();
   const prisliste=KUNDE.tjenester.map(([kat,l])=>`${kat}: `+l.map(([x,p,m])=>`${x} ${p} (ca. ${m} min)`).join("; ")).join("\n");
   const uke=DAGER.slice(0,8).map(iso=>`${pent(iso)} = ${iso}`).join(", ");
+  const befaring = ORD==="befaring";
+  const kontakt=[KUNDE.adresse&&`Adresse: ${KUNDE.adresse}.`,KUNDE.omraade&&`Område de dekker: ${KUNDE.omraade}.`,KUNDE.telefon&&`Telefon: ${KUNDE.telefon}.`,KUNDE.epost&&`E-post: ${KUNDE.epost}.`].filter(Boolean).join(" ");
+  const steg = befaring ? `1. Finn ut hva jobben gjelder, og om noe haster (lekkasje, strømbrudd, fare). Haster det, gi et kort og trygt råd (for eksempel å stenge hovedkranen eller slå av sikringen) og bruk legg_igjen_beskjed med HASTER først i beskjeden.
+2. Spør hvilken dag som passer for befaring, og bruk verktøyet finn_ledige_tider. Foreslå to eller tre av de ledige tidene. Finn aldri på tider selv.
+3. Når kunden har valgt tid: spør om navn, mobilnummer og adressen jobben gjelder. Gjenta nummeret kort for å sjekke.
+4. Bruk bestill_time. Bekreft med én setning, og si at kunden får en SMS med bekreftelse.`
+  : `1. Finn ut hva kunden vil ha. ${KUNDE.tips||""}
+2. Spør hvilken dag som passer, og bruk verktøyet finn_ledige_tider. Foreslå to eller tre av de ledige tidene. Finn aldri på tider selv.
+3. Når kunden har valgt tid: spør om fornavn og mobilnummer, og gjenta nummeret kort for å sjekke.
+4. Bruk bestill_time. Bekreft med én setning, og si at kunden får en SMS med bekreftelse.`;
   return `# Rolle
-Du er den digitale sekretæren til ${KUNDE.navn}, en frisørsalong i ${KUNDE.adresse}. Du tar telefonen for salongen, booker timer og svarer på spørsmål. Du er vennlig, varm og effektiv, som en erfaren resepsjonist i Bergen.
+Du er den digitale sekretæren til ${KUNDE.navn}, ${/(firma|verksted|studio|byrå|snekkeri|bakeri|renseri|garasje|selskap)$/i.test(KUNDE.bransje||"")?"et":"en"} ${KUNDE.bransje||"bedrift"}${KUNDE.adresse?" i "+KUNDE.adresse:""}. Du tar telefonen for ${STED}, ${befaring?"booker befaringer":"booker timer"} og svarer på spørsmål. Du er vennlig, varm og effektiv, som en erfaren resepsjonist.
 
 # Språk og stil
 - Snakk alltid norsk bokmål, med naturlig og avslappet tone. Bytt språk bare hvis personen snakker et annet språk.
@@ -347,31 +376,28 @@ Du er den digitale sekretæren til ${KUNDE.navn}, en frisørsalong i ${KUNDE.adr
 # Tid
 I dag er det ${pent(n.iso)} (${n.iso}), og klokka er ${n.tid}. Kommende dager: ${uke}.
 
-# Salongen
-Navn: ${KUNDE.navn}. Adresse: ${KUNDE.adresse}. Telefon: ${KUNDE.telefon}. E-post: ${KUNDE.epost}.
+# Bedriften
+Navn: ${KUNDE.navn}. ${kontakt}
 Åpningstider: ${KUNDE.apentTekst}
-Frisører: ${KUNDE.frisorer.join(" og ")}.
-${KUNDE.ekstra}
+${KUNDE.ansatte.length?"Ansatte: "+KUNDE.ansatte.join(", ")+".":""}
+${KUNDE.ekstra||""}
 
 # Prisliste (veiledende)
 ${prisliste}
 
 # Slik booker du
-1. Finn ut hvilken behandling kunden vil ha. Spør om hårlengde hvis det påvirker pris eller tid.
-2. Spør hvilken dag som passer, og bruk verktøyet finn_ledige_tider. Foreslå to eller tre av de ledige tidene. Finn aldri på tider selv.
-3. Når kunden har valgt tid: spør om fornavn og mobilnummer, og gjenta nummeret kort for å sjekke.
-4. Bruk bestill_time. Bekreft med én setning, og si at kunden får en SMS med bekreftelse.
-Avbestilling, flytting av time, klager, utleie av stol eller rom, og ting du ikke vet: bruk legg_igjen_beskjed, og si at salongen ringer tilbake.
+${steg}
+Avbestilling, flytting, klager og ting du ikke vet: bruk legg_igjen_beskjed, og si at ${STED} ringer tilbake.
 
-# Når det er salongeieren som spør om tjenesten
-Personen som ringer kan være ${KUNDE.kontaktperson} eller andre fra salongen som prøver ut denne demoen. Hvis de spør om deg selv, hva du koster, hvordan du fungerer eller hvordan det settes opp, så svar ærlig og kort ut fra faktaene under. Gå så gjerne tilbake til rollen som sekretær hvis de vil prøve mer.
-${PRODUKT}
+# Når det er eieren som spør om tjenesten
+Personen som ringer kan være ${KUNDE.kontaktperson||"eieren"} eller andre fra ${STED} som prøver ut denne demoen. Hvis de spør om deg selv, hva du koster, hvordan du fungerer eller hvordan det settes opp, så svar ærlig og kort ut fra faktaene under. Gå så gjerne tilbake til rollen som sekretær hvis de vil prøve mer.
+${produkt()}
 
 # Regler
 - Du er en digital assistent og sier det hvis noen spør. Lat aldri som du er et menneske.
-- Gi aldri andre priser enn prislisten, og lov aldri noe salongen ikke har sagt.
+- Gi aldri andre priser enn prislisten, og lov aldri noe ${STED} ikke har sagt.
 - Dette er en demo: SMS og beskjeder sendes ikke på ekte, men det skal du bare nevne hvis noen spør.
-- Hvis noen snakker om noe som ikke har med salongen eller tjenesten å gjøre, styr høflig tilbake.`;
+- Hvis noen snakker om noe som ikke har med ${STED} eller tjenesten å gjøre, styr høflig tilbake.`;
 }
 
 /* ================= Lyd og sanntidstilkobling ================= */
@@ -436,13 +462,13 @@ async function kobleTil(medMikrofon){
     ws.send(JSON.stringify({type:"session.update",session:{
       voice:VOICE, instructions:instruksjoner(), tools:TOOLS,
       turn_detection:{type:"server_vad"},
-      audio:{input:{format:{type:"audio/pcm",rate:inRate},transcription:{language_hint:"no",keyterms:["Deja Vu","balayage","foilayage","lowlights","highlights","Danmarksplass","Solheimsgaten","Orvelo","Komplett","Gitte","Jessica"]}},
+      audio:{input:{format:{type:"audio/pcm",rate:inRate},transcription:{language_hint:"no",keyterms:[...new Set([...(KUNDE.stikkord||[]),KUNDE.kortnavn||KUNDE.navn,...KUNDE.ansatte,"Orvelo","Komplett"])].slice(0,25)}},
              output:{format:{type:"audio/pcm",rate:24000}}},
     }}));
     if(micStream) await startMic();
     // fast hilsen uten modellkall
     ws.send(JSON.stringify({type:"conversation.item.create",item:{type:"force_message",role:"assistant",interruptible:true,
-      content:[{type:"output_text",text:`Hei, du har kommet til ${KUNDE.navn}! Jeg er salongens digitale assistent. Hva kan jeg hjelpe deg med?`}]}}));
+      content:[{type:"output_text",text:`Hei, du har kommet til ${KUNDE.navn}! Jeg er den digitale assistenten deres. Hva kan jeg hjelpe deg med?`}]}}));
     timerId=setInterval(sjekkTid,1000);
     meter();
     setStatus("live", micStream?"I samtale · snakk når du vil":"Tilkoblet · skriv under");
@@ -537,20 +563,54 @@ async function sendTekst(txt){
 $("compose").addEventListener("submit",(e)=>{e.preventDefault();const v=$("text").value;$("text").value="";sendTekst(v);});
 
 /* ================= Tekst på siden ================= */
-const CHIPS = [
-  ["Prøv som kunde", ["Har dere ledig time til klipp på fredag?","Hva koster balayage på langt hår?","Jeg vil flytte timen min","Har dere åpent på mandag?"]],
-  ["Spør om tjenesten", ["Hva koster dette i måneden?","Hvordan kommer vi i gang?","Hva skjer når ingen rekker å ta telefonen?"]],
-];
-$("chips").innerHTML=CHIPS.map(([g,l])=>`<div class="chipgroup">${esc(g)}</div>`+l.map(x=>`<button class="chip" type="button">${esc(x)}</button>`).join("")).join("");
+function standardChips(){
+  if(KUNDE.chips&&KUNDE.chips.length) return KUNDE.chips.slice(0,4);
+  const t=KUNDE.tjenester.flatMap(([,l])=>l).slice(0,3);
+  return ORD==="befaring"
+    ? [`Kan dere komme på befaring neste uke?`, t[0]?`Hva koster ${t[0][0].toLowerCase()}?`:"Hva koster det?", "Det lekker under kjøkkenbenken, haster det?", "Hvilke områder dekker dere?"]
+    : [`Har dere ledig time på fredag?`, t[0]?`Hva koster ${t[0][0].toLowerCase()}?`:"Hva koster det?", "Jeg vil flytte timen min", "Når har dere åpent?"];
+}
+function skrivTekster(){
+  const CHIPS = [
+    ["Prøv som kunde", standardChips()],
+    ["Spør om tjenesten", ["Hva koster dette i måneden?","Hvordan kommer vi i gang?","Hva skjer når ingen rekker å ta telefonen?"]],
+  ];
+  $("chips").innerHTML=CHIPS.map(([g,l])=>`<div class="chipgroup">${esc(g)}</div>`+l.map(x=>`<button class="chip" type="button">${esc(x)}</button>`).join("")).join("");
+  const kort=KUNDE.kortnavn||KUNDE.navn;
+  $("who").textContent=KUNDE.navn;
+  $("whoSub").textContent="Digital sekretær"+(KUNDE.adresse?" · "+KUNDE.adresse.split(",")[0]:"");
+  document.title=`Snakk med sekretæren til ${KUNDE.navn} · Orvelo`;
+  $("hTitle").textContent = KUNDE.kontaktperson ? `Hei ${KUNDE.kontaktperson}! Ring den nye sekretæren til ${kort}` : `Ring den nye sekretæren til ${kort}`;
+  $("hLead").textContent=`Trykk på den lilla knappen og snakk som en kunde som vil ${ORD==="befaring"?"ha hjelp med en jobb":"bestille time"}. Du kan også spørre henne om hvordan tjenesten fungerer og hva den koster. Hun svarer med ${kort} sine tjenester, priser og åpningstider.`;
+  $("kalH").textContent=`Kalenderen til ${kort}`;
+  $("kalLead").textContent=`Slik ser ${STED} det. Nye ${ORD==="befaring"?"befaringer":"timer"} dukker opp her med en gang.`;
+  $("footSted").textContent=`${kort} sitt`;
+}
 $("chips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(b)sendTekst(b.textContent);});
-$("who").textContent=KUNDE.navn;
-$("whoSub").textContent="Digital sekretær · "+KUNDE.adresse.split(",")[0];
-document.title=`Snakk med sekretæren til ${KUNDE.navn} · Orvelo`;
-if(KUNDE.kontaktperson){$("hTitle").textContent=`Hei ${KUNDE.kontaktperson}! Ring den nye sekretæren til ${KUNDE.kortnavn}`;}
-$("hLead").textContent="Trykk på den lilla knappen og snakk som en kunde som vil bestille time. Du kan også spørre henne om hvordan tjenesten fungerer og hva den koster. Hun svarer med salongens ekte priser og åpningstider.";
 if(!window.WebSocket||!(window.AudioContext||window.webkitAudioContext)){const b=$("banner");b.style.display="block";b.textContent="Nettleseren din støtter ikke tale her. Prøv Chrome, Edge eller Safari.";}
 else if(!navigator.mediaDevices||!window.isSecureContext){$("hint").textContent="Mikrofonen er ikke tilgjengelig her. Du kan fortsatt skrive.";}
-tegnKalender();
+
+/* ================= Oppstart: last egen profil hvis lenken har ?kunde= ================= */
+async function oppstart(){
+  const id=P.get("kunde");
+  if(id){
+    $("orb").disabled=true;
+    try{
+      const base=TOKEN_URL.replace(/\/token$/,"");
+      const r=await fetch(`${base}/kunde?id=${encodeURIComponent(id)}&k=${encodeURIComponent(DEMO_KODE)}`);
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(d.feil||"Fant ikke sekretæren");
+      KUNDE=d; settOrd();
+    }catch(e){
+      const b=$("banner");b.style.display="block";b.textContent=(e.message||"Fant ikke sekretæren")+" Viser en eksempelsalong i stedet.";
+    }finally{$("orb").disabled=false;}
+  }
+  fyllKalender();
+  valgtDag=DAGER.find(d=>Array.isArray(KUNDE.apent[dow(d)]))||I_DAG;
+  skrivTekster();
+  tegnKalender();
+}
+oppstart();
 </script>
 </body>
 </html>
