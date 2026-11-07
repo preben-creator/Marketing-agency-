@@ -15,6 +15,7 @@
 //   BOOKING_URL          (Text,   valgfri)  Google Avtaleplan-lenken
 //   VARSEL_EPOST         (Text,   valgfri)  hvor sammendrag sendes (via FormSubmit)
 //   STEMME               (Text,   valgfri)  Grok-stemme, standard «ara»
+//   SMS_AVSENDER         (Text,   valgfri)  navnet SMS-ene kommer fra, standard «Orvelo» (tom = Twilio-nummeret)
 //   TEST_NUMMER          (Text,   valgfri)  ditt eget nummer: hopper over SMS-koden (koden blir 0000) mens Twilio er prøvekonto
 
 const BOOKING_URL_DEFAULT = "https://calendar.app.google/24niGvpRRwPqNqr28";
@@ -83,7 +84,14 @@ async function twilio(env, sti, felter) {
   return { ok: r.ok, status: r.status, tekst };
 }
 
-function sendSms(env, til, tekst) {
+// SMS sendes med avsendernavnet «Orvelo» (Norge godtar alfanumerisk avsender).
+// Hvis Twilio avviser det, prøver vi på nytt fra Twilio-nummeret.
+async function sendSms(env, til, tekst) {
+  const navn = env.SMS_AVSENDER === undefined ? "Orvelo" : env.SMS_AVSENDER;
+  if (navn) {
+    const r = await twilio(env, "Messages.json", { To: til, From: navn, Body: tekst });
+    if (r.ok) return r;
+  }
   return twilio(env, "Messages.json", { To: til, From: env.TWILIO_FROM, Body: tekst });
 }
 

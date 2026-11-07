@@ -42,3 +42,12 @@ Da må du oppgradere til **Workers Paid** (5 dollar i måneden).
 
 Sammendrag og samtykker sendes via FormSubmit til `hilleren.bedrift@gmail.com`. Første gang kommer en
 aktiverings-e-post fra FormSubmit, som du må trykke **Activate** i.
+
+## Norsk nummer (før ekte kunder)
+
+Kunder tar sjelden telefonen når et amerikansk +1-nummer ringer. Kjøp derfor et norsk nummer i Twilio
+(**Phone Numbers → Buy a number → Norway**, ca. 3,90 dollar i måneden). Twilio krever en «Regulatory Bundle» med navn,
+norsk adresse og legitimasjon før du får nummeret. Godkjenning tar vanligvis 1–3 virkedager.
+Når nummeret er klart, bytter du `TWILIO_FROM` i Cloudflare til det nye nummeret. Det trengs ingen kodeendring.
+
+SMS-ene kommer fra avsendernavnet «Orvelo» (kan endres med `SMS_AVSENDER`).
