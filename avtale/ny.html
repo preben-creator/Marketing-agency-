@@ -100,13 +100,14 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const iso=d=>d.toISOString().slice(0,10);
 const om=(n)=>{const d=new Date();d.setDate(d.getDate()+n);return iso(d);};
 $("dato").value=iso(new Date());$("gyldig").value=om(14);
-$("innledning").value="Takk for en hyggelig prat! Her er tilbudet på en KI-sekretær som tar telefonen når dere er opptatt, bekrefter timer på SMS og svarer kundene deres på nettsiden.";
+$("innledning").value="Takk for en hyggelig prat! Her er tilbudet på en KI-sekretær som er laget for firmaet deres, og som svarer kundene deres døgnet rundt.";
 $("tjenester").value=[
- "KI-sekretær på telefonen: tar telefonen når dere er opptatt, booker timer, svarer på spørsmål om priser og åpningstider, og sender dere et kort sammendrag av samtalen.",
- "SMS til kunden: bekreftelse når timen er bestilt, og påminnelse dagen før.",
- "Assistent på nettsiden: svarer kundene i chat døgnet rundt og kan bestille time.",
- "Oppsett: jeg setter opp alt, legger inn tjenestene og prislisten deres, og tester sammen med dere. Det tar rundt 30 minutter av deres tid.",
- "Endringer: send meg nye priser, tjenester eller åpningstider på e-post, så oppdaterer jeg sekretæren innen to virkedager."
+ "Egen KI-sekretær: laget for firmaet deres ut fra nettsiden, med tjenestene, prisene og åpningstidene deres. Hun snakker og skriver norsk og svarer kundene døgnet rundt.",
+ "Svar og forslag til time: sekretæren svarer på spørsmål om tjenester, priser og åpningstider, og foreslår ledige tider til kundene.",
+ "Lenke dere kan dele: kundene når sekretæren via en lenke eller knapp på nettsiden, Google-profilen og sosiale medier.",
+ "Rett selv: dere får en egen side der dere selv endrer tjenester, priser, varighet og åpningstider. Endringene gjelder med en gang.",
+ "Oppsett: jeg setter opp alt og går gjennom sekretæren sammen med dere før oppstart. Det tar rundt 15–30 minutter av deres tid.",
+ "Svar på deres eget telefonnummer: er under utvikling. Når det er klart, får dere det uten ekstra kostnad i avtaleperioden."
 ].join("\n");
 $("kode").value=localStorage.getItem("orvelo-admin")||"";
 const q=new URLSearchParams(location.search);
