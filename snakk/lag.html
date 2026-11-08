@@ -65,9 +65,9 @@ details summary{cursor:pointer;color:var(--muted);font-weight:600;margin-top:6px
 const $=id=>document.getElementById(id);let id="",profil=null;
 const FRA="hilleren.bedrift@gmail.com", BOOK="https://calendar.app.google/24niGvpRRwPqNqr28";
 const PAKKER=[
-  ["Start","1 490 kr/mnd + 7 990 kr i oppstart (første måned er inkludert), 1 mnd binding","Chat på nettsiden som svarer hele døgnet og sender dere en ferdig arbeidsordre på SMS eller e-post."],
-  ["Pro","2 990 kr/mnd + 19 900 kr i oppstart, 1 mnd binding","Alt i Start, pluss booking rett i kalenderen, SMS-bekreftelse og påminnelse til kunden, bilder fra kunden, flere språk og månedsrapport."],
-  ["Komplett","5 990 kr/mnd + 39 900 kr i oppstart, 1 mnd binding","Alt i Pro, pluss KI-telefonsvarer som tar telefonen når ingen svarer, tilbuds- og fakturautkast, ferdigmelding med bilder og automatisk forespørsel om Google-anmeldelse."]];
+  ["Start","1 490 kr/mnd + 7 990 kr i oppstart (første måned er inkludert), 12 mnd binding","Chat på nettsiden som svarer hele døgnet og sender dere en ferdig arbeidsordre på SMS eller e-post."],
+  ["Pro","2 990 kr/mnd + 19 900 kr i oppstart, 12 mnd binding","Alt i Start, pluss booking rett i kalenderen, SMS-bekreftelse og påminnelse til kunden, bilder fra kunden, flere språk og månedsrapport."],
+  ["Komplett","5 990 kr/mnd + 39 900 kr i oppstart, 12 mnd binding","Alt i Pro, pluss KI-telefonsvarer som tar telefonen når ingen svarer, tilbuds- og fakturautkast, ferdigmelding med bilder og automatisk forespørsel om Google-anmeldelse."]];
 const q=new URLSearchParams(location.search);
 ["firma","nettside","bransje","kontaktperson","til","variant"].forEach(k=>{if(q.get(k))$(k).value=q.get(k);});
 try{$("kode").value=localStorage.getItem("orvelo-admin")||"";}catch{}

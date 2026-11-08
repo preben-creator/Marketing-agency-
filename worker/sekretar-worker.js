@@ -458,7 +458,7 @@ function rensAvtale(a) {
     tittel: tekst(a.tittel, 120) || "Tilbud og avtale: KI-sekretær",
     dato: datoStr(a.dato) || new Date().toISOString().slice(0, 10),
     gyldigTil: datoStr(a.gyldigTil),
-    bindingMnd: tall(a.bindingMnd, 60) || 1,
+    bindingMnd: tall(a.bindingMnd, 60) || 12,
     kunde: { firma: tekst(k.firma, 120), orgnr: tekst(k.orgnr, 20), adresse: tekst(k.adresse, 160), kontaktperson: tekst(k.kontaktperson, 100), epost: tekst(k.epost, 120), telefon: tekst(k.telefon, 30) },
     leverandor: { navn: tekst(l.navn, 120), orgnr: tekst(l.orgnr, 20), adresse: tekst(l.adresse, 160), epost: tekst(l.epost, 120), telefon: tekst(l.telefon, 30), signatar: tekst(l.signatar, 100) },
     innledning: tekst(a.innledning, 2000),

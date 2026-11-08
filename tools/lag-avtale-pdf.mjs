@@ -18,7 +18,7 @@ const TJENESTER = [
   { t: "Oppsett", b: "jeg setter opp alt, legger inn tjenestene og prislisten deres, og tester sammen med dere. Det tar rundt 30 minutter av deres tid." },
   { t: "Endringer", b: "send meg nye priser, tjenester eller åpningstider på e-post, så oppdaterer jeg sekretæren innen to virkedager." },
 ];
-// Gjeldende pris fra november 2026: 7 990 kr oppstart (inkl. første måned) + 1 490 kr/mnd, 1 mnd binding.
+// Gjeldende pris fra november 2026: 7 990 kr oppstart (inkl. første måned) + 1 490 kr/mnd, 12 mnd binding.
 const PRIS = { oppstart: 7990, alternativer: [
   { kode: "A", navn: "Fast månedspris", mnd: 1490, prosent: 0, passer: "" },
 ] };
@@ -28,7 +28,7 @@ const PRIS_DEJAVU = { oppstart: 14990, alternativer: [
   { kode: "A", navn: "Fast månedspris", mnd: 1990, prosent: 0, passer: "Sekretæren booker for mer enn 15 000 kr i måneden" },
   { kode: "B", navn: "Etter bruk", mnd: 490, prosent: 10, passer: "Sekretæren booker for mindre enn 15 000 kr i måneden" },
 ] };
-const felles = { tittel: "Tilbud og avtale: KI-sekretær", bindingMnd: 1, tjenester: TJENESTER, pris: PRIS, merknad: MERKNAD, vilkar, signatur: null };
+const felles = { tittel: "Tilbud og avtale: KI-sekretær", bindingMnd: 12, tjenester: TJENESTER, pris: PRIS, merknad: MERKNAD, vilkar, signatur: null };
 
 const filer = {
   "tilbud-og-avtale-mal.pdf": { ...felles, nr: "", dato: "", gyldigTil: "", leverandor: ORVELO, kunde: {},
