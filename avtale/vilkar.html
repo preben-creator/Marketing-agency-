@@ -1,10 +1,10 @@
-<!-- Orvelo: avtalevilkår for KI-sekretær, versjon 2026-11b.
+<!-- Orvelo: avtalevilkår for KI-sekretær, versjon 2026-11c.
      Denne filen hentes av workeren når et nytt tilbud lages, og en kopi lagres sammen med tilbudet.
      Endringer her gjelder derfor bare nye tilbud, aldri avtaler som allerede er sendt eller signert.
      Husk å endre versjonsnummeret i første linje under (data-versjon) når du endrer innholdet. -->
-<section class="vilkar" data-versjon="2026-11b">
+<section class="vilkar" data-versjon="2026-11c">
 <h2>Avtalevilkår for KI-sekretær</h2>
-<p class="liten">Versjon 2026-11b. Vilkårene gjelder sammen med tilbudet over. Hvis tilbudet og vilkårene sier noe ulikt, gjelder tilbudet.</p>
+<p class="liten">Versjon 2026-11c. Vilkårene gjelder sammen med tilbudet over. Hvis tilbudet og vilkårene sier noe ulikt, gjelder tilbudet.</p>
 
 <h3>1. Avtalen</h3>
 <p>Avtalen gjelder mellom Orvelo («leverandøren») og kunden som er nevnt i tilbudet («kunden»). Avtalen er inngått når kunden har godtatt tilbudet, enten ved elektronisk signering eller skriftlig på annen måte. Begge parter er næringsdrivende, og avtalen er ikke en forbrukeravtale.</p>
@@ -76,7 +76,13 @@
 <li><b>Formål og type opplysninger.</b> Leverandøren behandler personopplysninger bare for å levere KI-sekretæren: svare på henvendelser, ta imot og bekrefte bestillinger og sende sammendrag til kunden. Opplysningene er normalt navn, telefonnummer, e-post, ønsket tjeneste og tidspunkt, og innholdet i samtalen. Tjenesten er ikke laget for sensitive opplysninger (særlige kategorier), og sekretæren ber ikke om slike.</li>
 <li><b>Instrukser.</b> Leverandøren behandler opplysningene bare etter kundens dokumenterte instrukser, som er denne avtalen og det kunden ellers skriftlig ber om.</li>
 <li><b>Taushet og sikkerhet.</b> Alle som behandler opplysningene for leverandøren har taushetsplikt. Leverandøren bruker egnede tekniske og organisatoriske tiltak, blant annet kryptert overføring, tilgangskontroll og at nøkler og passord ikke deles.</li>
-<li><b>Underleverandører.</b> Kunden godtar at leverandøren bruker underleverandører for drift, lagring, tale- og språkmodell og SMS. Per i dag er dette Cloudflare (drift og lagring) og xAI (tale- og språkmodell), samt SMS-leverandør når SMS er i bruk. Noen av disse kan behandle opplysninger utenfor EØS. Leverandøren sørger da for et gyldig overføringsgrunnlag, som EUs standardavtaler (SCC) eller EU–US Data Privacy Framework. Leverandøren varsler kunden på e-post før nye underleverandører tas i bruk, og kunden kan protestere med saklig grunn.</li>
+<li><b>Underleverandører og overføring ut av EØS.</b> Kunden godtar at leverandøren bruker disse underleverandørene:
+<ul>
+<li><b>Cloudflare, Inc.</b> (USA): drift av tjenesten og lagring av oppsett og bestillingsdata. Overføringsgrunnlag: EU–US Data Privacy Framework, som Cloudflare er sertifisert under, med EUs standardavtaler (SCC) i Cloudflares databehandleravtale som reserve.</li>
+<li><b>SpaceX Super Intelligence LLC</b> (tidligere xAI, USA): tale- og språkmodell (Grok). Overføringsgrunnlag: EUs standardavtaler (SCC, modul 3) i databehandleravtalen deres. Leverandøren bruker tjenesten med nullagring (Zero Data Retention), slik at samtaleinnholdet ikke lagres hos dem etter at svaret er laget, og det brukes ikke til å trene modeller.</li>
+<li><b>Twilio Inc.</b> (USA): telefon og SMS, når dette er i bruk. Overføringsgrunnlag: EU–US Data Privacy Framework, som Twilio er sertifisert under, med Twilios bindende virksomhetsregler (BCR) og EUs standardavtaler (SCC) som reserve.</li>
+</ul>
+Leverandøren har med hver underleverandør en avtale som gir minst samme vern som denne databehandleravtalen, og er ansvarlig overfor kunden for underleverandørene. Faller et overføringsgrunnlag bort, sørger leverandøren for et annet gyldig grunnlag eller slutter å bruke underleverandøren. Leverandøren varsler kunden på e-post minst 14 dager før en ny underleverandør tas i bruk eller en underleverandør byttes, og kunden kan protestere med saklig grunn. Kunden kan når som helst be om en oppdatert liste og kopi av underleverandørenes vilkår.</li>
 <li><b>Hjelp til kunden.</b> Leverandøren hjelper kunden med å svare på krav fra de registrerte (innsyn, retting, sletting) og med å oppfylle kundens plikter om sikkerhet og konsekvensvurderinger, i den grad det er rimelig.</li>
 <li><b>Avvik.</b> Leverandøren varsler kunden uten ugrunnet opphold, og senest innen 48 timer, hvis det skjer et brudd på personopplysningssikkerheten.</li>
 <li><b>Lagringstid og sletting.</b> Samtaleutskrifter og bestillingsdata lagres ikke lenger enn nødvendig for tjenesten, og normalt ikke mer enn 90 dager, med mindre kunden ber om noe annet. Når avtalen slutter, sletter eller leverer leverandøren tilbake opplysningene etter kundens valg innen 30 dager.</li>
