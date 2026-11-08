@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Orvelo KI-sekretær</title>
-<meta name="description" content="Orvelo KI-sekretær for håndverkere: svarer kundene på telefon og nettside døgnet rundt, booker jobben og sender deg arbeidsordren på SMS.">
+<meta name="description" content="Orvelo KI-sekretær for håndverkere: en egen digital sekretær for firmaet ditt som snakker og skriver norsk, svarer kundene døgnet rundt og foreslår ledige tider.">
 <link rel="icon" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -123,6 +123,9 @@ footer{border-top:1px solid var(--border);padding:20px 0;font-size:.8rem;color:v
 .sec-head p{color:var(--muted);max-width:620px;margin:0 auto}
 .plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch}
 @media (max-width:900px){.plans{grid-template-columns:1fr}}
+.svcs.svcs--fem{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.plans--one{grid-template-columns:minmax(0,440px);justify-content:center}
+.demo-note{max-width:720px;margin:0 auto 14px;text-align:center;color:var(--muted);font-size:.9rem}
 .plan{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:24px;display:flex;flex-direction:column;gap:14px;position:relative}
 .plan.best{border-color:var(--accent);box-shadow:0 20px 60px -30px rgba(124,92,255,.7);background:linear-gradient(180deg,rgba(124,92,255,.12),var(--surface) 40%)}
 .plan .badge{position:absolute;top:-12px;left:24px;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff}
@@ -189,8 +192,8 @@ footer .fine{opacity:.7;font-size:.75rem}
     <a href="./" class="brand"><img src="assets/orvelo-logo.svg" alt="Orvelo"></a>
     <nav class="menu" aria-label="Hovedmeny">
       <a href="#demo">Demo</a>
-      <a href="#pakker">Pakker</a>
-      <a href="#tjenester">Tjenester</a>
+      <a href="#pris">Pris</a>
+      <a href="#tjenester">Hva du får</a>
       <a href="#sporsmal">Spørsmål</a>
     </nav>
     <a class="btn btn--small" href="#kontakt">Book en prat</a>
@@ -198,15 +201,16 @@ footer .fine{opacity:.7;font-size:.75rem}
 
   <section class="hero">
     <div class="eyebrow">For alle håndverkere</div>
-    <h1>Telefonen ringer mens du står i en kjeller. <span class="grad">Vi tar den.</span></h1>
-    <p>Orvelos KI-sekretær svarer kundene dine på telefon og nettside døgnet rundt. Den finner ut hva jobben gjelder, booker et tidspunkt i kalenderen din og sender deg en ferdig arbeidsordre på SMS.</p>
+    <h1>Du står i en kjeller. <span class="grad">Kundene dine får svar likevel.</span></h1>
+    <p>Orvelo lager en KI-sekretær for firmaet ditt. Den kjenner tjenestene, prisene og åpningstidene dine, snakker og skriver norsk, og svarer kundene døgnet rundt via en lenke på nettsiden din. Når kunden vil ha en avtale, foreslår den ledige tider.</p>
     <div class="hero-cta">
       <a class="btn" href="#demo">▶ Se den i aksjon</a>
-      <a class="btn btn--ghost" href="#pakker">Se pakker og priser</a>
+      <a class="btn btn--ghost" href="#pris">Se pris</a>
     </div>
   </section>
 
   <section id="demo" class="demo" aria-label="Demo">
+  <p class="demo-note">Demoen viser hvordan en samtale med sekretæren kan gå. I dag svarer sekretæren via en lenke eller knapp på nettsiden din, i chat og med stemme. Svar på ditt eget telefonnummer, SMS og booking rett i kalenderen er under utvikling.</p>
   <div class="controls">
     <div class="firm">
       <label for="cat">Fagområde:</label>
@@ -274,58 +278,46 @@ footer .fine{opacity:.7;font-size:.75rem}
 
   </section>
 
-  <section class="sec" id="pakker" aria-labelledby="pakkerH">
+  <section class="sec" id="tjenester" aria-labelledby="tjH">
     <div class="sec-head">
-      <div class="eyebrow">Pakker</div>
-      <h2 id="pakkerH">Velg pakken som passer firmaet ditt</h2>
-      <p>Vi setter alt opp for deg. Du trenger bare å sette av 30 minutter til oppstart.</p>
+      <div class="eyebrow">Hva du får</div>
+      <h2 id="tjH">Din egen KI-sekretær</h2>
+      <p>Dette er med fra første dag. Vi setter alt opp for deg.</p>
     </div>
-    <div class="plans">
-      <article class="plan">
-        <h3>Start</h3>
-        <p class="for">1–4 ansatte, få henvendelser på nett</p>
+    <div class="svcs svcs--fem">
+      <div class="svc"><div class="i">🤖</div><b>Laget for firmaet ditt</b><p>Vi lager sekretæren ut fra nettsiden din, med tjenestene, prisene og åpningstidene dine. Den snakker og skriver norsk og svarer døgnet rundt.</p></div>
+      <div class="svc"><div class="i">💬</div><b>Svar og forslag til tid</b><p>Svarer på spørsmål om tjenester, priser og åpningstider, og foreslår ledige tider til kundene.</p></div>
+      <div class="svc"><div class="i">🔗</div><b>En lenke du kan dele</b><p>Kundene når sekretæren via en lenke eller knapp på nettsiden, Google-profilen og sosiale medier.</p></div>
+      <div class="svc"><div class="i">✏️</div><b>Rett selv</b><p>Du får en egen side der du endrer tjenester, priser, varighet og åpningstider. Endringene gjelder med en gang.</p></div>
+      <div class="svc"><div class="i">🛠️</div><b>Vi setter det opp</b><p>Vi gjør jobben og går gjennom sekretæren sammen med deg før oppstart. Det tar rundt 15–30 minutter av din tid.</p></div>
+    </div>
+    <p class="vat">Under utvikling: svar på ditt eget telefonnummer. Når det er klart, får du det uten ekstra kostnad i avtaleperioden.</p>
+  </section>
+
+  <section class="sec" id="pris" aria-labelledby="prisH">
+    <div class="sec-head">
+      <div class="eyebrow">Pris</div>
+      <h2 id="prisH">Én pris, alt inkludert</h2>
+    </div>
+    <div class="plans plans--one">
+      <article class="plan best">
+        <h3>KI-sekretær</h3>
+        <p class="for">For håndverkere og andre små firma</p>
         <div class="price">1 490 <small>kr/mnd</small></div>
-        <div class="terms"><span>Oppstart: <b>7 990 kr</b> (inkl. første mnd)</span><span>Bindingstid: <b>12 mnd</b></span></div>
-        <ul><li>KI-sekretær i chat på nettsiden, svarer hele døgnet</li><li>Stiller de riktige spørsmålene og gir råd ved akutte skader</li><li>Ferdig arbeidsordre på e-post eller SMS</li></ul>
-        <a class="btn btn--ghost" href="#kontakt">Velg Start</a>
-      </article>
-      <article class="plan">
-        <h3>Pro</h3>
-        <p class="for">5–10 ansatte, jevn strøm av jobber</p>
-        <div class="price">2 990 <small>kr/mnd</small></div>
-        <div class="terms"><span>Oppstart: <b>19 900 kr</b> (engangs)</span><span>Bindingstid: <b>12 mnd</b></span></div>
-        <ul><li class="inc">Alt i Start</li><li>Booking av befaring rett i kalenderen (Google eller Outlook)</li><li>Kunden sender bilde av jobben, og sekretæren beskriver det</li><li>SMS-bekreftelse og påminnelse til kunden</li><li>Svarer på engelsk, polsk og andre språk</li><li>Månedsrapport: henvendelser, bookede jobber og verdi</li></ul>
-        <a class="btn btn--ghost" href="#kontakt">Velg Pro</a>
-      </article>
-      <article class="plan best"><span class="badge">Anbefalt</span>
-        <h3>Komplett</h3>
-        <p class="for">10–20 ansatte, kontor og flere montører</p>
-        <div class="price">5 990 <small>kr/mnd</small></div>
-        <div class="terms"><span>Oppstart: <b>39 900 kr</b> (engangs)</span><span>Bindingstid: <b>12 mnd</b></span></div>
-        <ul><li class="inc">Alt i Pro</li><li><span><b>KI-telefonsvarer</b> som tar telefonen når ingen svarer</span></li><li>Tilbudsutkast fra bilder og samtalen, godkjennes med ett klikk</li><li>Bilag fra bilde: kvitteringen havner på riktig jobb</li><li>Fakturautkast til Tripletex, Fiken eller PowerOffice</li><li>Ferdigmelding med før- og etterbilder til kunden</li><li>Ber om Google-anmeldelse og purrer på ubetalte fakturaer</li><li>Oversikt for daglig leder og prioritert support samme dag</li></ul>
-        <a class="btn" href="#kontakt">Velg Komplett</a>
+        <div class="terms"><span>Oppstart: <b>7 990 kr</b> (første måned er inkludert)</span><span>Bindingstid: <b>12 mnd</b>, fornyes automatisk</span></div>
+        <ul><li>Egen KI-sekretær laget for firmaet ditt</li><li>Svarer kundene døgnet rundt i chat og med stemme</li><li>Foreslår ledige tider</li><li>Lenke og knapp til nettsiden, Google og sosiale medier</li><li>Egen side der du retter tjenester, priser og åpningstider</li><li>Oppsett og gjennomgang før oppstart</li></ul>
+        <a class="btn" href="#kontakt">Book en prat</a>
       </article>
     </div>
     <p class="vat">Alle priser er i kroner eksklusive mva.</p>
   </section>
 
-  <section class="sec" id="tjenester" aria-labelledby="tjH">
-    <div class="sec-head">
-      <div class="eyebrow">Alle tjenestene</div>
-      <h2 id="tjH">Alt KI-sekretæren gjør for deg</h2>
-      <p>Den tar imot kundene, booker jobbene og tar papirarbeidet, så du kan stå på jobb.</p>
-    </div>
-    <div class="svc-group">
-      <div class="svcs"><div class="svc"><div class="i">💬</div><b>Chat på nettsiden</b><p>Svarer kundene døgnet rundt og finner ut hva jobben gjelder.</p><span class="tier">Start</span></div><div class="svc"><div class="i">📋</div><b>Ferdig arbeidsordre</b><p>Navn, adresse, problem og hast på SMS eller e-post.</p><span class="tier">Start</span></div><div class="svc"><div class="i">🚨</div><b>Råd ved akutte skader</b><p>Forteller kunden hva de kan gjøre før du kommer.</p><span class="tier">Start</span></div><div class="svc"><div class="i">📅</div><b>Booking i kalenderen</b><p>Befaringer rett inn i Google eller Outlook.</p><span class="tier">Pro</span></div><div class="svc"><div class="i">📷</div><b>Bilde av jobben</b><p>Kunden sender bilde, sekretæren beskriver hva den ser.</p><span class="tier">Pro</span></div><div class="svc"><div class="i">✅</div><b>SMS-bekreftelse</b><p>Bekreftelse og påminnelse til kunden før avtalen.</p><span class="tier">Pro</span></div><div class="svc"><div class="i">🌍</div><b>Flere språk</b><p>Svarer på engelsk, polsk og andre språk.</p><span class="tier">Pro</span></div><div class="svc"><div class="i">📊</div><b>Månedsrapport</b><p>Antall henvendelser, bookede jobber og estimert verdi.</p><span class="tier">Pro</span></div><div class="svc"><div class="i">📞</div><b>KI-telefonsvarer</b><p>Tar telefonen når ingen svarer og sender sammendrag på SMS.</p><span class="tier">Komplett</span></div><div class="svc"><div class="i">🧾</div><b>Tilbudsutkast</b><p>Laget fra bilder og samtalen, klart til godkjenning.</p><span class="tier">Komplett</span></div><div class="svc"><div class="i">🧾</div><b>Bilag fra bilde</b><p>Leser beløp og mva og legger kvitteringen på riktig jobb.</p><span class="tier">Komplett</span></div><div class="svc"><div class="i">💸</div><b>Fakturautkast</b><p>Til Tripletex, Fiken eller PowerOffice når jobben er ferdig.</p><span class="tier">Komplett</span></div><div class="svc"><div class="i">📸</div><b>Ferdigmelding</b><p>Før- og etterbilder til kunden når jobben er gjort.</p><span class="tier">Komplett</span></div><div class="svc"><div class="i">⭐</div><b>Anmeldelser og purring</b><p>Ber om Google-anmeldelse og purrer på ubetalte fakturaer.</p><span class="tier">Komplett</span></div></div>
-    </div>
-  </section>
-
   <section class="roi" aria-labelledby="roiH">
-    <div class="eyebrow">Hva koster ubesvarte anrop?</div>
+    <div class="eyebrow">Hva koster ubesvarte henvendelser?</div>
     <h2 id="roiH">Regn på det selv</h2>
     <div class="roi-grid">
       <div>
-        <label for="missed">Ubesvarte anrop per uke</label>
+        <label for="missed">Ubesvarte henvendelser per uke</label>
         <input type="range" id="missed" min="1" max="30" value="6">
         <output id="missedOut"></output>
       </div>
@@ -335,7 +327,7 @@ footer .fine{opacity:.7;font-size:.75rem}
         <output id="valueOut"></output>
       </div>
       <div>
-        <label>Tapt omsetning per år, om 1 av 3 ringer en konkurrent</label>
+        <label>Tapt omsetning per år, om 1 av 3 går til en konkurrent</label>
         <div class="big-num grad" id="lost"></div>
       </div>
     </div>
@@ -347,19 +339,20 @@ footer .fine{opacity:.7;font-size:.75rem}
       <h2 id="faqH">Det håndverkere lurer på</h2>
     </div>
       <details><summary>Vil kundene merke at det er en KI?</summary><p>Ja, sekretæren sier fra at den er en digital assistent. Den er vennlig og snakker naturlig norsk, og kundene får svar med en gang i stedet for å vente på at du ringer tilbake.</p></details>
-      <details><summary>Kundene vil jo snakke med et menneske?</summary><p>Det gjør de fortsatt. Sekretæren tar bare de henvendelsene du ikke rekker, og du ringer kunden tilbake med all informasjonen klar.</p></details>
-      <details><summary>Kan den love priser eller avtaler jeg ikke vil ha?</summary><p>Nei. Den gir aldri bindende priser og sender ingenting uten at du har godkjent det. Du bestemmer hva den kan si om pris og befaring.</p></details>
-      <details><summary>Hvor lang tid tar det å komme i gang?</summary><p>Vi trenger rundt 30 minutter med deg til oppstart. Så setter vi opp resten selv: tjenestene dine, området du dekker, åpningstider og vanlige spørsmål.</p></details>
-      <details><summary>Hva med personvern?</summary><p>Dataene lagres i EU, og vi signerer en databehandleravtale med deg. Kundene får beskjed om at de snakker med en KI.</p></details>
-      <details><summary>Hva skjer etter bindingstiden?</summary><p>Bindingstiden er 12 måneder for alle pakker. Avtalen fornyes automatisk med nye 12 måneder, med mindre du sier den opp skriftlig senest 2 måneder før perioden går ut. Du får en påminnelse fra oss senest 3 måneder før.</p></details>
+      <details><summary>Kundene vil jo snakke med et menneske?</summary><p>Det gjør de fortsatt. Sekretæren gir kundene svar med en gang når du ikke rekker det, og telefonnummeret ditt fungerer som før.</p></details>
+      <details><summary>Kan den love priser eller avtaler jeg ikke vil ha?</summary><p>Nei. Den bruker bare prisene og tjenestene du har gitt den, og du kan selv rette dem når som helst på din egen side.</p></details>
+      <details><summary>Hvor lang tid tar det å komme i gang?</summary><p>Vi lager sekretæren ut fra nettsiden din og går gjennom den sammen med deg. Det tar rundt 15–30 minutter av din tid.</p></details>
+      <details><summary>Kan den svare på telefonnummeret mitt?</summary><p>Ikke ennå. Det er under utvikling. Når det er klart, får du det uten ekstra kostnad i avtaleperioden. I dag når kundene sekretæren via en lenke eller knapp på nettsiden din.</p></details>
+      <details><summary>Hva med personvern?</summary><p>Vi signerer en databehandleravtale med deg. Den sier hvilke underleverandører vi bruker, blant annet Cloudflare og xAI (Grok) i USA, og hvilket grunnlag vi har for å overføre data dit. Kundene får beskjed om at de snakker med en KI.</p></details>
+      <details><summary>Hva skjer etter bindingstiden?</summary><p>Bindingstiden er 12 måneder. Avtalen fornyes automatisk med nye 12 måneder, med mindre du sier den opp skriftlig senest 2 måneder før perioden går ut. Du får en påminnelse fra oss senest 3 måneder før.</p></details>
       <details><summary>Fungerer det for mitt fag?</summary><p>Ja. Sekretæren tilpasses faget ditt, enten du er rørlegger, elektriker, snekker, maler, taktekker, murer eller noe annet. Prøv demoen over med ditt fag.</p></details>
   </section>
 
   <section class="sec contact" id="kontakt" aria-labelledby="kontaktH">
     <div>
       <div class="eyebrow">Kom i gang</div>
-      <h2 id="kontaktH">Vil du ha dette på ditt nummer?</h2>
-      <p class="muted">Fortell litt om firmaet ditt, så tar vi kontakt innen én arbeidsdag og viser deg demoen med ditt eget firmanavn.</p>
+      <h2 id="kontaktH">Vil du ha din egen KI-sekretær?</h2>
+      <p class="muted">Fortell litt om firmaet ditt, så tar vi kontakt innen én arbeidsdag og lager en sekretær for firmaet ditt som du kan prøve.</p>
       <ul class="contact-list">
         <li>✉️ <a href="mailto:hilleren.bedrift@gmail.com">hilleren.bedrift@gmail.com</a></li>
         <li>⏱️ 15 minutter, uforpliktende</li>
@@ -375,9 +368,6 @@ footer .fine{opacity:.7;font-size:.75rem}
       <label>Telefon<input type="tel" name="telefon" required autocomplete="tel"></label>
       <label>E-post<input type="email" name="epost" autocomplete="email"></label>
       <label>Fag<input name="fag" placeholder="F.eks. rørlegger"></label>
-      <label>Pakke
-        <select name="pakke"><option>Vet ikke ennå</option><option>Start</option><option>Pro</option><option>Komplett</option></select>
-      </label>
       <label class="full">Melding<textarea name="melding" rows="3" placeholder="Hvor mange henvendelser rekker dere ikke å svare på i uka?"></textarea></label>
       <button class="btn full" type="submit">Send, så ringer vi deg</button>
     </form>
@@ -967,7 +957,7 @@ footer .fine{opacity:.7;font-size:.75rem}
   const fmt=n=>n.toLocaleString("nb-NO");
   function roi(){
     const m=+$("#missed").value, v=+$("#value").value;
-    $("#missedOut").textContent=m+" anrop"; $("#valueOut").textContent=fmt(v)+" kr";
+    $("#missedOut").textContent=m+" henvendelser"; $("#valueOut").textContent=fmt(v)+" kr";
     $("#lost").textContent=fmt(Math.round(m*46/3*v/1000)*1000)+" kr";
   }
   $("#missed").oninput=roi; $("#value").oninput=roi; roi();

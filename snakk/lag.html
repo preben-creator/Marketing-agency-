@@ -64,10 +64,9 @@ details summary{cursor:pointer;color:var(--muted);font-weight:600;margin-top:6px
 <script>
 const $=id=>document.getElementById(id);let id="",profil=null;
 const FRA="hilleren.bedrift@gmail.com", BOOK="https://calendar.app.google/24niGvpRRwPqNqr28";
+// Pro og Komplett er tatt bort til de er bygget (se arkiv/README.md).
 const PAKKER=[
-  ["Start","1 490 kr/mnd + 7 990 kr i oppstart (første måned er inkludert), 12 mnd binding","Chat på nettsiden som svarer hele døgnet og sender dere en ferdig arbeidsordre på SMS eller e-post."],
-  ["Pro","2 990 kr/mnd + 19 900 kr i oppstart, 12 mnd binding","Alt i Start, pluss booking rett i kalenderen, SMS-bekreftelse og påminnelse til kunden, bilder fra kunden, flere språk og månedsrapport."],
-  ["Komplett","5 990 kr/mnd + 39 900 kr i oppstart, 12 mnd binding","Alt i Pro, pluss KI-telefonsvarer som tar telefonen når ingen svarer, tilbuds- og fakturautkast, ferdigmelding med bilder og automatisk forespørsel om Google-anmeldelse."]];
+  ["KI-sekretær","1 490 kr/mnd + 7 990 kr i oppstart (første måned er inkludert), 12 mnd binding","Egen sekretær laget for dere, som svarer kundene døgnet rundt i chat og med stemme, foreslår ledige tider, og som dere kan rette selv."]];
 const q=new URLSearchParams(location.search);
 ["firma","nettside","bransje","kontaktperson","til","variant"].forEach(k=>{if(q.get(k))$(k).value=q.get(k);});
 try{$("kode").value=localStorage.getItem("orvelo-admin")||"";}catch{}
@@ -86,16 +85,17 @@ function epost(lenke){
     `Trykk på den lilla knappen og tillat mikrofonen, eller skriv til den. Prøv for eksempel å ${befaring?"be om en befaring":"bestille en time"}, eller spør hva den koster.`,"",
     "HVA KI-SEKRETÆREN GJØR",
     "- Svarer kundene døgnet rundt på norsk, også når dere står i jobb eller har stengt",
-    befaring?"- Finner ut hva jobben gjelder, adresse og hvor mye det haster":"- Booker timer rett i kalenderen og svarer på spørsmål om priser og behandlinger",
-    "- Sender dere en kort oppsummering på SMS eller e-post",
+    "- Svarer på spørsmål om tjenester, priser og åpningstider, og foreslår ledige tider",
+    "- Kundene når den via en lenke eller knapp på nettsiden, Google-profilen og sosiale medier",
+    "- Dere får en egen side der dere selv retter tjenester, priser og åpningstider",
     "- Sier alltid fra at den er en digital assistent, og gir aldri andre priser enn deres egne","",
-    "PAKKER (alle priser eks. mva.)",
+    "PRIS (eks. mva.)",
     ...PAKKER.map(([n,p,h])=>`- ${n}: ${p}. ${h}`),
     "Avtalen fornyes automatisk med nye 12 måneder, med mindre den sies opp skriftlig senest 2 måneder før perioden går ut.","",
     "SLIK KOMMER DERE I GANG",
-    "1. Et kort møte (ca. 20 min) der vi går gjennom hvordan dere vil at telefonen skal besvares",
-    "2. 30 minutter med dere til oppstart. Resten setter jeg opp",
-    "3. Sekretæren er i gang, og henvendelsene kommer rett på mobilen","",
+    "1. Et kort møte (ca. 20 min) der vi går gjennom hvordan dere vil at sekretæren skal svare",
+    "2. Jeg setter opp alt og går gjennom det med dere (15–30 minutter av deres tid)",
+    "3. Sekretæren er i gang, og dere deler lenken på nettsiden, Google og sosiale medier","",
     "Vil du høre mer? Book et kort møte når det passer:",BOOK,
     "Eller svar på denne e-posten, så tar jeg kontakt.","",
     "Vennlig hilsen","Preben Hilleren","Orvelo · KI-sekretær for håndverkere",FRA,"Org.nr. 938 720 673");
