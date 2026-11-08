@@ -47,7 +47,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
   <h2 style="margin-top:22px">Pris</h2>
   <div class="g3">
     <label>Oppstart (kr)<input id="oppstart" type="number" value="7990"></label>
-    <label>Bindingstid (mnd)<input id="binding" type="number" value="3"></label>
+    <label>Bindingstid (mnd)<input id="binding" type="number" value="1"></label>
     <label>Gyldig til<input id="gyldig" type="date"></label>
     <label>Tilbudsdato<input id="dato" type="date"></label>
   </div>
@@ -118,7 +118,7 @@ function data(){
   for(const k of ["A","B"]) if($("bruk"+k).checked) alt.push({kode:k,navn:$("navn"+k).value.trim(),mnd:Number($("mnd"+k).value)||0,prosent:Number($("pros"+k).value)||0,passer:$("pass"+k).value.trim()});
   if(alt.length===1)alt[0].passer="";
   return {
-    tittel:$("tittel").value.trim(),dato:$("dato").value,gyldigTil:$("gyldig").value,bindingMnd:Number($("binding").value)||12,
+    tittel:$("tittel").value.trim(),dato:$("dato").value,gyldigTil:$("gyldig").value,bindingMnd:Number($("binding").value)||1,
     kunde:{firma:$("firma").value.trim(),orgnr:$("orgnr").value.trim(),adresse:$("adresse").value.trim(),kontaktperson:$("kontaktperson").value.trim(),epost:$("epost").value.trim(),telefon:$("telefon").value.trim()},
     leverandor:{navn:$("lNavn").value.trim(),orgnr:$("lOrgnr").value.trim(),adresse:$("lAdresse").value.trim(),epost:$("lEpost").value.trim(),telefon:$("lTlf").value.trim(),signatar:$("lSign").value.trim()},
     innledning:$("innledning").value.trim(),
