@@ -434,14 +434,14 @@ function stopPlayback(){for(const s of sources){try{s.stop();}catch{}}sources=[]
 function isPlaying(){return ctx && playHead>ctx.currentTime+0.02;}
 
 async function hentToken(){
-  const r=await fetch(TOKEN_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({k:DEMO_KODE})});
+  const r=await fetch(TOKEN_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({k:DEMO_KODE,kunde:P.get("kunde")||""})});
   const d=await r.json().catch(()=>({}));
   if(!r.ok||!d.value) throw new Error(d.feil||("Kunne ikke starte samtalen ("+r.status+")"));
   return d.value;
 }
 
 async function kobleTil(medMikrofon){
-  if(connected) return;
+  if(connected||!profilKlar) return;
   setStatus("wait","Kobler til …"); $("orb").disabled=true;
   try{
     if(!ctx){ctx=new (window.AudioContext||window.webkitAudioContext)();outGain=ctx.createGain();outGain.connect(ctx.destination);
@@ -589,6 +589,8 @@ if(!window.WebSocket||!(window.AudioContext||window.webkitAudioContext)){const b
 else if(!navigator.mediaDevices||!window.isSecureContext){$("hint").textContent="Mikrofonen er ikke tilgjengelig her. Du kan fortsatt skrive.";}
 
 /* ================= Oppstart: last egen profil hvis lenken har ?kunde= ================= */
+// Med ?kunde= kan ingen samtale starte før firmaets egen profil er lastet.
+var profilKlar=!P.get("kunde");
 async function oppstart(){
   const id=P.get("kunde");
   if(id){
@@ -598,10 +600,17 @@ async function oppstart(){
       const r=await fetch(`${base}/kunde?id=${encodeURIComponent(id)}&k=${encodeURIComponent(DEMO_KODE)}`);
       const d=await r.json().catch(()=>({}));
       if(!r.ok) throw new Error(d.feil||"Fant ikke sekretæren");
-      KUNDE=d; settOrd();
+      KUNDE=d; settOrd(); profilKlar=true;
     }catch(e){
-      const b=$("banner");b.style.display="block";b.textContent=(e.message||"Fant ikke sekretæren")+" Viser en eksempelsalong i stedet.";
-    }finally{$("orb").disabled=false;}
+      // Vis aldri en annen kundes sekretær når lenken ikke virker.
+      const b=$("banner");b.style.display="block";b.textContent=(e.message||"Fant ikke sekretæren")+" Spør Preben om en ny lenke.";
+      $("who").textContent="Fant ikke sekretæren";
+      $("hTitle").textContent="Lenken virker ikke";
+      $("hLead").textContent="Kontakt Preben på hilleren.bedrift@gmail.com, så får du en ny lenke.";
+      $("chips").innerHTML=""; $("compose").hidden=true;
+      return;
+    }
+    $("orb").disabled=false;
   }
   fyllKalender();
   valgtDag=DAGER.find(d=>Array.isArray(KUNDE.apent[dow(d)]))||I_DAG;

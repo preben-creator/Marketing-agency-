@@ -28,7 +28,7 @@ Siden hentes fra `main` i GitHub-repoet, så endringer i `snakk/index.html` komm
 
 Siden `/lag` på workeren lager en sekretær for et hvilket som helst firma. Grok leser firmaets nettside
 (forsiden pluss sider om priser, tjenester, kontakt og om oss) og lager en profil med tjenester, priser,
-åpningstider, ansatte og område. Du får en lenke som `/?kunde=berg-ror-x7k2&k=<DEMO_KODE>` som du kan sende kunden.
+åpningstider, ansatte og område. Du får en lenke som `/?kunde=berg-ror-x7k2&k=<kode>` som du kan sende kunden. Hvert firma får sin egen kode (lagres i KV), så lenken viser aldri koden eller navnet til en annen kunde. Lenker som alt er sendt med den gamle felles `DEMO_KODE` virker fortsatt.
 Før du sender: se over feltene på siden (spesielt listen «Sjekk dette»), rett det som er feil og trykk «Lagre endringer».
 
 Oppsett én gang (ca. 5 minutter):

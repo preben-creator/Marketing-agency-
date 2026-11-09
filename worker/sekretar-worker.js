@@ -6,7 +6,7 @@
 //                         Den ekte XAI_API_KEY forlater aldri denne tjenesten.
 //   GET  /lag          -> Prebens side for å lage en egen sekretær til en bedrift (krever ADMIN_KODE)
 //   POST /lag          -> leser bedriftens nettside, lar Grok lage en profil (tjenester, priser, åpningstider)
-//                         og lagrer den. Svarer med en ferdig demolenke: /?kunde=<id>&k=<DEMO_KODE>
+//                         og lagrer den. Svarer med en ferdig demolenke: /?kunde=<id>&k=<egen kode for firmaet>
 //   POST /lagre        -> lagrer en profil Preben har rettet på (krever ADMIN_KODE)
 //   GET  /kunde?id=..  -> profilen demosiden bruker
 //   GET  /avtale/ny    -> Prebens side for å lage tilbud og avtale med signeringslenke (krever ADMIN_KODE)
@@ -22,7 +22,9 @@
 //
 // Innstillinger (Cloudflare: Worker -> Settings -> Variables and Secrets):
 //   XAI_API_KEY  (Secret, påkrevd)  xAI-nøkkelen din
-//   DEMO_KODE    (Secret, valgfri)  hvis satt, må lenken ha ?k=<koden>, ellers virker den ikke
+//   DEMO_KODE    (Secret, valgfri)  hvis satt, må lenken ha ?k=<kode>. Hvert firma får sin egen kode
+//                                   (lagres i KV), så koden i lenken sier ikke noe om andre kunder.
+//                                   DEMO_KODE selv virker fortsatt, slik at lenker som alt er sendt ikke slutter å virke.
 //   ADMIN_KODE   (Secret, påkrevd for /lag) passordet bare Preben bruker for å lage nye sekretærer
 //   PAGE_URL     (Text,   valgfri)  adressen til demosiden, standard er filen i GitHub
 //   TEKST_MODELL (Text,   valgfri)  Grok-modell for å lese nettsider, standard grok-4-fast-non-reasoning
@@ -92,7 +94,7 @@ export default {
 
       let body = {};
       try { body = await request.json(); } catch {}
-      if (env.DEMO_KODE && body.k !== env.DEMO_KODE) {
+      if (!(await kodeOk(env, body.k, body.kunde))) {
         return json({ feil: "Lenken mangler riktig kode. Spør Preben om en ny lenke." }, 401, origin);
       }
 
@@ -114,8 +116,8 @@ export default {
     }
 
     if (url.pathname === "/kunde") {
-      if (env.DEMO_KODE && url.searchParams.get("k") !== env.DEMO_KODE) return json({ feil: "Feil kode" }, 401, origin);
       const id = (url.searchParams.get("id") || "").replace(/[^a-z0-9-]/g, "").slice(0, 60);
+      if (!(await kodeOk(env, url.searchParams.get("k"), id))) return json({ feil: "Feil kode" }, 401, origin);
       if (!id || !env.KUNDER) return json({ feil: "Fant ikke sekretæren" }, 404, origin);
       const p = await env.KUNDER.get("kunde:" + id, "json");
       if (!p) return json({ feil: "Fant ikke sekretæren. Spør Preben om en ny lenke." }, 404, origin);
@@ -150,7 +152,7 @@ export default {
         profil.id = id;
         profil.oppdatert = new Date().toISOString();
         await env.KUNDER.put("kunde:" + id, JSON.stringify(profil));
-        const lenke = `${url.origin}/?kunde=${id}` + (env.DEMO_KODE ? `&k=${encodeURIComponent(env.DEMO_KODE)}` : "");
+        const lenke = await demoLenke(url, env, id);
         return json({ id, lenke, profil }, 200);
       } catch (e) {
         console.log("lag feilet", e && e.stack);
@@ -615,8 +617,34 @@ const redigerTreff = new Map();
 
 const rensId = (v) => String(v || "").replace(/[^a-z0-9-]/g, "").slice(0, 60);
 
-function demoLenke(url, env, id) {
-  return `${url.origin}/?kunde=${id}` + (env.DEMO_KODE ? `&k=${encodeURIComponent(env.DEMO_KODE)}` : "");
+// Hvert firma har sin egen demokode, så lenken ikke viser koden (og navnet) til en annen kunde.
+// KV: "demokode:<id>" -> kode, og "dkode:<kode>" -> id (slik at /token kan sjekke koden uten id).
+async function firmaKode(env, id) {
+  if (!env.KUNDER) return null;
+  let kode = await env.KUNDER.get("demokode:" + id);
+  if (!kode) {
+    kode = tilfeldig(10);
+    await env.KUNDER.put("dkode:" + kode, id);
+    await env.KUNDER.put("demokode:" + id, kode);
+  }
+  return kode;
+}
+
+async function demoLenke(url, env, id) {
+  if (!env.DEMO_KODE) return `${url.origin}/?kunde=${id}`;
+  const kode = (await firmaKode(env, id)) || env.DEMO_KODE;
+  return `${url.origin}/?kunde=${id}&k=${encodeURIComponent(kode)}`;
+}
+
+// Godtar den gamle felles DEMO_KODE (lenker som alt er sendt) eller firmaets egen kode.
+// Er id oppgitt, må firmakoden høre til akkurat det firmaet.
+async function kodeOk(env, k, id) {
+  if (!env.DEMO_KODE) return true;
+  if (!k) return false;
+  if (k === env.DEMO_KODE) return true;
+  if (!env.KUNDER || !/^[a-z0-9]{6,40}$/i.test(k)) return false;
+  const eier = await env.KUNDER.get("dkode:" + k);
+  return !!eier && (!id || eier === id);
 }
 
 function hvaErEndret(gml, ny) {
@@ -654,7 +682,7 @@ async function redigerRute(request, env, ctx, url) {
     const profil = await sjekk(id, url.searchParams.get("r"));
     if (!profil) return json({ feil: "Fant ikke sekretæren. Sjekk at du har hele lenken, eller spør Preben om en ny." }, 404);
     const { usikkert, kilder, ...rest } = profil;
-    return json({ profil: rest, demo: demoLenke(url, env, id) }, 200);
+    return json({ profil: rest, demo: await demoLenke(url, env, id) }, 200);
   }
 
   if (request.method !== "POST") return new Response("Ikke funnet", { status: 404 });
@@ -670,7 +698,7 @@ async function redigerRute(request, env, ctx, url) {
     if (!profil) return json({ feil: "Fant ingen sekretær med id «" + id + "»." }, 404);
     let kode = await env.KUNDER.get("rediger:" + id);
     if (!kode || body.ny) { kode = tilfeldig(10); await env.KUNDER.put("rediger:" + id, kode); }
-    return json({ id, profil, lenke: demoLenke(url, env, id), rediger: `${url.origin}/rediger?kunde=${id}&r=${kode}` }, 200);
+    return json({ id, profil, lenke: await demoLenke(url, env, id), rediger: `${url.origin}/rediger?kunde=${id}&r=${kode}` }, 200);
   }
 
   if (p === "/rediger/lagre") {
@@ -701,7 +729,7 @@ async function redigerRute(request, env, ctx, url) {
     const varsel = varsle(env, `${ny.kortnavn || ny.navn} har rettet KI-sekretæren sin`, [
       `${ny.navn} har endret sekretæren sin (${id}):`, "",
       ...endringer.slice(0, 40).map((x) => "- " + x), "",
-      `Test den: ${demoLenke(url, env, id)}`,
+      `Test den: ${await demoLenke(url, env, id)}`,
       "Forrige versjon er lagret og kan hentes tilbake.",
     ]);
     if (ctx && ctx.waitUntil) ctx.waitUntil(varsel); else await varsel;
