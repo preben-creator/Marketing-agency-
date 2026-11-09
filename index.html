@@ -9,7 +9,7 @@
 <link rel="icon" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#0a0b10;--bg-alt:#10121a;--surface:#161926;--surface-2:#1d2133;--border:#252a3b;
@@ -38,10 +38,10 @@ header img{height:34px;width:auto}
 .firm select{background:transparent;border:0;outline:0;font-weight:600;padding-right:6px;cursor:pointer}
 .firm select option{background:var(--surface);color:var(--text)}
 .firm{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:5px 6px 5px 14px}
-.bransjer{margin:22px 0 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.88rem;color:var(--muted)}.bransjer b{color:var(--text)}.bransjer a{border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:4px 12px;color:var(--text);text-decoration:none}.bransjer a:hover{border-color:var(--accent-2)}
+.bransjer{margin:22px 0 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.88rem;color:var(--muted)}.bransjer b{color:var(--text)}.bransjer a{border:1px solid color-mix(in srgb,var(--text) 15%,transparent);border-radius:999px;padding:4px 12px;color:var(--text);text-decoration:none}.bransjer a:hover{border-color:var(--accent-2)}
 .firm label{font-size:.8rem;color:var(--muted);white-space:nowrap}
 .firm input{background:transparent;border:0;outline:0;width:170px;font-weight:600}
-.btn{text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:999px;font-weight:600;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff}
+.btn{text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:999px;font-weight:600;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:var(--on-accent)}
 .btn--ghost{background:var(--surface);border:1px solid var(--border)}
 .btn:disabled{opacity:.5;cursor:default}
 
@@ -49,9 +49,9 @@ header img{height:34px;width:auto}
 @media (max-width:860px){.stage{grid-template-columns:1fr}}
 
 /* Phone */
-.phone{background:#05060a;border:1px solid var(--border);border-radius:40px;padding:12px;box-shadow:0 30px 80px -30px rgba(124,92,255,.45);margin-inline:auto;width:100%;max-width:380px}
+.phone{background:var(--phone);border:1px solid var(--border);border-radius:40px;padding:12px;box-shadow:0 30px 80px -30px color-mix(in srgb,var(--accent) 45%,transparent);margin-inline:auto;width:100%;max-width:380px}
 .screen{background:var(--bg-alt);border-radius:30px;overflow:hidden;height:620px;display:flex;flex-direction:column}
-.callbar{padding:20px 18px 14px;text-align:center;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(124,92,255,.18),transparent)}
+.callbar{padding:20px 18px 14px;text-align:center;border-bottom:1px solid var(--border);background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 18%,transparent),transparent)}
 .callbar .who{font-family:var(--font-head);font-weight:600;font-size:1.1rem}
 .callbar .sub{font-size:.8rem;color:var(--muted)}
 .status{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:.78rem;padding:3px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--border)}
@@ -69,11 +69,11 @@ header img{height:34px;width:auto}
 .msg small{display:block;font-size:.68rem;color:var(--muted);margin-bottom:2px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
 .msg.ai{align-self:flex-start;background:var(--surface-2);border:1px solid var(--border);border-bottom-left-radius:4px}
 .msg.ai small{color:var(--accent-2)}
-.msg.cust{align-self:flex-end;background:linear-gradient(135deg,var(--accent),#5b3fe0);border-bottom-right-radius:4px}
+.msg.cust{align-self:flex-end;background:linear-gradient(135deg,var(--accent),var(--accent-deep));border-bottom-right-radius:4px}
 .msg.cust small{color:rgba(255,255,255,.75)}
 .sys{align-self:center;font-size:.75rem;color:var(--muted);background:var(--surface);border:1px dashed var(--border);border-radius:999px;padding:3px 12px;animation:in .3s ease}
 .typing{align-self:flex-start;display:flex;gap:4px;padding:12px 14px;background:var(--surface-2);border-radius:16px;border-bottom-left-radius:4px}
-.typing.cust{align-self:flex-end;background:#3d2aa3}
+.typing.cust{align-self:flex-end;background:var(--accent-deep)}
 .typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:bl 1s infinite}
 .typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
 @keyframes bl{50%{opacity:.25}}
@@ -85,14 +85,14 @@ header img{height:34px;width:auto}
 .panel h2{font-size:1.35rem}
 .cards{display:grid;gap:14px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;opacity:.35;transition:opacity .4s,transform .4s,border-color .4s}
-.card.on{opacity:1;border-color:rgba(124,92,255,.5)}
+.card.on{opacity:1;border-color:color-mix(in srgb,var(--accent) 50%,transparent)}
 .card h3{font-size:.95rem;display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .card h3 .ic{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:var(--surface-2);font-size:.95rem}
 .fields{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:.92rem}
 .fields dt{color:var(--muted)}
 .fields dd{margin:0;font-weight:500;min-height:1.4em}
 .fields dd.fill{animation:flash 1s ease}
-@keyframes flash{0%{background:rgba(0,212,255,.25)}100%{background:transparent}}
+@keyframes flash{0%{background:color-mix(in srgb,var(--accent-2) 25%,transparent)}100%{background:transparent}}
 .pill{display:inline-block;font-size:.75rem;font-weight:600;padding:2px 9px;border-radius:999px}
 .pill.hi{background:rgba(255,181,71,.15);color:var(--warn)}
 .pill.ok{background:rgba(47,216,137,.15);color:var(--ok)}
@@ -104,7 +104,7 @@ header img{height:34px;width:auto}
 .slot{display:flex;gap:10px;align-items:center;padding:7px 10px;border-radius:10px;background:var(--bg-alt);border:1px solid var(--border)}
 .slot b{font-weight:600;min-width:46px;color:var(--muted)}
 .slot.busy span{color:var(--muted)}
-.slot.new{border-color:var(--accent-2);background:rgba(0,212,255,.08)}
+.slot.new{border-color:var(--accent-2);background:color-mix(in srgb,var(--accent-2) 8%,transparent)}
 .slot.new b{color:var(--accent-2)}
 
 /* ROI */
@@ -129,8 +129,8 @@ footer{border-top:1px solid var(--border);padding:20px 0;font-size:.8rem;color:v
 .plans--one{grid-template-columns:minmax(0,440px);justify-content:center}
 .demo-note{max-width:720px;margin:0 auto 14px;text-align:center;color:var(--muted);font-size:.9rem}
 .plan{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:24px;display:flex;flex-direction:column;gap:14px;position:relative}
-.plan.best{border-color:var(--accent);box-shadow:0 20px 60px -30px rgba(124,92,255,.7);background:linear-gradient(180deg,rgba(124,92,255,.12),var(--surface) 40%)}
-.plan .badge{position:absolute;top:-12px;left:24px;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff}
+.plan.best{border-color:var(--accent);box-shadow:0 20px 60px -30px color-mix(in srgb,var(--accent) 70%,transparent);background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 12%,transparent),var(--surface) 40%)}
+.plan .badge{position:absolute;top:-12px;left:24px;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:var(--on-accent)}
 .plan h3{font-size:1.4rem;margin:0}
 .plan .for{color:var(--muted);font-size:.9rem;margin:0}
 .price{font-family:var(--font-head);font-size:2.1rem;font-weight:700;line-height:1}
@@ -153,7 +153,7 @@ footer{border-top:1px solid var(--border);padding:20px 0;font-size:.8rem;color:v
 .svc p{margin:0;color:var(--muted);font-size:.88rem}
 .svc .tier{display:inline-block;margin-top:8px;font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--muted)}
 /* Topp, meny, FAQ, kontakt */
-header.top{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:18px;padding:14px 0;background:rgba(10,11,16,.85);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+header.top{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:18px;padding:14px 0;background:color-mix(in srgb,var(--bg) 85%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 header.top .brand{margin-right:auto}
 .menu{display:flex;gap:22px;font-size:.92rem;color:var(--muted)}
 .menu a{color:inherit;text-decoration:none}
@@ -186,12 +186,48 @@ footer p{margin:0}
 footer .fine{opacity:.7;font-size:.75rem}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* Tema: Vennlig (valgt 2026-11-09, se design/) */
+:root{--accent-deep:#5b3fe0;--phone:#05060a;--on-accent:#fff}
+.btn--ghost{color:var(--text)}
+.msg.cust,.msg.cust small{color:var(--on-accent)}
+.msg.cust small{opacity:.8}
+.form input,.form select,.form textarea{color:var(--text)}
+
+:root{
+  --bg:#eef6f1;--bg-alt:#e2efe7;--surface:#ffffff;--surface-2:#f1f8f4;--border:#cfe2d6;
+  --text:#1c2b24;--muted:#56695f;--accent:#1f7a5a;--accent-2:#c24f36;--ok:#1f7a5a;--warn:#b5651d;
+  --accent-deep:#17614a;--phone:#1c2b24;--on-accent:#ffffff;--radius:26px;
+  --font-body:"Nunito",system-ui,sans-serif;--font-head:"Fredoka","Nunito",system-ui,sans-serif;
+  color-scheme:light;
+}
+h1,h2,h3{font-weight:600;letter-spacing:-.01em}
+.hero{padding-top:52px}
+.hero h1{font-size:clamp(2.3rem,5.6vw,3.9rem)}
+.grad{background:none;color:var(--accent-2);-webkit-text-fill-color:currentColor;text-decoration:underline wavy color-mix(in srgb,var(--accent-2) 45%,transparent);text-decoration-thickness:3px;text-underline-offset:10px}
+.btn{background:var(--accent);box-shadow:0 8px 20px -10px rgba(31,122,90,.8);font-weight:700}
+.btn:hover{background:var(--accent-deep)}
+.btn--ghost{background:var(--surface);box-shadow:none}
+.eyebrow{text-transform:none;letter-spacing:0;font-size:.95rem;font-weight:700}
+.plan,.roi,.contact{border-radius:30px}
+.svc,.card,.faq details{border-radius:22px}
+.svc .i{font-size:1.6rem;width:48px;height:48px;display:grid;place-items:center;border-radius:16px;background:var(--bg-alt)}
+.plan.best{box-shadow:0 24px 50px -30px rgba(31,122,90,.6)}
+.plan .badge{background:var(--accent-2);color:#fff}
+.phone{box-shadow:0 30px 70px -35px rgba(28,43,36,.5)}
+.msg{border-radius:20px}
+
+.hero{position:relative;isolation:isolate}
+.figur{position:absolute;z-index:-1;bottom:-6px;width:210px;height:auto;pointer-events:none;animation:sveve 6s ease-in-out infinite}
+.figur--h{right:0}
+.figur--v{left:0;width:160px;transform:scaleX(-1);opacity:.55;animation-delay:-3s}
+@keyframes sveve{50%{translate:0 -8px}}
+@media (max-width:1000px){.figur--v{display:none}.figur--h{position:static;display:block;margin:0 auto 14px;width:120px}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
-    <a href="./" class="brand"><img src="assets/orvelo-logo.svg" alt="Orvelo"></a>
+    <a href="./" class="brand"><img src="assets/orvelo-logo-vennlig.svg" alt="Orvelo"></a>
     <nav class="menu" aria-label="Hovedmeny">
       <a href="#demo">Demo</a>
       <a href="#pris">Pris</a>
@@ -202,6 +238,8 @@ footer .fine{opacity:.7;font-size:.75rem}
   </header>
 
   <section class="hero">
+    <img class="figur figur--h" src="assets/figur.svg" alt="" width="210" height="245">
+    <img class="figur figur--v" src="assets/figur.svg" alt="" width="160" height="187">
     <div class="eyebrow">For håndverkere og servicebedrifter</div>
     <h1>Din egen KI-sekretær. <span class="grad">Svarer kundene døgnet rundt.</span></h1>
     <p>Orvelo lager en KI-sekretær for firmaet ditt. Den kjenner tjenestene, prisene og åpningstidene dine, snakker og skriver norsk, og svarer kundene døgnet rundt via en lenke på nettsiden din. Når kunden vil ha en avtale, foreslår den ledige tider.</p>
@@ -399,7 +437,7 @@ footer .fine{opacity:.7;font-size:.75rem}
   </section>
 </div>
 <footer>
-  <img src="assets/orvelo-logo.svg" alt="Orvelo" width="110" height="33">
+  <img src="assets/orvelo-logo-vennlig.svg" alt="Orvelo" width="110" height="33">
   <p>© <span id="year">2026</span> Orvelo · KI-sekretær for håndverkere og servicebedrifter</p>
   <p class="fine">Samtalene i demoen er eksempler. Navn og telefonnumre er oppdiktet.</p>
 </footer>
