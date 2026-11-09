@@ -5,6 +5,8 @@
 //   2. POST /kode  -> vi sender en SMS-kode for å bekrefte at nummeret er kundens eget (dobbelt samtykke).
 //   3. POST /ring  -> riktig kode? Da ringer Telnyx (norsk nummer) eller Twilio kunden, og samtalen kobles til Grok.
 //   4. GET  /media -> WebSocket mellom telefonlyden (Telnyx/Twilio) og xAI realtime (Grok-stemmen).
+//   Innringing (Telnyx): ringer noen nummeret, svarer agenten, spør hvilket firma de ringer fra, henter
+//   firmaets KI-sekretær (laget med /lag i orvelo-sekretar) og spiller den, så de hører hvordan den høres ut.
 //   SMS (kode og bookinglenke) sendes alltid via Twilio, fra avsendernavnet «Orvelo».
 //   Under samtalen kan agenten sende bookinglenken på SMS og sende Preben et sammendrag på e-post.
 //
@@ -20,6 +22,9 @@
 //   VARSEL_EPOST         (Text,   valgfri)  hvor sammendrag sendes (via FormSubmit)
 //   STEMME               (Text,   valgfri)  Grok-stemme, standard «ara»
 //   SMS_AVSENDER         (Text,   valgfri)  navnet SMS-ene kommer fra, standard «Orvelo» (tom = Twilio-nummeret)
+//   KUNDER               (KV-binding, valgfri) samme KV som orvelo-sekretar (orvelo-kunder). Uten den kan
+//                        innringere bare høre en eksempelsekretær, ikke sitt eget firma.
+//   INNRING              (Text,   valgfri)  «av» = ikke svar på innkommende anrop
 //   TEST_NUMMER          (Text,   valgfri)  ditt eget nummer: hopper over SMS-koden (koden blir 0000) mens Twilio er prøvekonto
 
 const BOOKING_URL_DEFAULT = "https://calendar.app.google/24niGvpRRwPqNqr28";
@@ -166,6 +171,160 @@ Målet med samtalen: Forklar kort, svar på spørsmål, og foreslå et uforplikt
 Hvis du hører en telefonsvarer eller ingen svarer: si én kort setning om at Orvelo ringte som avtalt og at de kan booke på nettsiden, og bruk legg_paa.`;
 }
 
+// ---------- innringing: kunden ringer selv og tester sin egen sekretær ----------
+
+const DAGNAVN = ["søndag", "mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag"];
+const MND = ["januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember"];
+
+function osloNaa(d = new Date()) {
+  const f = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const x = Object.fromEntries(f.formatToParts(d).map((p) => [p.type, p.value]));
+  return { iso: `${x.year}-${x.month}-${x.day}`, tid: `${x.hour}:${x.minute}` };
+}
+function pentDato(iso) {
+  const d = new Date(iso + "T12:00:00Z");
+  return `${DAGNAVN[d.getUTCDay()]} ${d.getUTCDate()}. ${MND[d.getUTCMonth()]}`;
+}
+
+// Gjør «Berg Rør AS» om til «berg-ror», som id-ene i KV starter med.
+export function slugg(s) {
+  return String(s || "").toLowerCase().replace(/æ/g, "ae").replace(/ø/g, "o").replace(/å/g, "a")
+    .replace(/[^a-z0-9]+/g, " ").replace(/\b(as|asa|enk|da|ans|og|the)\b/g, " ").trim().replace(/\s+/g, "-");
+}
+function bigram(s) {
+  const t = s.replace(/-/g, ""); const m = new Map();
+  for (let i = 0; i < t.length - 1; i++) { const b = t.slice(i, i + 2); m.set(b, (m.get(b) || 0) + 1); }
+  return m;
+}
+// Likhet 0–1 mellom det kunden sa og et firma-id (Dice på bokstavpar), så «Berg rør» treffer «berg-ror-x1y2».
+export function likhet(a, b) {
+  const A = bigram(a), B = bigram(b); let felles = 0, n = 0;
+  for (const [k, v] of A) { n += v; felles += Math.min(v, B.get(k) || 0); }
+  for (const v of B.values()) n += v;
+  return n ? (2 * felles) / n : 0;
+}
+
+export async function finnFirma(env, navn) {
+  if (!env.KUNDER) return { funnet: false, grunn: "Firmaoversikten er ikke koblet til." };
+  const sagt = slugg(navn);
+  if (sagt.length < 2) return { funnet: false, grunn: "Fikk ikke med meg navnet." };
+  const kandidater = [];
+  let cursor;
+  do {
+    const l = await env.KUNDER.list({ prefix: "kunde:", cursor });
+    for (const k of l.keys) {
+      const id = k.name.slice(6);
+      const base = id.replace(/-[a-z0-9]{4}$/, "");
+      const score = base === sagt ? 1 : base.startsWith(sagt) || sagt.startsWith(base) ? 0.9 : likhet(sagt, base);
+      if (score >= 0.5) kandidater.push({ id, score });
+    }
+    cursor = l.list_complete ? null : l.cursor;
+  } while (cursor);
+  kandidater.sort((a, b) => b.score - a.score);
+  if (!kandidater.length) return { funnet: false, grunn: "Fant ingen sekretær med det navnet." };
+  const beste = kandidater.filter((k) => k.score >= kandidater[0].score - 0.05).slice(0, 3);
+  const profiler = (await Promise.all(beste.map((k) => env.KUNDER.get("kunde:" + k.id, "json")))).filter(Boolean);
+  if (!profiler.length) return { funnet: false, grunn: "Fant ingen sekretær med det navnet." };
+  if (profiler.length > 1) return { funnet: false, flere: profiler.map((p) => `${p.navn}${p.adresse ? " (" + p.adresse + ")" : ""}`) };
+  return { funnet: true, profil: profiler[0] };
+}
+
+// Noen ledige demotider de neste dagene, ut fra åpningstidene.
+function demoTider(profil) {
+  const ut = [];
+  const start = new Date();
+  for (let i = 1; i <= 10 && ut.length < 5; i++) {
+    const iso = osloNaa(new Date(start.getTime() + i * 864e5)).iso;
+    const dag = new Date(iso + "T12:00:00Z").getUTCDay();
+    const a = profil.apent && profil.apent[dag];
+    if (!Array.isArray(a)) continue;
+    const fra = Number(a[0].slice(0, 2)), til = Number(a[1].slice(0, 2));
+    const valg = [fra + 1, Math.round((fra + til) / 2), til - 2].filter((h, j, l) => h >= fra && h < til && l.indexOf(h) === j);
+    ut.push(`${pentDato(iso)}: ${valg.map((h) => `${String(h).padStart(2, "0")}:00`).join(", ")}`);
+  }
+  return ut.join("\n") || "Ingen faste åpningstider: tilby å legge igjen beskjed.";
+}
+
+export function rolleInstruks(p) {
+  const befaring = p.type === "befaring";
+  const sted = p.sted || "firmaet";
+  const naa = osloNaa();
+  const prisliste = (p.tjenester || []).map(([kat, l]) => `${kat}: ` + (l || []).map(([x, pris]) => `${x} ${pris}`).join("; ")).join("\n");
+  const kontakt = [p.adresse && `Adresse: ${p.adresse}.`, p.omraade && `Område: ${p.omraade}.`].filter(Boolean).join(" ");
+  return `# Rolle nå
+Du spiller den digitale telefonsekretæren til ${p.navn}${p.bransje ? ", " + p.bransje : ""}. Personen som ringer er trolig eier eller ansatt i ${p.kortnavn || p.navn} og vil høre hvordan sekretæren ville tatt imot kundene deres.
+Si først kort: «Da hører du nå hvordan jeg ville svart for ${p.kortnavn || p.navn}. Lat som du er en kunde som ringer.» Svar så som sekretæren: «${p.kortnavn || p.navn}, hei! Hva kan jeg hjelpe deg med?»
+
+# Stil
+Norsk bokmål, kort og varmt, én eller to setninger om gangen, ett spørsmål om gangen. Si klokkeslett og priser slik folk sier dem.
+
+# Tid
+I dag er det ${pentDato(naa.iso)}, klokka ${naa.tid}.
+
+# Bedriften
+${kontakt}
+Åpningstider: ${p.apentTekst || "ukjent"}
+${(p.ansatte || []).length ? "Ansatte: " + p.ansatte.join(", ") + "." : ""}
+${p.ekstra || ""}
+
+# Prisliste (veiledende)
+${prisliste || "Ingen prisliste: si at prisen avtales etter befaring eller ved oppmøte."}
+
+# Ledige tider (demo)
+${demoTider(p)}
+
+# Slik ${befaring ? "booker du befaring" : "booker du time"}
+${befaring
+    ? "Finn ut hva jobben gjelder og om noe haster. Haster det, gi et kort trygt råd (steng hovedkranen, slå av sikringen). Foreslå to av de ledige tidene, spør om navn, mobilnummer og adressen jobben gjelder, og bruk bestill_demo."
+    : "Finn ut hva kunden vil ha, foreslå to av de ledige tidene, spør om fornavn og mobilnummer, og bruk bestill_demo."}
+Spørsmål du ikke kan svare på, flytting og klager: bruk legg_igjen_beskjed og si at ${sted} ringer tilbake.
+Gi aldri andre priser enn prislisten, og lov aldri noe ${sted} ikke har sagt.
+
+# Etter demoen
+Når de har prøvd, eller hvis de spør hva dette koster og hvordan det settes opp: gå ut av rollen og vær Ara fra Orvelo igjen.
+Tre pakker med fast månedspris eks. mva. og uten oppstartskostnad: Start 790 kroner (50 minutter samtale i måneden), Pro 1 490 kroner (200 minutter) og Komplett 2 990 kroner (500 minutter). Preben setter det opp, tilpasset ${sted}.
+Tilby et kort møte med Preben (send_bookinglenke), skriv sammendrag med noter_for_preben, si ha det og bruk legg_paa.`;
+}
+
+function innringInstruks() {
+  return `Du er Ara, en KI-assistent fra Orvelo, et lite norsk selskap i Bergen drevet av Preben Hilleren. Orvelo lager KI-sekretærer som svarer telefonen for håndverkere og andre små bedrifter.
+Du snakker norsk (bokmål), varmt og kort, maks to setninger om gangen. Si tydelig at du er en KI hvis noen spør.
+
+Noen har ringt Orvelos demonummer, trolig etter en e-post der vi skrev at vi har laget en KI-sekretær til firmaet deres.
+1. Spør hvilket firma de ringer fra, og bruk verktøyet finn_firma med navnet. Er du usikker på navnet, spør dem om å si det en gang til.
+2. Finner du firmaet: følg instruksjonene i svaret fra verktøyet og spill sekretæren deres.
+3. Finner du flere: les opp valgene kort og spør hvilket. Bruk så finn_firma med det fulle navnet.
+4. Finner du det ikke etter to forsøk: si at sekretæren deres ikke er laget ennå, men at de kan høre et eksempel. Spør hva slags bedrift de har, og spill en vennlig sekretær for et eksempelfirma i den bransjen (navn: «Eksempelfirmaet»). Ikke nevn priser for eksempelfirmaet.
+Hvis noen bare vil vite hva Orvelo er: forklar kort, tilby et møte med Preben (send_bookinglenke).
+Før du avslutter: bruk noter_for_preben med et kort sammendrag, si ha det og bruk legg_paa.`;
+}
+
+const INN_VERKTOY = () => [
+  {
+    type: "function",
+    name: "finn_firma",
+    description: "Finn KI-sekretæren Orvelo har laget for firmaet personen ringer fra.",
+    parameters: { type: "object", properties: { navn: { type: "string", description: "Firmanavnet slik personen sa det" } }, required: ["navn"] },
+  },
+  {
+    type: "function",
+    name: "bestill_demo",
+    description: "Bestill time eller befaring i demoen (ingenting bookes på ekte).",
+    parameters: {
+      type: "object",
+      properties: { hva: { type: "string" }, dag: { type: "string" }, klokkeslett: { type: "string" }, navn: { type: "string" }, mobil: { type: "string" }, adresse: { type: "string" } },
+      required: ["hva", "dag", "klokkeslett"],
+    },
+  },
+  {
+    type: "function",
+    name: "legg_igjen_beskjed",
+    description: "Ta imot en beskjed til firmaet i demoen.",
+    parameters: { type: "object", properties: { beskjed: { type: "string" }, navn: { type: "string" }, mobil: { type: "string" } }, required: ["beskjed"] },
+  },
+  ...VERKTOY,
+];
+
 const VERKTOY = [
   {
     type: "function",
@@ -207,6 +366,7 @@ async function koblSamtale(env, tlfWs, urlParam) {
   let notat = null; // sammendraget agenten skriver
   let rapportSendt = false;
   const logg = []; // hele samtalen, som tekst
+  const demoHendelser = []; // hva som skjedde i demoen ved innringing
   const tid = () => {
     const sek = Math.round((Date.now() - startet) / 1000);
     return `${Math.floor(sek / 60)}:${String(sek % 60).padStart(2, "0")}`;
@@ -230,7 +390,29 @@ async function koblSamtale(env, tlfWs, urlParam) {
   }
 
   async function kjorVerktoy(navn, args) {
+    if (navn === "finn_firma") {
+      const r = await finnFirma(env, args.navn);
+      if (r.funnet) {
+        const p = r.profil;
+        kunde.firma = p.navn;
+        demoHendelser.push(`Fant sekretæren til ${p.navn} (${p.id})`);
+        const rolle = rolleInstruks(p);
+        tilXai({ type: "session.update", session: { instructions: innringInstruks() + "\n\n" + rolle } });
+        return { funnet: true, firma: p.navn, instruksjoner: rolle };
+      }
+      demoHendelser.push(`Søkte etter «${String(args.navn || "").slice(0, 60)}»: ${r.flere ? "flere treff" : "ingen treff"}`);
+      return r;
+    }
+    if (navn === "bestill_demo") {
+      demoHendelser.push(`Demo-bestilling: ${[args.hva, args.dag, args.klokkeslett, args.navn, args.mobil, args.adresse].filter(Boolean).join(" · ")}`);
+      return { ok: true, info: "Bestilt i demoen. Si at kunden får en SMS med bekreftelse (i demoen sendes den ikke)." };
+    }
+    if (navn === "legg_igjen_beskjed") {
+      demoHendelser.push(`Demo-beskjed: ${[args.beskjed, args.navn, args.mobil].filter(Boolean).join(" · ")}`);
+      return { ok: true, info: "Beskjeden er notert i demoen." };
+    }
     if (navn === "send_bookinglenke") {
+      if (!normaliserNummer(kunde.til)) return { ok: false, melding: "Nummeret er ikke en norsk mobil. Si at de kan booke via lenken i e-posten." };
       if (lenkeSendt) return { ok: true, melding: "Lenken er allerede sendt." };
       const r = await sendSms(env, kunde.til,
         `Hei! Her er lenken for å booke et uforpliktende møte (30 min) med Preben i Orvelo: ${env.BOOKING_URL || BOOKING_URL_DEFAULT}`);
@@ -263,8 +445,8 @@ async function koblSamtale(env, tlfWs, urlParam) {
       type: "session.update",
       session: {
         voice: env.STEMME || "ara",
-        instructions: instruksjoner(kunde.navn, kunde.firma),
-        tools: VERKTOY,
+        instructions: kunde.inn ? innringInstruks() : instruksjoner(kunde.navn, kunde.firma),
+        tools: kunde.inn ? INN_VERKTOY() : VERKTOY,
         turn_detection: { type: "server_vad" },
         audio: {
           input: { format: { type: "audio/pcmu" }, transcription: { language_hint: "no", keyterms: ["Orvelo", "Preben", "KI-sekretær"] } },
@@ -273,11 +455,14 @@ async function koblSamtale(env, tlfWs, urlParam) {
       },
     });
     const hei = kunde.navn ? `Hei, ${kunde.navn.split(" ")[0]}!` : "Hei!";
+    const forste = kunde.inn
+      ? "Hei, du har ringt Orvelo! Jeg er Ara, en KI-assistent. Hvilket firma ringer du fra, så finner jeg KI-sekretæren vi har laget til dere?"
+      : `${hei} Dette er Ara, en KI-assistent fra Orvelo. Du ba om å bli ringt for å høre hvordan en KI-sekretær høres ut, så her er jeg! Har du et par minutter?`;
     tilXai({
       type: "conversation.item.create",
       item: {
         type: "force_message", role: "assistant", interruptible: true,
-        content: [{ type: "output_text", text: `${hei} Dette er Ara, en KI-assistent fra Orvelo. Du ba om å bli ringt for å høre hvordan en KI-sekretær høres ut, så her er jeg! Har du et par minutter?` }],
+        content: [{ type: "output_text", text: forste }],
       },
     });
     while (ventende.length) tilXai({ type: "input_audio_buffer.append", audio: ventende.shift() });
@@ -329,6 +514,18 @@ async function koblSamtale(env, tlfWs, urlParam) {
       streamSid = e.start.streamSid || e.stream_id || null;
       callSid = e.start.callSid || e.start.call_control_id || null;
       const p = erTelnyx ? urlParam : (e.start.customParameters || {});
+      if (p.modus === "inn") {
+        const forventet = await hmac(env.TWILIO_AUTH_TOKEN, `inn|${p.cid}|${p.fra}|${p.ts}`);
+        if (!erTelnyx || !likt(p.sig, forventet) || p.cid !== callSid || Date.now() - Number(p.ts) > 2 * 60 * 1000) {
+          console.log("Ugyldig innringing-signatur");
+          try { tlfWs.close(1008, "ugyldig"); } catch {}
+          return;
+        }
+        kunde = { til: p.fra || "ukjent", navn: "", firma: "", inn: true };
+        setTimeout(() => leggPaa(0), MAKS_SEK * 1000);
+        await startGrok();
+        return;
+      }
       // Sjekk at samtalen faktisk ble startet av /ring (signert), ellers legg på.
       const forventet = await hmac(env.TWILIO_AUTH_TOKEN, `samtale|${p.til}|${p.ts}`);
       if (!likt(p.sig, forventet) || Date.now() - Number(p.ts) > 15 * 60 * 1000) {
@@ -355,7 +552,9 @@ async function koblSamtale(env, tlfWs, urlParam) {
     if (rapportSendt || !kunde.til) return;
     rapportSendt = true;
     const n = notat || {};
-    await varsle(env, `Orvelo-samtale: ${kunde.firma || kunde.til} (interesse: ${n.interesse || "ukjent"})`, {
+    await varsle(env, `${kunde.inn ? "Innringing" : "Orvelo-samtale"}: ${kunde.firma || kunde.til} (interesse: ${n.interesse || "ukjent"})`, {
+      Retning: kunde.inn ? "Kunden ringte demonummeret" : "Agenten ringte kunden",
+      Demo: demoHendelser.join("\n"),
       Nummer: kunde.til, Navn: kunde.navn || "", Firma: kunde.firma || "",
       Tidspunkt: new Date(startet).toISOString(),
       Varighet: tid(),
@@ -443,14 +642,43 @@ function ringTwilio(env, til, wss, naa, samtaleSig, navn, firma) {
   return twilio(env, "Calls.json", { To: til, From: env.TWILIO_FROM, Twiml: twiml, TimeLimit: String(MAKS_SEK) });
 }
 
+// Svarer et innkommende anrop og kobler det til /media med signerte parametere.
+async function svarInnringing(env, url, pl) {
+  const cid = String(pl.call_control_id || "");
+  if (!cid) return;
+  const fra = String(pl.from || "").slice(0, 20);
+  const id = `calls/${encodeURIComponent(cid)}/actions`;
+  if (forMange("inn:" + fra, 6, 60 * 60 * 1000) || forMange("inn:alle", 60, 60 * 60 * 1000)) {
+    await telnyx(env, `${id}/reject`, { cause: "USER_BUSY" });
+    return;
+  }
+  const ts = String(Date.now());
+  const sig = await hmac(env.TWILIO_AUTH_TOKEN, `inn|${cid}|${fra}|${ts}`);
+  const q = new URLSearchParams({ modus: "inn", cid, fra, ts, sig });
+  const r = await telnyx(env, `${id}/answer`, {
+    stream_url: `wss://${url.host}/media?${q}`, stream_track: "inbound_track",
+    stream_bidirectional_mode: "rtp", stream_bidirectional_codec: "PCMU",
+  });
+  if (!r.ok) console.log("Klarte ikke å svare innringing", telnyxFeil(r));
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const mangler = ["XAI_API_KEY", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN"].filter((k) => !env[k]);
     if (!brukTelnyx(env) && !env.TWILIO_FROM) mangler.push("TWILIO_FROM eller TELNYX_*");
 
-    // Telnyx sender hendelser (samtale besvart, lagt på osv.) hit. Vi trenger dem ikke, men svarer OK.
-    if (url.pathname === "/telnyx" && request.method === "POST") return new Response("ok");
+    // Telnyx sender hendelser hit. Innkommende anrop besvares og kobles til Grok; resten svarer vi bare OK på.
+    if (url.pathname === "/telnyx" && request.method === "POST") {
+      let h = {};
+      try { h = await request.json(); } catch {}
+      const d = h.data || {};
+      const pl = d.payload || {};
+      if (d.event_type === "call.initiated" && pl.direction === "incoming" && brukTelnyx(env) && !mangler.length && env.INNRING !== "av") {
+        await svarInnringing(env, url, pl);
+      }
+      return new Response("ok");
+    }
 
     if (url.pathname === "/media") {
       if (request.headers.get("Upgrade") !== "websocket") return new Response("Forventer WebSocket", { status: 426 });
