@@ -124,3 +124,29 @@ Samme nummer innen 2 timer gir bare én SMS. Fasttelefoner får ikke SMS, men ha
 ### Kostnad
 Twilio til norsk mobil: ca. 0,8 kr per SMS (160 tegn). Anmeldelses-SMS-en er to SMS fordi den har to lenker.
 Tekstene unngår tegn som «» og lange streker, siden de gjør SMS-en tre ganger så dyr.
+
+## Ukesrapport til kundene (`/rapport`)
+
+Hver mandag morgen lager workeren en rapport for forrige uke til hver kunde: antall samtaler og chatter, hva kundene ville
+(bestille time, pris, åpningstider …), nye bookinger, beskjeder, tapte anrop og hvor mange minutter som er brukt av pakken denne måneden.
+
+**Hva som lagres (personvern):** når en samtale på sekretærsiden er ferdig, sender siden utskriften til workeren. Grok lager ett kort tema
+(uten navn og nummer), og bare dette lagres i KV: tidspunkt, kanal, varighet, tema, kategori, bookinger og beskjeder med fornavn og de
+to siste sifrene i mobilnummeret. Utskriften og lyd lagres ikke. Alt slettes automatisk etter 62 dager. Gjelder bare lenker med `?kunde=`.
+
+Oppsett:
+
+1. Lim inn den nye `worker/sekretar-worker.js` og trykk **Deploy**. Da begynner loggingen.
+2. **Settings → Triggers → Cron Triggers → Add** (i tillegg til `*/15 * * * *` for SMS): `0 6 * * 1` (mandag kl. 07 vinter / 08 sommer). Uten flere innstillinger
+   får du da bare en oversikt på e-post hver mandag. Ingenting går til kundene.
+3. Åpne `/rapport`, skriv admin-koden, velg kunde og trykk **Eksempel med oppdiktede tall** eller **Forrige uke**.
+4. For å sende til kundene: lag gratis konto på [resend.com](https://resend.com), legg til domenet `orvelo.no` og legg inn
+   DNS-postene Resend viser hos Domeneshop. Sett så i Cloudflare:
+   - Secret `RESEND_API_KEY` = nøkkelen fra Resend
+   - (valgfritt) Text `RAPPORT_FRA` = `Orvelo <rapport@orvelo.no>`
+   - Text `RAPPORT_SEND` = `ja` (først når du vil at kundene skal få rapporten)
+5. På `/rapport`: skriv kundens e-post, velg pakke, kryss av «Send rapporten til kunden hver mandag» og trykk **Lagre**.
+   «Send forrige uke til meg» sender en prøve til deg først.
+
+Kunden får rapporten bare når både `RAPPORT_SEND = ja` og avkrysningen er på. Du får alltid en kopi (blindkopi) og en oversikt.
+Uker uten henvendelser sendes ikke. Andre kanaler (telefonlinje, chat, SMS, tilbakeringing) kan logge til samme rapport med `loggHendelse()`.
