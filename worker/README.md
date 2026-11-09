@@ -168,3 +168,7 @@ Godt å vite:
 - Første e-post til en ny adresse kommer fra FormSubmit med en bekreftelseslenke firmaet må trykke på én gang.
 - Bremser: 40 meldinger per 10 min per besøkende, og `CHAT_MAKS_DAG` (standard 400) meldinger per firma per døgn.
 - Ingen nye innstillinger i Cloudflare trengs. Bare lim inn ny workerkode etter at PR-en er merget.
+
+## Svar på e-post og Facebook (egen worker `orvelo-innboks`)
+
+Se [INNBOKS.md](INNBOKS.md). Bruker samme KV-lager og rettekode som `/rediger`.
