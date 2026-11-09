@@ -252,5 +252,131 @@
       "ai": "ara",
       "cust": "eve"
     }
+  },
+  "rengjoring": {
+    "firm": "Fjell Renhold AS",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "eve"
+    }
+  },
+  "flytting": {
+    "firm": "Vest Flytt AS",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "leo"
+    }
+  },
+  "dekk": {
+    "firm": "Åsane Dekk AS",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "leo"
+    }
+  },
+  "dyr": {
+    "firm": "Pelsstell Bergen",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "eve"
+    }
+  },
+  "skjonnhet": {
+    "firm": "Studio Glans",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "eve"
+    }
+  },
+  "trening": {
+    "firm": "Kraft PT Bergen",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "leo"
+    }
+  },
+  "skadedyr": {
+    "firm": "Vest Skadedyr AS",
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      12,
+      13,
+      16
+    ],
+    "voices": {
+      "ai": "ara",
+      "cust": "eve"
+    }
   }
 }
