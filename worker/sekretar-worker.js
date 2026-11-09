@@ -19,6 +19,10 @@
 //   GET  /rediger/data  -> profilen som kunden kan rette (krever kunde + r)
 //   POST /rediger/lagre -> lagrer kundens endringer (tar vare på de 10 forrige versjonene) og varsler Preben
 //   POST /rediger/lenke -> Prebens knapp: lager (eller henter) kundens rette-lenke (krever ADMIN_KODE)
+//   POST /logg          -> sekretærsiden sender et kort sammendrag når en samtale er ferdig (til ukesrapporten)
+//   GET  /rapport       -> Prebens side: se, prøvesend og slå på ukesrapporten per kunde (krever ADMIN_KODE)
+//   POST /rapport/api   -> data til /rapport
+//   cron (mandag)       -> lager ukesrapporter; sender til kunder bare når RAPPORT_SEND = "ja"
 //
 // Innstillinger (Cloudflare: Worker -> Settings -> Variables and Secrets):
 //   XAI_API_KEY  (Secret, påkrevd)  xAI-nøkkelen din
@@ -162,6 +166,10 @@ export default {
       }
     }
 
+    if (url.pathname === "/logg" || url.pathname === "/rapport" || url.pathname.startsWith("/rapport/")) {
+      return rapportRute(request, env, ctx, url);
+    }
+
     if (url.pathname === "/rediger" || url.pathname.startsWith("/rediger/")) {
       return redigerRute(request, env, ctx, url);
     }
@@ -184,6 +192,11 @@ export default {
     }
 
     return new Response("Ikke funnet", { status: 404 });
+  },
+
+  // Cron Trigger (settes i Cloudflare): ukesrapport hver mandag morgen
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(ukesrapporter(env));
   },
 };
 
@@ -740,4 +753,389 @@ async function redigerRute(request, env, ctx, url) {
   }
 
   return new Response("Ikke funnet", { status: 404 });
+}
+
+// ======================================================================
+// Ukesrapport til kundene (/logg, /rapport og cron hver mandag)
+// ======================================================================
+// Hver samtale med sekretæren lagres som et kort sammendrag i KV (logg:<id>:<tidspunkt>:<tilfeldig>).
+// Vi lagrer IKKE lydopptak eller hele samtalen: bare tidspunkt, kanal, varighet, ett kort tema (laget av Grok,
+// uten navn og nummer), hva som ble booket (fornavn + to siste sifre i mobilnummeret) og beskjeder.
+// Alt slettes av seg selv etter 62 dager (expirationTtl), så vi har nok til månedens minutter og forrige uke.
+//
+// Innstillinger per kunde (KV rapport:<id>): { epost, pakke: "starter"|"pro"|"komplett", aktiv: true|false }
+//   settes på /rapport (Prebens side, krever ADMIN_KODE).
+// Utsending (Cloudflare -> Settings -> Variables and Secrets):
+//   RESEND_API_KEY (Secret) nøkkel fra resend.com (gratis opptil 3000 e-poster i måneden). Uten den sendes ingenting til kunder.
+//   RAPPORT_SEND   (Text)   må være «ja» før cron sender til kundene. Ellers får bare Preben en oversikt.
+//   RAPPORT_FRA    (Text)   avsender, standard «Orvelo <rapport@orvelo.no>» (domenet må være bekreftet i Resend)
+// Cron (Cloudflare -> Settings -> Triggers -> Cron Triggers): «0 6 * * 1» = hver mandag kl. 07 (vinter) / 08 (sommer).
+//
+// Andre kanaler (telefonlinje, chat, SMS, tilbakeringing) kan logge på samme måte med loggHendelse(env, id, {...}):
+//   kanal: "tale" | "tekst" | "telefon" | "chat" | "sms" | "epost" | "facebook", sek, tema, kategori,
+//   bookinger: [{hva, dato, kl, navn, mobil}], beskjeder: [{tekst, navn, mobil}], tapt: true, tilbakeringt: true
+
+const LOGG_TTL = 62 * 24 * 3600;
+const PAKKER = { starter: { navn: "Starter", min: 50 }, pro: { navn: "Pro", min: 200 }, komplett: { navn: "Komplett", min: 500 } };
+const KATEGORIER = { booking: "Bestille time", flytte: "Flytte eller avbestille", pris: "Spørsmål om pris", apning: "Åpningstider og adresse", tjeneste: "Spørsmål om tjenester", akutt: "Akutt eller hastesak", klage: "Klage", annet: "Annet" };
+const KANAL_NAVN = { tale: "Samtale", telefon: "Telefon", tekst: "Chat", chat: "Chat", sms: "SMS", epost: "E-post", facebook: "Facebook" };
+const loggTreff = new Map();
+
+const fornavn = (v) => tekst(String(v || "").split(/\s+/)[0], 30);
+const maskerTlf = (v) => { const d = String(v || "").replace(/\D/g, ""); return d.length >= 4 ? "••• •• " + d.slice(-2) : ""; };
+
+function rensLogg(r) {
+  const kanal = Object.keys(KANAL_NAVN).includes(r.kanal) ? r.kanal : "tale";
+  return {
+    t: !isNaN(Date.parse(r.t)) ? new Date(r.t).toISOString() : new Date().toISOString(),
+    kanal,
+    sek: tall(r.sek, 4 * 3600),
+    tema: tekst(r.tema, 160),
+    kategori: KATEGORIER[r.kategori] ? r.kategori : "annet",
+    bookinger: (Array.isArray(r.bookinger) ? r.bookinger : []).slice(0, 5).map((b) => ({
+      hva: tekst(b.hva, 80), dato: datoStr(b.dato), kl: /^\d{2}:\d{2}$/.test(b.kl || "") ? b.kl : "",
+      navn: fornavn(b.navn), tlf: b.tlf && b.tlf.startsWith("•") ? tekst(b.tlf, 20) : maskerTlf(b.mobil),
+    })),
+    beskjeder: (Array.isArray(r.beskjeder) ? r.beskjeder : []).slice(0, 5).map((b) => ({
+      tekst: tekst(b.tekst, 200), navn: fornavn(b.navn), tlf: b.tlf && b.tlf.startsWith("•") ? tekst(b.tlf, 20) : maskerTlf(b.mobil),
+    })),
+    tapt: !!r.tapt,
+    tilbakeringt: !!r.tilbakeringt,
+  };
+}
+
+async function loggHendelse(env, id, r) {
+  if (!env.KUNDER || !id) return;
+  const rec = rensLogg(r);
+  await env.KUNDER.put(`logg:${id}:${rec.t}:${tilfeldig(4)}`, JSON.stringify(rec), { expirationTtl: LOGG_TTL });
+}
+
+// Lager tema og kategori fra utskriften. Utskriften kastes etterpå.
+async function oppsummer(env, profil, utskrift) {
+  const forste = (utskrift.find((x) => x[0] === "kunde") || [])[1] || "";
+  const reserve = { tema: tekst(forste.replace(/\+?\d[\d ]{6,}/g, "[nummer]"), 120), kategori: "annet" };
+  if (!env.XAI_API_KEY || !utskrift.length) return reserve;
+  try {
+    const tekstUt = utskrift.map(([hvem, t]) => (hvem === "kunde" ? "Kunde: " : "Sekretær: ") + t).join("\n").slice(0, 6000);
+    const svar = await grokJson(env,
+      `Du lager et kort sammendrag av en samtale mellom en kunde og den digitale sekretæren til ${profil.navn || "en bedrift"}. ` +
+      `Svar med JSON: {"tema": "hva kunden ville, maks 14 ord, enkel norsk, UTEN navn, telefonnummer, adresse eller helseopplysninger", ` +
+      `"kategori": en av ${JSON.stringify(Object.keys(KATEGORIER))}}`,
+      tekstUt);
+    return { tema: tekst(svar.tema, 160) || reserve.tema, kategori: KATEGORIER[svar.kategori] ? svar.kategori : "annet" };
+  } catch (e) {
+    console.log("oppsummering feilet", e && e.message);
+    return reserve;
+  }
+}
+
+// --- Tid (rapporten følger norsk tid) ---
+function osloOffsetMin(d) {
+  const s = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Oslo", timeZoneName: "shortOffset" }).formatToParts(d).find((p) => p.type === "timeZoneName")?.value || "GMT+1";
+  const m = s.match(/GMT([+-]\d+)(?::(\d+))?/);
+  return m ? Number(m[1]) * 60 + (m[2] ? Math.sign(Number(m[1])) * Number(m[2]) : 0) : 60;
+}
+// Mandag kl. 00:00 norsk tid i uka som inneholder d
+function ukestart(d) {
+  const lokal = new Date(d.getTime() + osloOffsetMin(d) * 60000);
+  const dag = (lokal.getUTCDay() + 6) % 7;
+  const m = Date.UTC(lokal.getUTCFullYear(), lokal.getUTCMonth(), lokal.getUTCDate() - dag);
+  const guess = new Date(m - 60 * 60000);
+  return new Date(m - osloOffsetMin(guess) * 60000);
+}
+function ukenr(d) {
+  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const dag = (t.getUTCDay() + 6) % 7;
+  t.setUTCDate(t.getUTCDate() - dag + 3);
+  const forsteTorsdag = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
+  return 1 + Math.round(((t - forsteTorsdag) / 86400000 - 3 + ((forsteTorsdag.getUTCDay() + 6) % 7)) / 7);
+}
+const oslo = (iso, o) => new Date(iso).toLocaleString("nb-NO", { timeZone: "Europe/Oslo", ...o });
+const dagKl = (iso) => oslo(iso, { weekday: "short", day: "numeric", month: "short" }).replace(/\.$/, "") + " kl. " + oslo(iso, { hour: "2-digit", minute: "2-digit" });
+const pentDato = (d) => oslo(d.toISOString(), { day: "numeric", month: "long" });
+
+async function hentLogg(env, id, fra, til) {
+  const ut = [];
+  // Nøklene har tidspunktet i seg, så vi kan starte listen på riktig måned
+  const prefikser = new Set([fra.toISOString().slice(0, 7), new Date(til.getTime() - 1).toISOString().slice(0, 7)]);
+  for (const mnd of prefikser) {
+    let cursor;
+    do {
+      const l = await env.KUNDER.list({ prefix: `logg:${id}:${mnd}`, cursor });
+      for (const k of l.keys) {
+        const t = k.name.split(":").slice(2, -1).join(":");
+        if (t >= fra.toISOString() && t < til.toISOString()) ut.push(k.name);
+      }
+      cursor = l.list_complete ? null : l.cursor;
+    } while (cursor);
+  }
+  const rec = await Promise.all(ut.map((k) => env.KUNDER.get(k, "json")));
+  return rec.filter(Boolean).sort((a, b) => a.t.localeCompare(b.t));
+}
+
+function tellOpp(logg) {
+  const s = { samtaler: 0, chat: 0, bookinger: 0, beskjeder: 0, tapt: 0, tilbakeringt: 0, sek: 0, kat: {} };
+  for (const r of logg) {
+    if (r.tapt) { s.tapt++; if (r.tilbakeringt) s.tilbakeringt++; continue; }
+    if (["tale", "telefon"].includes(r.kanal)) { s.samtaler++; s.sek += r.sek; } else s.chat++;
+    s.bookinger += r.bookinger.length;
+    s.beskjeder += r.beskjeder.length;
+    s.kat[r.kategori] = (s.kat[r.kategori] || 0) + 1;
+  }
+  return s;
+}
+
+// Bygger rapporten for én kunde og én uke. fra/til er Date. Returnerer { emne, html, tekst, tall }.
+async function lagRapport(env, id, fra, til, eksempel) {
+  const profil = (eksempel && eksempel.profil) || (await env.KUNDER.get("kunde:" + id, "json")) || {};
+  const innst = (eksempel && eksempel.innst) || (await env.KUNDER.get("rapport:" + id, "json")) || {};
+  const logg = eksempel ? eksempel.logg : await hentLogg(env, id, fra, til);
+  const forrige = eksempel ? eksempel.forrige : await hentLogg(env, id, new Date(fra.getTime() - 7 * 86400000), fra);
+  const mndStart = new Date(Date.UTC(til.getUTCFullYear(), til.getUTCMonth(), 1));
+  const mndLogg = eksempel ? eksempel.mnd : await hentLogg(env, id, mndStart, til);
+  const s = tellOpp(logg), f = tellOpp(forrige), m = tellOpp(mndLogg);
+  const pakke = PAKKER[innst.pakke] || null;
+  const mndMin = Math.round(m.sek / 60);
+  const navn = profil.kortnavn || profil.navn || "bedriften";
+  const uke = ukenr(new Date(fra.getTime() + 3 * 86400000));
+  const periode = `${pentDato(fra)} til ${pentDato(new Date(til.getTime() - 1))}`;
+  const hv = s.samtaler + s.chat;
+  const emne = `Ukesrapport uke ${uke}: ${hv} ${hv === 1 ? "henvendelse" : "henvendelser"} og ${s.bookinger} ${s.bookinger === 1 ? "booking" : "bookinger"} hos ${navn}`;
+  const diff = (a, b) => (a === b ? "som forrige uke" : a > b ? `${a - b} flere enn forrige uke` : `${b - a} færre enn forrige uke`);
+  const e = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  const C = { bg: "#eef6f1", kort: "#ffffff", ink: "#1c2b24", muted: "#56695f", linje: "#cfe2d6", gronn: "#1f7a5a", korall: "#c24f36", lys: "#e2efe7" };
+  const boks = (tall, tekstUnder, sub) => `<td width="25%" valign="top" style="padding:6px"><div style="background:${C.lys};border-radius:14px;padding:14px 10px;text-align:center">
+    <div style="font-size:28px;font-weight:700;color:${C.gronn};line-height:1.1">${tall}</div>
+    <div style="font-size:13px;color:${C.ink};margin-top:4px">${tekstUnder}</div>${sub ? `<div style="font-size:11px;color:${C.muted};margin-top:2px">${sub}</div>` : ""}</div></td>`;
+  const seksjon = (tittel, innhold) => `<tr><td style="padding:22px 24px 0"><div style="font-size:16px;font-weight:700;color:${C.ink};margin-bottom:8px">${tittel}</div>${innhold}</td></tr>`;
+
+  const kat = Object.entries(s.kat).sort((a, b) => b[1] - a[1]);
+  const maksKat = Math.max(1, ...kat.map((k) => k[1]));
+  const katHtml = kat.length ? kat.map(([k, n]) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0"><tr>
+      <td width="42%" style="font-size:14px;color:${C.ink};padding-right:8px">${e(KATEGORIER[k])}</td>
+      <td><div style="background:${C.gronn};height:10px;border-radius:5px;width:${Math.max(6, Math.round((n / maksKat) * 100))}%"></div></td>
+      <td width="34" style="font-size:14px;color:${C.muted};text-align:right">${n}</td></tr></table>`).join("") : `<div style="color:${C.muted};font-size:14px">Ingen henvendelser denne uka.</div>`;
+
+  const bookinger = logg.flatMap((r) => r.bookinger.map((b) => ({ ...b, kanal: r.kanal }))).sort((a, c) => (a.dato + a.kl).localeCompare(c.dato + c.kl));
+  const bookHtml = bookinger.length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;color:${C.ink}">` + bookinger.map((b) => `<tr>
+      <td style="padding:6px 0;border-bottom:1px solid ${C.linje}"><b>${e(b.hva || "Time")}</b><br><span style="color:${C.muted}">${e(b.navn || "Kunde")} ${e(b.tlf)}</span></td>
+      <td style="padding:6px 0;border-bottom:1px solid ${C.linje};text-align:right;white-space:nowrap">${b.dato ? e(oslo(b.dato + "T12:00:00Z", { weekday: "short", day: "numeric", month: "short" })) : ""}${b.kl ? " kl. " + e(b.kl) : ""}</td></tr>`).join("") + "</table>"
+    : `<div style="color:${C.muted};font-size:14px">Ingen nye bookinger denne uka.</div>`;
+
+  const beskjeder = logg.flatMap((r) => r.beskjeder.map((b) => ({ ...b, t: r.t })));
+  const beskHtml = beskjeder.map((b) => `<div style="padding:8px 0;border-bottom:1px solid ${C.linje};font-size:14px;color:${C.ink}">
+      <span style="color:${C.muted}">${e(dagKl(b.t))} · ${e(b.navn || "Ukjent")} ${e(b.tlf)}</span><br>«${e(b.tekst)}»</div>`).join("");
+
+  const listeHtml = logg.length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13.5px;color:${C.ink}">` + logg.map((r) => `<tr>
+      <td style="padding:6px 8px 6px 0;border-bottom:1px solid ${C.linje};white-space:nowrap;color:${C.muted};vertical-align:top">${e(dagKl(r.t))}</td>
+      <td style="padding:6px 0;border-bottom:1px solid ${C.linje};vertical-align:top">${r.tapt ? `<b style="color:${C.korall}">Tapt anrop</b>${r.tilbakeringt ? " · ringt tilbake" : ""}` : e(r.tema || "Samtale")}${r.bookinger.length ? ` <span style="color:${C.gronn};font-weight:700">· booket</span>` : ""}</td>
+      <td style="padding:6px 0 6px 8px;border-bottom:1px solid ${C.linje};white-space:nowrap;text-align:right;color:${C.muted};vertical-align:top">${e(KANAL_NAVN[r.kanal])}${r.sek ? " · " + Math.max(1, Math.round(r.sek / 60)) + " min" : ""}</td></tr>`).join("") + "</table>" : "";
+
+  const minHtml = pakke ? (() => {
+    const pst = Math.min(100, Math.round((mndMin / pakke.min) * 100));
+    const farge = pst >= 90 ? C.korall : C.gronn;
+    return `<div style="font-size:14px;color:${C.ink}">${mndMin} av ${pakke.min} minutter brukt i ${oslo(til.toISOString(), { month: "long" })} (pakke ${pakke.navn}).</div>
+      <div style="background:${C.lys};border-radius:6px;height:12px;margin-top:8px"><div style="background:${farge};height:12px;border-radius:6px;width:${Math.max(2, pst)}%"></div></div>
+      ${pst >= 90 ? `<div style="font-size:13px;color:${C.korall};margin-top:6px">Dere nærmer dere grensen. Svar på denne e-posten hvis dere vil ha en større pakke.</div>` : ""}`;
+  })() : `<div style="font-size:14px;color:${C.ink}">${mndMin} minutter med samtaler så langt i ${oslo(til.toISOString(), { month: "long" })}.</div>`;
+
+  const html = `<!doctype html><html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${e(emne)}</title></head>
+<body style="margin:0;background:${C.bg};font-family:'Segoe UI',Helvetica,Arial,sans-serif">
+${eksempel ? `<div style="background:${C.korall};color:#fff;text-align:center;font-size:13px;padding:8px">EKSEMPEL med oppdiktede tall. Ikke en ekte rapport.</div>` : ""}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.bg}"><tr><td align="center" style="padding:24px 12px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:${C.kort};border-radius:22px;overflow:hidden;border:1px solid ${C.linje}">
+<tr><td style="background:${C.gronn};padding:22px 24px;color:#fff">
+  <div style="font-size:13px;opacity:.85;letter-spacing:.06em;text-transform:uppercase">Orvelo · ukesrapport uke ${uke}</div>
+  <div style="font-size:23px;font-weight:700;margin-top:6px">Dette gjorde sekretæren for ${e(navn)}</div>
+  <div style="font-size:14px;opacity:.9;margin-top:4px">${e(periode)}</div>
+</td></tr>
+<tr><td style="padding:16px 18px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+  ${boks(s.samtaler, "samtaler", diff(s.samtaler, f.samtaler))}
+  ${boks(s.bookinger, s.bookinger === 1 ? "booking" : "bookinger", diff(s.bookinger, f.bookinger))}
+  ${boks(s.chat, "chat og meldinger", "")}
+  ${boks(Math.round(s.sek / 60), "minutter", "denne uka")}
+</tr></table></td></tr>
+${s.tapt ? seksjon("Tapte anrop", `<div style="font-size:14px;color:${C.ink}">${s.tapt} anrop ble ikke besvart. Sekretæren tok kontakt med ${s.tilbakeringt} av dem etterpå.</div>`) : ""}
+${seksjon("Hva kundene ville", katHtml)}
+${seksjon("Nye bookinger", bookHtml)}
+${beskjeder.length ? seksjon("Beskjeder til dere", beskHtml) : ""}
+${seksjon("Minutter denne måneden", minHtml)}
+${listeHtml ? seksjon("Alle henvendelser", listeHtml) : ""}
+<tr><td style="padding:24px;font-size:12.5px;color:${C.muted};line-height:1.5">
+  Telefonnumre vises bare med de to siste sifrene. Orvelo lagrer et kort sammendrag av hver samtale i 62 dager, ikke lydopptak.<br>
+  Spørsmål eller ønsker om endringer? Svar på denne e-posten, så hører du fra Preben i Orvelo.
+</td></tr>
+</table></td></tr></table></body></html>`;
+
+  const tekstUt = [
+    `Ukesrapport uke ${uke} for ${navn} (${periode})`, "",
+    `Samtaler: ${s.samtaler} (${diff(s.samtaler, f.samtaler)})`, `Bookinger: ${s.bookinger}`, `Chat og meldinger: ${s.chat}`,
+    s.tapt ? `Tapte anrop: ${s.tapt}, ringt tilbake: ${s.tilbakeringt}` : null,
+    pakke ? `Minutter i måneden: ${mndMin} av ${pakke.min} (${pakke.navn})` : `Minutter i måneden: ${mndMin}`, "",
+    "Hva kundene ville:", ...kat.map(([k, n]) => `- ${KATEGORIER[k]}: ${n}`), "",
+    "Nye bookinger:", ...(bookinger.length ? bookinger.map((b) => `- ${b.hva} ${b.dato} ${b.kl} (${b.navn} ${b.tlf})`) : ["- ingen"]),
+    ...(beskjeder.length ? ["", "Beskjeder:", ...beskjeder.map((b) => `- ${b.navn || "Ukjent"} ${b.tlf}: ${b.tekst}`)] : []),
+    "", "Svar på denne e-posten hvis du har spørsmål. Hilsen Preben, Orvelo",
+  ].filter((x) => x !== null).join("\n");
+
+  return { emne, html, tekst: tekstUt, tall: { ...s, minutter: Math.round(s.sek / 60), mndMin, pakke: pakke && pakke.navn } };
+}
+
+async function sendEpost(env, { til, emne, html, tekst: tekstUt, bcc }) {
+  if (!env.RESEND_API_KEY) throw new Error("RESEND_API_KEY er ikke satt i Cloudflare ennå.");
+  const r = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: env.RAPPORT_FRA || "Orvelo <rapport@orvelo.no>", to: [til], bcc: bcc ? [bcc] : undefined, reply_to: env.VARSEL_EPOST || "hilleren.bedrift@gmail.com", subject: emne, html, text: tekstUt }),
+  });
+  if (!r.ok) throw new Error("Resend svarte " + r.status + ": " + (await r.text()).slice(0, 200));
+}
+
+// Oppdiktet uke for å vise hvordan rapporten ser ut
+function eksempelData(profil, fra) {
+  const p = profil && profil.navn ? profil : { navn: "Eksempel Frisør", kortnavn: "Eksempel Frisør" };
+  const t = (dag, kl) => new Date(fra.getTime() + dag * 86400000 + kl * 3600000).toISOString();
+  const r = (o) => rensLogg({ bookinger: [], beskjeder: [], ...o });
+  const logg = [
+    r({ t: t(0, 8.2), kanal: "tale", sek: 154, tema: "Ville bestille klipp før helgen", kategori: "booking", bookinger: [{ hva: "Klipp 30 min", dato: new Date(fra.getTime() + 4 * 86400000).toISOString().slice(0, 10), kl: "14:00", navn: "Kari", mobil: "41234567" }] }),
+    r({ t: t(0, 12.6), kanal: "tale", sek: 72, tema: "Spurte hva balayage koster på langt hår", kategori: "pris" }),
+    r({ t: t(1, 7.4), kanal: "telefon", sek: 0, tapt: true, tilbakeringt: true, kategori: "annet" }),
+    r({ t: t(1, 18.9), kanal: "tekst", sek: 0, tema: "Lurte på om dere har åpent mandag", kategori: "apning" }),
+    r({ t: t(2, 9.1), kanal: "tale", sek: 201, tema: "Bestilte farge og klipp", kategori: "booking", bookinger: [{ hva: "Farge, ettervekst", dato: new Date(fra.getTime() + 8 * 86400000).toISOString().slice(0, 10), kl: "10:30", navn: "Nora", mobil: "98765412" }] }),
+    r({ t: t(2, 21.3), kanal: "tale", sek: 95, tema: "Ville flytte timen sin til neste uke", kategori: "flytte", beskjeder: [{ tekst: "Vil flytte timen torsdag til uka etter, helst ettermiddag.", navn: "Lise", mobil: "92233445" }] }),
+    r({ t: t(3, 10.2), kanal: "tale", sek: 133, tema: "Bestilte klipp til barn", kategori: "booking", bookinger: [{ hva: "Klipp barn", dato: new Date(fra.getTime() + 5 * 86400000).toISOString().slice(0, 10), kl: "11:00", navn: "Ahmed", mobil: "47011223" }] }),
+    r({ t: t(4, 16.7), kanal: "tale", sek: 64, tema: "Spurte om pris på permanent", kategori: "pris" }),
+    r({ t: t(4, 22.4), kanal: "chat", sek: 0, tema: "Ville bestille time lørdag formiddag", kategori: "booking", bookinger: [{ hva: "Vask og føhn", dato: new Date(fra.getTime() + 5 * 86400000).toISOString().slice(0, 10), kl: "10:00", navn: "Ida", mobil: "45566778" }] }),
+    r({ t: t(5, 9.8), kanal: "telefon", sek: 0, tapt: true, tilbakeringt: true, kategori: "annet" }),
+    r({ t: t(5, 13.5), kanal: "tale", sek: 112, tema: "Spurte om dere leier ut frisørstol", kategori: "tjeneste", beskjeder: [{ tekst: "Selvstendig frisør som vil leie stol fra januar. Ønsker å bli ringt.", navn: "Maria", mobil: "93344556" }] }),
+  ];
+  const forrige = logg.slice(0, 6);
+  return { profil: p, innst: { pakke: "pro" }, logg, forrige, mnd: [...logg, ...forrige, ...logg] };
+}
+
+async function rapportRute(request, env, ctx, url) {
+  const p = url.pathname;
+  if (request.method === "GET" && (p === "/rapport" || p === "/rapport/")) {
+    try { return new Response(await hentFraGitHub("snakk/rapport.html", env), { headers: HTML_HODER }); }
+    catch (e) { return new Response(e.message, { status: 502 }); }
+  }
+  if (!env.KUNDER) return json({ feil: "KV-lageret KUNDER er ikke koblet til workeren." }, 500);
+  const origin = request.headers.get("Origin");
+
+  // Samtalelogg fra sekretærsiden (sendBeacon, text/plain)
+  if (p === "/logg" && request.method === "POST") {
+    if (origin && origin !== url.origin && !ALLOWED_ORIGINS.includes(origin)) return new Response(null, { status: 403 });
+    let b = {};
+    try { b = JSON.parse(await request.text()); } catch {}
+    const id = rensId(b.kunde);
+    if (!id || !(await kodeOk(env, b.k, id))) return new Response(null, { status: 401 });
+    const ip = request.headers.get("CF-Connecting-IP") || "ukjent";
+    const nu = Date.now();
+    const liste = (loggTreff.get(ip) || []).filter((t) => nu - t < 3600000);
+    if (liste.length >= 30) return new Response(null, { status: 429 });
+    liste.push(nu); loggTreff.set(ip, liste); if (loggTreff.size > 5000) loggTreff.clear();
+    const profil = await env.KUNDER.get("kunde:" + id, "json");
+    if (!profil) return new Response(null, { status: 404 });
+    const utskrift = (Array.isArray(b.utskrift) ? b.utskrift : []).slice(0, 80)
+      .map((x) => [x && x[0] === "kunde" ? "kunde" : "ai", tekst(x && x[1], 600)]).filter((x) => x[1]);
+    if (!utskrift.some((x) => x[0] === "kunde")) return new Response(null, { status: 204 });
+    const jobb = (async () => {
+      const sam = await oppsummer(env, profil, utskrift);
+      await loggHendelse(env, id, { t: b.start, kanal: b.kanal === "tekst" ? "tekst" : "tale", sek: b.sek, ...sam, bookinger: b.bookinger, beskjeder: b.beskjeder });
+    })().catch((e) => console.log("logg feilet", e && e.message));
+    if (ctx && ctx.waitUntil) ctx.waitUntil(jobb); else await jobb;
+    return new Response(null, { status: 204 });
+  }
+
+  if (p === "/rapport/api" && request.method === "POST") {
+    if (origin && origin !== url.origin) return json({ feil: "Ikke tillatt" }, 403);
+    let b = {};
+    try { b = await request.json(); } catch {}
+    if (!env.ADMIN_KODE || b.kode !== env.ADMIN_KODE) return json({ feil: "Feil admin-kode." }, 401);
+    const id = rensId(b.kunde);
+    const status = { resend: !!env.RESEND_API_KEY, automatisk: env.RAPPORT_SEND === "ja", fra: env.RAPPORT_FRA || "Orvelo <rapport@orvelo.no>", varsel: env.VARSEL_EPOST || "hilleren.bedrift@gmail.com" };
+    try {
+      if (b.handling === "kunder") {
+        const ut = [];
+        let cursor;
+        do {
+          const l = await env.KUNDER.list({ prefix: "kunde:", cursor });
+          for (const k of l.keys) ut.push(k.name.slice(6));
+          cursor = l.list_complete ? null : l.cursor;
+        } while (cursor);
+        const rader = await Promise.all(ut.map(async (kid) => {
+          const [pr, inn] = await Promise.all([env.KUNDER.get("kunde:" + kid, "json"), env.KUNDER.get("rapport:" + kid, "json")]);
+          return { id: kid, navn: (pr && pr.navn) || kid, rapport: inn || null };
+        }));
+        return json({ status, kunder: rader.sort((a, c) => a.navn.localeCompare(c.navn, "nb")) }, 200);
+      }
+      if (b.handling === "lagre") {
+        if (!id || !(await env.KUNDER.get("kunde:" + id))) return json({ feil: "Fant ikke sekretæren." }, 404);
+        const epost = tekst(b.epost, 120);
+        if (epost && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(epost)) return json({ feil: "E-posten ser ikke riktig ut." }, 400);
+        const inn = { epost, pakke: PAKKER[b.pakke] ? b.pakke : "", aktiv: !!b.aktiv && !!epost, oppdatert: new Date().toISOString() };
+        await env.KUNDER.put("rapport:" + id, JSON.stringify(inn));
+        return json({ ok: true, rapport: inn, status }, 200);
+      }
+      const denne = ukestart(new Date());
+      const [fra, til] = b.periode === "denne" ? [denne, new Date()] : [new Date(denne.getTime() - 7 * 86400000), denne];
+      if (b.handling === "eksempel") {
+        const profil = id ? await env.KUNDER.get("kunde:" + id, "json") : null;
+        const rap = await lagRapport(env, id, fra, til, eksempelData(profil, fra));
+        return json({ ...rap, status }, 200);
+      }
+      if (!id) return json({ feil: "Velg en kunde." }, 400);
+      if (b.handling === "vis") return json({ ...(await lagRapport(env, id, fra, til)), status }, 200);
+      if (b.handling === "send_meg") {
+        const rap = await lagRapport(env, id, fra, til);
+        await sendEpost(env, { til: status.varsel, emne: "[Prøve] " + rap.emne, html: rap.html, tekst: rap.tekst });
+        return json({ ok: true, sendtTil: status.varsel, status }, 200);
+      }
+      return json({ feil: "Ukjent handling." }, 400);
+    } catch (e) {
+      console.log("rapport feilet", e && e.stack);
+      return json({ feil: e.message || "Noe gikk galt." }, 500);
+    }
+  }
+  return new Response("Ikke funnet", { status: 404 });
+}
+
+// Cron hver mandag: lag rapport for forrige uke for alle kunder med rapport-innstillinger.
+// Sender bare til kunden når RAPPORT_SEND = "ja", RESEND_API_KEY finnes og kunden står som aktiv.
+// Preben får alltid en oversikt.
+async function ukesrapporter(env) {
+  if (!env.KUNDER) return;
+  const denne = ukestart(new Date());
+  const fra = new Date(denne.getTime() - 7 * 86400000);
+  const uke = ukenr(new Date(fra.getTime() + 3 * 86400000));
+  const linjer = [];
+  let cursor;
+  do {
+    const l = await env.KUNDER.list({ prefix: "rapport:", cursor });
+    for (const k of l.keys) {
+      const id = k.name.slice(8);
+      try {
+        const inn = await env.KUNDER.get(k.name, "json");
+        if (!inn) continue;
+        const rap = await lagRapport(env, id, fra, denne);
+        const t = rap.tall;
+        const kort = `${t.samtaler} samtaler, ${t.chat} chat, ${t.bookinger} bookinger, ${t.beskjeder} beskjeder, ${t.mndMin} min denne måneden${t.pakke ? " (" + t.pakke + ")" : ""}`;
+        const sendtNokkel = `rapportsendt:${id}:${fra.toISOString().slice(0, 10)}`;
+        if (env.RAPPORT_SEND === "ja" && env.RESEND_API_KEY && inn.aktiv && inn.epost) {
+          if (await env.KUNDER.get(sendtNokkel)) { linjer.push(`${id}: allerede sendt`); continue; }
+          if (t.samtaler + t.chat === 0) { linjer.push(`${id}: ingen henvendelser, ikke sendt`); continue; }
+          await sendEpost(env, { til: inn.epost, emne: rap.emne, html: rap.html, tekst: rap.tekst, bcc: env.VARSEL_EPOST || "hilleren.bedrift@gmail.com" });
+          await env.KUNDER.put(sendtNokkel, new Date().toISOString(), { expirationTtl: 90 * 86400 });
+          linjer.push(`${id}: SENDT til ${inn.epost}. ${kort}`);
+        } else {
+          linjer.push(`${id}: ikke sendt (${!inn.aktiv ? "ikke slått på for kunden" : !env.RESEND_API_KEY ? "mangler RESEND_API_KEY" : "RAPPORT_SEND er ikke «ja»"}). ${kort}`);
+        }
+      } catch (e) {
+        linjer.push(`${id}: FEIL ${e.message}`);
+      }
+    }
+    cursor = l.list_complete ? null : l.cursor;
+  } while (cursor);
+  if (linjer.length) await varsle(env, `Ukesrapporter uke ${uke}`, [...linjer, "", "Se og send rapportene på https://orvelo-sekretar.preben-m-hilleren.workers.dev/rapport"]);
 }
