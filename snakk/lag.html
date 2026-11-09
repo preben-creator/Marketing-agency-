@@ -55,6 +55,23 @@ details summary{cursor:pointer;color:var(--muted);font-weight:600;margin-top:6px
     <div class="link" id="oppstartLenke"></div><div class="row"><button type="button" id="kopierOppstart">Kopier</button><a class="btn" id="apneOppstart" target="_blank" rel="noopener">Åpne</a></div></div>
   <div id="retteBoks" hidden style="margin-top:10px"><p class="lead" style="margin:0 0 6px">Kunden kan rette tjenester, priser, varighet og åpningstider her. Du får e-post når noe endres, og forrige versjon lagres.</p>
     <div class="link" id="retteLenke"></div><div class="row"><button type="button" id="kopierRette">Kopier</button><a class="btn" id="apneRette" target="_blank" rel="noopener">Åpne</a></div></div>
+  <details id="chatDetaljer">
+    <summary>Chat på kundens nettside</summary>
+    <p class="lead" style="margin:10px 0 6px">Samme sekretær svarer skriftlig i en chat-boble på kundens nettside. Den er av til du slår den på. Timeforespørsler og beskjeder fra chatten går på e-post til adressen under (første gang må firmaet trykke på en bekreftelseslenke fra FormSubmit).</p>
+    <div class="g">
+      <label>Chat<select id="chatAktiv"><option value="0">Av</option><option value="1">På</option></select></label>
+      <label>Farge<input id="chatFarge" type="color" value="#2f9e7a" style="height:42px;padding:4px"></label>
+      <label>Tekst på knappen<input id="chatKnapp" placeholder="Spør oss" maxlength="30"></label>
+      <label>Plassering<select id="chatPos"><option value="hoyre">Nede til høyre</option><option value="venstre">Nede til venstre</option></select></label>
+      <label>Varsel-e-post (firmaet)<input id="chatVarsel" type="email" placeholder="post@firma.no"></label>
+      <label>Bare på disse domenene<input id="chatDomener" placeholder="firma.no (tomt = alle)"></label>
+    </div>
+    <label style="margin-top:12px">Første melding (tomt = standard)<input id="chatHilsen" maxlength="300" placeholder="Hei! Jeg er den digitale assistenten til …"></label>
+    <div class="row"><button type="button" class="p" id="chatLagre">Lagre chat</button><a class="btn" id="chatProv" target="_blank" rel="noopener">Prøv chatten</a><span class="msg" id="msg6"></span></div>
+    <p class="lead" style="margin:14px 0 6px">Koden kunden (eller den som lager nettsiden) limer inn rett før &lt;/body&gt;. Virker i WordPress, Wix, Squarespace og vanlige nettsider:</p>
+    <div class="link" id="chatKode"></div><div class="row"><button type="button" id="kopierChat">Kopier koden</button></div>
+    <div id="chatInnboks" style="margin-top:14px"></div>
+  </details>
   <details>
     <summary>2. Rett opplysningene (valgfritt)</summary>
     <p class="lead" style="margin:10px 0 6px">Lenken er den samme etter at du lagrer.</p>
@@ -148,7 +165,7 @@ function visEpost(lenke){
   $("emne").textContent="Emne: "+emne;$("tekst").textContent=tekst;
   $("gmail").href="https://mail.google.com/mail/?authuser="+encodeURIComponent(FRA)+"&view=cm&fs=1&to="+encodeURIComponent($("til").value.trim())+"&su="+encodeURIComponent(emne)+"&body="+encodeURIComponent(tekst);
 }
-function vis(d){id=d.id;profil=d.profil;if($("tLenker")){$("tLenker").hidden=true;if($("tilleggBoks").open)setTimeout(tHent,0);}$("retteBoks").hidden=true;$("res").hidden=false;$("lenke").textContent=d.lenke;$("apne").href=d.lenke;
+function vis(d){if(d.id!==id){chatId="";$("chatDetaljer").open=false;$("chatInnboks").innerHTML="";}id=d.id;profil=d.profil;if($("tLenker")){$("tLenker").hidden=true;if($("tilleggBoks").open)setTimeout(tHent,0);}$("retteBoks").hidden=true;$("res").hidden=false;$("lenke").textContent=d.lenke;$("apne").href=d.lenke;
   const usikkert=d.profil.usikkert||[];$("json").value=JSON.stringify(d.profil,null,2);
   $("usikker").innerHTML=usikkert.length?'<p class="msg err" style="margin:12px 0 0">Grok måtte gjette på dette. Sjekk det gjerne under «Rett opplysningene» før du sender:</p><ul>'+usikkert.map(x=>"<li>"+x.replace(/[<>&]/g,"")+"</li>").join("")+"</ul>":'<p class="msg ok" style="margin-top:12px">Grok fant det meste på nettsiden.</p>';
   visEpost(d.lenke);}
@@ -194,6 +211,27 @@ $("flett").addEventListener("click",async()=>{let ny,gml;$("msg5").className="ms
   try{const d=await post("/lagre",{kode:$("kode").value,id,profil:p});vis(d);$("msg5").className="msg ok";
     $("msg5").textContent="Flettet inn og lagret."+((ny.usikkert||[]).length?" Sjekk: "+ny.usikkert.join(" "):"");}
   catch(err){$("msg5").className="msg err";$("msg5").textContent=err.message;}});
+// Chat på nettsiden
+let chatId="";
+function visChat(d){const c=d.chat;$("chatAktiv").value=c.aktiv?"1":"0";$("chatFarge").value=c.farge;$("chatKnapp").value=c.knapp||"";
+  $("chatPos").value=c.posisjon;$("chatVarsel").value=c.varselEpost||"";$("chatDomener").value=(c.domener||[]).join(", ");$("chatHilsen").value=c.hilsen||"";
+  $("chatKode").textContent=d.kode;$("chatProv").href=d.prov;}
+const e2=t=>String(t||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+async function lastChat(){if(!id||chatId===id)return;chatId=id;$("msg6").className="msg";$("msg6").textContent="Henter …";
+  try{visChat(await post("/chat/innstillinger",{kode:$("kode").value,id}));$("msg6").textContent="";lastInnboks();}
+  catch(err){chatId="";$("msg6").className="msg err";$("msg6").textContent=err.message;}}
+async function lastInnboks(){try{const d=await post("/chat/innboks",{kode:$("kode").value,id});
+  const sum=d.dager.reduce((a,x)=>({s:a.s+x.samtaler,m:a.m+x.meldinger,t:a.t+x.timer,b:a.b+x.beskjeder}),{s:0,m:0,t:0,b:0});
+  $("chatInnboks").innerHTML=`<h2 style="margin-top:6px">Fra chatten siste 14 dager</h2><p class="msg">${sum.s} samtaler · ${sum.m} meldinger · ${sum.t} timeforespørsler · ${sum.b} beskjeder</p>`+
+    (d.innboks.length?d.innboks.slice(0,30).map(x=>`<div class="link" style="margin-top:6px;font-family:inherit">${x.type==="time"?"📅 <b>"+e2(x.hva)+"</b>, "+e2(x.dato)+" kl. "+e2(x.klokkeslett):"✉️ <b>Beskjed:</b> "+e2(x.beskjed)}<br><span style="color:var(--muted)">${e2(x.navn)} ${e2(x.mobil)} ${e2(x.adresse||"")} · mottatt ${e2(new Date(x.tid).toLocaleString("nb-NO"))}</span></div>`).join(""):'<p class="lead">Ingen henvendelser ennå.</p>');}
+  catch(err){$("chatInnboks").innerHTML="";}}
+$("chatDetaljer").addEventListener("toggle",()=>{if($("chatDetaljer").open)lastChat();});
+$("chatLagre").addEventListener("click",async()=>{$("msg6").className="msg";$("msg6").textContent="Lagrer …";
+  try{const d=await post("/chat/innstillinger",{kode:$("kode").value,id,chat:{aktiv:$("chatAktiv").value==="1",farge:$("chatFarge").value,knapp:$("chatKnapp").value,
+    posisjon:$("chatPos").value,varselEpost:$("chatVarsel").value,domener:$("chatDomener").value,hilsen:$("chatHilsen").value}});
+    visChat(d);$("msg6").className="msg ok";$("msg6").textContent=d.chat.aktiv?"Lagret. Chatten er PÅ.":"Lagret. Chatten er av (kan fortsatt prøves med «Prøv chatten»).";}
+  catch(err){$("msg6").className="msg err";$("msg6").textContent=err.message;}});
+$("kopierChat").addEventListener("click",()=>kopi($("chatKode").textContent,$("kopierChat"),"Kopiert!"));
 $("kopierTekst").addEventListener("click",()=>kopi($("tekst").textContent,$("kopierTekst"),"Kopiert!"));
 if(q.get("auto")==="1"&&$("firma").value){if($("kode").value)lag();else{$("msg").className="msg err";$("msg").textContent="Skriv inn admin-koden én gang og trykk «Lag sekretær». Etter det husker nettleseren den.";$("kode").focus();}}
 // ===== Tilleggstjenester på SMS =====

@@ -150,3 +150,21 @@ Oppsett:
 
 Kunden får rapporten bare når både `RAPPORT_SEND = ja` og avkrysningen er på. Du får alltid en kopi (blindkopi) og en oversikt.
 Uker uten henvendelser sendes ikke. Andre kanaler (telefonlinje, chat, SMS, tilbakeringing) kan logge til samme rapport med `loggHendelse()`.
+
+## Chat på kundens nettside
+
+Samme sekretær kan svare skriftlig i en chat-boble på kundens egen nettside.
+
+1. Gå til `/lag`, åpne sekretæren (id) og trykk **Chat på kundens nettside**.
+2. Velg farge, tekst på knappen og varsel-e-post (firmaets e-post). Sett **Chat: På** og lagre.
+3. Kopier koden og lim den inn rett før `</body>` på kundens nettside (WordPress, Wix, Squarespace osv.):
+   `<script src="https://orvelo-sekretar.preben-m-hilleren.workers.dev/chat.js" data-kunde="<id>" async></script>`
+4. **Prøv chatten** åpner en prøveside med firmaets chat. Der lagres og sendes ingenting, så den passer også i salg.
+
+Godt å vite:
+- Chatten er av til du slår den på. Fyller du ut «Bare på disse domenene», virker den bare der.
+- Kundens kalender er ikke koblet til ennå. En time fra chatten er en **forespørsel** som går på e-post til firmaet,
+  og sekretæren sier at firmaet bekrefter. Ledige tider = åpningstider minus forespørsler som alt er kommet inn.
+- Første e-post til en ny adresse kommer fra FormSubmit med en bekreftelseslenke firmaet må trykke på én gang.
+- Bremser: 40 meldinger per 10 min per besøkende, og `CHAT_MAKS_DAG` (standard 400) meldinger per firma per døgn.
+- Ingen nye innstillinger i Cloudflare trengs. Bare lim inn ny workerkode etter at PR-en er merget.
