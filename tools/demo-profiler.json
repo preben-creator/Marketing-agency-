@@ -1,0 +1,357 @@
+{
+ "demo-frisor": {
+  "navn": "Lia Frisør",
+  "kortnavn": "Lia Frisør",
+  "bransje": "frisørsalong",
+  "type": "time",
+  "sted": "salongen",
+  "adresse": "Bergen sentrum",
+  "omraade": "Bergen",
+  "telefon": "",
+  "epost": "",
+  "apent": {
+   "0": null,
+   "1": [
+    "09:00",
+    "17:00"
+   ],
+   "2": [
+    "09:00",
+    "17:00"
+   ],
+   "3": [
+    "09:00",
+    "19:00"
+   ],
+   "4": [
+    "09:00",
+    "19:00"
+   ],
+   "5": [
+    "09:00",
+    "17:00"
+   ],
+   "6": [
+    "10:00",
+    "15:00"
+   ]
+  },
+  "apentTekst": "Mandag, tirsdag og fredag ni til fem, onsdag og torsdag ni til sju, og lørdag ti til tre.",
+  "ansatte": [
+   "Mona",
+   "Sara",
+   "Emil"
+  ],
+  "tjenester": [
+   [
+    "Klipp",
+    [
+     [
+      "Dameklipp",
+      "fra 690 kr",
+      45
+     ],
+     [
+      "Herreklipp",
+      "fra 450 kr",
+      30
+     ],
+     [
+      "Barneklipp under 12 år",
+      "fra 350 kr",
+      30
+     ],
+     [
+      "Skjeggtrim",
+      "250 kr",
+      15
+     ]
+    ]
+   ],
+   [
+    "Farge",
+    [
+     [
+      "Farge hele håret",
+      "fra 1 290 kr",
+      90
+     ],
+     [
+      "Striper / folie",
+      "fra 1 490 kr",
+      120
+     ],
+     [
+      "Balayage",
+      "fra 2 190 kr",
+      150
+     ],
+     [
+      "Ettervekst",
+      "fra 990 kr",
+      75
+     ]
+    ]
+   ],
+   [
+    "Annet",
+    [
+     [
+      "Vask og føn",
+      "390 kr",
+      30
+     ],
+     [
+      "Oppsett / festfrisyre",
+      "fra 790 kr",
+      60
+     ],
+     [
+      "Brynsfarge og forming",
+      "290 kr",
+      30
+     ]
+    ]
+   ]
+  ],
+  "ekstra": "Kunden kan ønske en bestemt frisør (Mona, Sara eller Emil). Avbestilling må skje senest 24 timer før, ellers kan timen bli fakturert. Salongen selger hårprodukter fra Olaplex og Maria Nila. Hvis noen spør: dette er et demofirma som Orvelo bruker for å vise hvordan KI-sekretæren fungerer.",
+  "stikkord": [
+   "Lia Frisør",
+   "balayage",
+   "Olaplex",
+   "Maria Nila",
+   "Mona",
+   "Sara",
+   "Emil"
+  ],
+  "usikkert": []
+ },
+ "demo-rorlegger": {
+  "navn": "Lia Rør AS",
+  "kortnavn": "Lia Rør",
+  "bransje": "rørleggerfirma",
+  "type": "befaring",
+  "sted": "firmaet",
+  "adresse": "Bergen",
+  "omraade": "Bergen, Askøy og Os",
+  "telefon": "",
+  "epost": "",
+  "apent": {
+   "0": null,
+   "1": [
+    "07:00",
+    "16:00"
+   ],
+   "2": [
+    "07:00",
+    "16:00"
+   ],
+   "3": [
+    "07:00",
+    "16:00"
+   ],
+   "4": [
+    "07:00",
+    "16:00"
+   ],
+   "5": [
+    "07:00",
+    "15:00"
+   ],
+   "6": null
+  },
+  "apentTekst": "Kontoret har åpent hverdager fra sju til fire, fredag til tre. Døgnvakt for akutte lekkasjer og vannskader hele døgnet, alle dager, også kveld og helg.",
+  "ansatte": [
+   "Kjetil",
+   "Anders"
+  ],
+  "tjenester": [
+   [
+    "Akutt",
+    [
+     [
+      "Lekkasje / vannskade (døgnvakt)",
+      "utrykning fra 1 950 kr",
+      60
+     ],
+     [
+      "Tett avløp",
+      "fra 1 490 kr",
+      60
+     ]
+    ]
+   ],
+   [
+    "Bad og kjøkken",
+    [
+     [
+      "Nytt bad, befaring og tilbud",
+      "gratis befaring",
+      60
+     ],
+     [
+      "Bytte toalett",
+      "fra 4 900 kr",
+      120
+     ],
+     [
+      "Bytte blandebatteri",
+      "fra 1 900 kr",
+      60
+     ],
+     [
+      "Kjøkken: oppvaskmaskin og vask",
+      "pris etter befaring",
+      60
+     ]
+    ]
+   ],
+   [
+    "Varme og vann",
+    [
+     [
+      "Bytte varmtvannsbereder",
+      "fra 14 900 kr",
+      180
+     ],
+     [
+      "Vannbåren varme / varmepumpe",
+      "pris etter befaring",
+      60
+     ],
+     [
+      "Service og kontroll",
+      "fra 1 290 kr",
+      60
+     ]
+    ]
+   ]
+  ],
+  "ekstra": "AKUTT (lekkasje, vannskade, tett avløp som renner over, ingen vann): døgnvakten gjelder hele døgnet alle dager, også i kveld, i natt og i helgen. Si aldri at firmaet har stengt eller at de må vente til i morgen, og ikke bruk ledige tider for akutte saker. Be kunden stenge hovedkranen hvis vann renner, ta navn, mobilnummer og adresse, og bruk legg_igjen_beskjed med ordet AKUTT først. Si så at vakthavende rørlegger ringer tilbake innen 15 minutter. Utrykning koster fra 1 950 kroner. Vanlige jobber (bad, bereder, service) bookes som befaring i åpningstiden. Lia Rør er godkjent våtromsbedrift og gir fem års garanti på arbeid. De tar ikke jobber med gass. Hvis noen spør: dette er et demofirma som Orvelo bruker for å vise hvordan KI-sekretæren fungerer.",
+  "stikkord": [
+   "Lia Rør",
+   "varmtvannsbereder",
+   "blandebatteri",
+   "våtrom",
+   "hovedkran",
+   "Kjetil",
+   "Anders"
+  ],
+  "usikkert": []
+ },
+ "demo-tannlege": {
+  "navn": "Lia Tannklinikk",
+  "kortnavn": "Lia Tannklinikk",
+  "bransje": "tannklinikk",
+  "type": "time",
+  "sted": "klinikken",
+  "adresse": "Bergen sentrum",
+  "omraade": "Bergen",
+  "telefon": "",
+  "epost": "",
+  "apent": {
+   "0": null,
+   "1": [
+    "08:00",
+    "16:00"
+   ],
+   "2": [
+    "08:00",
+    "18:00"
+   ],
+   "3": [
+    "08:00",
+    "16:00"
+   ],
+   "4": [
+    "08:00",
+    "18:00"
+   ],
+   "5": [
+    "08:00",
+    "15:00"
+   ],
+   "6": null
+  },
+  "apentTekst": "Mandag og onsdag åtte til fire, tirsdag og torsdag åtte til seks, og fredag åtte til tre.",
+  "ansatte": [
+   "Ingrid",
+   "Henrik",
+   "Line"
+  ],
+  "tjenester": [
+   [
+    "Undersøkelse",
+    [
+     [
+      "Undersøkelse og røntgen",
+      "fra 890 kr",
+      45
+     ],
+     [
+      "Tannrens hos tannpleier",
+      "fra 790 kr",
+      45
+     ],
+     [
+      "Ny pasient, første time",
+      "fra 990 kr",
+      60
+     ]
+    ]
+   ],
+   [
+    "Behandling",
+    [
+     [
+      "Fylling",
+      "fra 1 190 kr",
+      45
+     ],
+     [
+      "Rotfylling",
+      "fra 4 900 kr",
+      90
+     ],
+     [
+      "Trekking av tann",
+      "fra 1 490 kr",
+      45
+     ],
+     [
+      "Krone",
+      "fra 7 900 kr",
+      60
+     ]
+    ]
+   ],
+   [
+    "Akutt og estetikk",
+    [
+     [
+      "Akutt tannpine, øyeblikkelig hjelp",
+      "fra 990 kr",
+      30
+     ],
+     [
+      "Tannbleking",
+      "fra 3 490 kr",
+      60
+     ]
+    ]
+   ]
+  ],
+  "ekstra": "Ingrid og Henrik er tannleger, Line er tannpleier. Ved akutt tannpine prøver klinikken å gi time samme dag, og sekretæren skal tilby første ledige akutt-time. Sekretæren gir aldri medisinske råd utover å anbefale vanlige smertestillende fra apoteket og å ringe legevakt ved hevelse og feber. Avbestilling senest 24 timer før. Hvis noen spør: dette er et demofirma som Orvelo bruker for å vise hvordan KI-sekretæren fungerer.",
+  "stikkord": [
+   "Lia Tannklinikk",
+   "rotfylling",
+   "tannpleier",
+   "røntgen",
+   "krone",
+   "Ingrid",
+   "Henrik",
+   "Line"
+  ],
+  "usikkert": []
+ }
+}
