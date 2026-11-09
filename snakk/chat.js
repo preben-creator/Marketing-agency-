@@ -144,7 +144,8 @@
             var svar = { role: "assistant", content: d.svar };
             meldinger.push(svar); lagre(); boble(svar);
             (d.handlinger || []).forEach(function (h) {
-              merknad("info", h === "time" ? (c.prov ? "Timeforespørsel registrert (prøvemodus, ikke sendt)." : "Forespørselen er sendt til " + (c.kortnavn || c.navn) + ".")
+              merknad("info", h === "booket" ? (c.prov ? "Timen er booket (prøvemodus, ingen SMS sendt)." : "Timen er booket. Du får en SMS med bekreftelse.")
+                : h === "time" ? (c.prov ? "Timeforespørsel registrert (prøvemodus, ikke sendt)." : "Forespørselen er sendt til " + (c.kortnavn || c.navn) + ".")
                 : (c.prov ? "Beskjed registrert (prøvemodus, ikke sendt)." : "Beskjeden er sendt til " + (c.kortnavn || c.navn) + "."));
             });
           } else {

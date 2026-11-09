@@ -125,6 +125,19 @@ Samme nummer innen 2 timer gir bare én SMS. Fasttelefoner får ikke SMS, men ha
 Twilio til norsk mobil: ca. 0,8 kr per SMS (160 tegn). Anmeldelses-SMS-en er to SMS fordi den har to lenker.
 Tekstene unngår tegn som «» og lange streker, siden de gjør SMS-en tre ganger så dyr.
 
+## Booking med kalender og SMS-bekreftelse (tillegget «kalender»)
+
+Slås på per kunde på `/lag` → «4. Tilleggstjenester» → «Booking med kalender». Da:
+
+- **booker chatten timen selv** (i stedet for å sende en forespørsel). Timen lagres i `timer:<id>`, og tiden blir opptatt for nye bookinger. Timer bedriften legger inn selv på `/sms`-siden blir også opptatt.
+- **får sluttkunden SMS** med bekreftelse og en lenke til `/t/<kode>`: «Legg i Google Kalender», «Legg i iPhone- eller Outlook-kalender» (.ics) og «Avbestill timen». Avbestiller kunden, blir tiden ledig igjen, og bedriften får e-post.
+- **ser bedriften timene** på `/sms`-siden, og kan abonnere på sin egen kalender-feed (`/kal/<id>/<nøkkel>.ics`) i Google Kalender, Outlook eller iPhone. Google henter feeden noen ganger i døgnet; iPhone og Outlook oftere.
+- **får bedriften e-post** for hver ny time (til «Varsel-e-post» under chat-innstillingene, ellers til Preben).
+
+Samme sikkerhet som SMS-tilleggene: ingenting sendes før `SMS_PA = ja`, og så lenge «Ekte utsending» er av, går SMS-en til `SMS_TEST_NUMMER`. Bookes det mellom 21 og 08, sendes bekreftelsen kl. 08 av cron-runden (`*/15 * * * *`). Med demokode (prøvemodus) lagres og sendes ingenting. Er mobilnummeret ikke norsk, blir det en vanlig forespørsel som før.
+
+Telefonsekretæren kan bruke samme `leggInnTime(env, id, profil, cfg, {...}, "telefon")` når den går live.
+
 ## Ukesrapport til kundene (`/rapport`)
 
 Hver mandag morgen lager workeren en rapport for forrige uke til hver kunde: antall samtaler og chatter, hva kundene ville
