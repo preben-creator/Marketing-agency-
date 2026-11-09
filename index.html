@@ -222,6 +222,17 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
 .figur--v{left:0;width:160px;transform:scaleX(-1);opacity:.55;animation-delay:-3s}
 @keyframes sveve{50%{translate:0 -8px}}
 @media (max-width:1000px){.figur--v{display:none}.figur--h{position:static;display:block;margin:0 auto 14px;width:120px}}
+/* Om meg / lokal i Bergen */
+.om{display:grid;grid-template-columns:220px 1fr;gap:32px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:30px;padding:32px;max-width:900px;margin-inline:auto}
+@media (max-width:700px){.om{grid-template-columns:1fr;justify-items:center;text-align:center;padding:24px}}
+.om-bilde{position:relative;width:200px;aspect-ratio:1;border-radius:50%;overflow:hidden;background:var(--bg-alt);border:4px solid var(--surface-2);box-shadow:0 18px 40px -24px rgba(28,43,36,.6);display:grid;place-items:center}
+.om-bilde img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.om-bilde span{font-family:var(--font-head);font-size:3.2rem;font-weight:600;color:var(--accent)}
+.om-merke{display:inline-flex;gap:6px;align-items:center;font-weight:700;color:var(--accent);background:var(--bg-alt);border-radius:999px;padding:4px 12px;font-size:.88rem;margin-bottom:10px}
+.om p{color:var(--muted);margin:0 0 10px}
+.om ul{list-style:none;padding:0;margin:14px 0 0;display:grid;gap:6px}
+@media (max-width:700px){.om ul{justify-items:center}}
+.om a{color:var(--accent)}
 </style>
 </head>
 <body>
@@ -233,6 +244,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       <a href="#pris">Pris</a>
       <a href="#tjenester">Hva du får</a>
       <a href="#sporsmal">Spørsmål</a>
+      <a href="#om">Om meg</a>
     </nav>
     <a class="btn btn--small" href="https://calendar.app.google/24niGvpRRwPqNqr28" target="_blank" rel="noopener">Book et møte</a>
   </header>
@@ -409,12 +421,34 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       <details><summary>Fungerer det for mitt fag?</summary><p>Ja. Sekretæren tilpasses faget ditt, enten du er rørlegger, elektriker, snekker, frisør, driver med rengjøring, flytting eller dekkskift, eller noe helt annet. Prøv demoen over med ditt fag.</p></details>
   </section>
 
+  <section class="sec" id="om" aria-labelledby="omH">
+    <div class="om">
+      <div class="om-bilde">
+        <span aria-hidden="true">PH</span>
+        <!-- Bildet av Preben: legg det i assets/preben.jpg (kvadratisk, minst 400x400). Til da vises initialene. -->
+        <img src="assets/preben.jpg" alt="Preben Hilleren, Orvelo" width="400" height="400" loading="lazy" onerror="this.remove()">
+      </div>
+      <div>
+        <div class="om-merke">📍 Lokal i Bergen</div>
+        <h2 id="omH">Hei, jeg heter Preben</h2>
+        <p>Orvelo er mitt firma, og jeg holder til i Bergen. Jeg lager KI-sekretæren for firmaet ditt selv, går gjennom den sammen med deg og er den du ringer hvis noe skal endres.</p>
+        <p>Du får ikke et kundesenter. Du får meg, på telefon eller over en kaffe hvis du er i Bergen.</p>
+        <ul>
+          <li class="om-tlf" hidden>📞 <a href="tel:+47">Ring meg</a></li>
+          <li>✉️ <a href="mailto:hilleren.bedrift@gmail.com">hilleren.bedrift@gmail.com</a></li>
+          <li>🏢 Org.nr. 938 720 673</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
   <section class="sec contact" id="kontakt" aria-labelledby="kontaktH">
     <div>
       <div class="eyebrow">Kom i gang</div>
       <h2 id="kontaktH">Vil du ha din egen KI-sekretær?</h2>
       <p class="muted">Fortell litt om firmaet ditt, så tar vi kontakt innen én arbeidsdag og lager en sekretær for firmaet ditt som du kan prøve.</p>
       <ul class="contact-list">
+        <li class="om-tlf" hidden>📞 <a href="tel:+47">Ring meg</a></li>
         <li>✉️ <a href="mailto:hilleren.bedrift@gmail.com">hilleren.bedrift@gmail.com</a></li>
         <li>⏱️ 15 minutter, uforpliktende</li>
       </ul>
@@ -439,6 +473,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
 <footer>
   <img src="assets/orvelo-logo-vennlig.svg" alt="Orvelo" width="110" height="33">
   <p>© <span id="year">2026</span> Orvelo · KI-sekretær for håndverkere og servicebedrifter</p>
+  <p>Orvelo drives av Hilleren Markedsføring (enkeltpersonforetak) · Org.nr. 938 720 673 · Bergen</p>
   <p class="fine">Samtalene i demoen er eksempler. Navn og telefonnumre er oppdiktet.</p>
 </footer>
 
