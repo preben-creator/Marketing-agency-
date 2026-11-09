@@ -1,0 +1,18 @@
+{
+  "extraKnownMarketplaces": {
+    "agricidaniel-claude-seo": {
+      "source": { "source": "github", "repo": "AgriciDaniel/claude-seo" }
+    },
+    "marketingskills": {
+      "source": { "source": "github", "repo": "coreyhaines31/marketingskills" }
+    },
+    "cloudflare": {
+      "source": { "source": "github", "repo": "cloudflare/skills" }
+    }
+  },
+  "enabledPlugins": {
+    "claude-seo@agricidaniel-claude-seo": true,
+    "marketing-skills@marketingskills": true,
+    "cloudflare@cloudflare": true
+  }
+}
