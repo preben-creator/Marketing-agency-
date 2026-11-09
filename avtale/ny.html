@@ -69,12 +69,12 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 
   <details style="margin-top:16px"><summary style="cursor:pointer;color:var(--muted);font-weight:600">Leverandør (Orvelo)</summary>
   <div class="g" style="margin-top:10px">
-    <label>Navn<input id="lNavn" value="Orvelo v/ Preben Hilleren"></label>
-    <label>Org.nr.<input id="lOrgnr" value="938 720 673"></label>
-    <label>Adresse<input id="lAdresse" value="Bergen"></label>
-    <label>E-post<input id="lEpost" value="hilleren.bedrift@gmail.com"></label>
+    <label>Navn<input id="lNavn"></label>
+    <label>Org.nr.<input id="lOrgnr"></label>
+    <label>Adresse<input id="lAdresse"></label>
+    <label>E-post<input id="lEpost"></label>
     <label>Telefon<input id="lTlf"></label>
-    <label>Signert av (navn som står under leverandør)<input id="lSign" value="Preben Hilleren"></label>
+    <label>Signert av (navn som står under leverandør)<input id="lSign"></label>
   </div></details>
 
   <div class="row">
@@ -97,7 +97,20 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 </div>
 
 <script>
+// Orvelo sine faste opplysninger. Endre her (ett sted), så gjelder det både avtalen og e-posten under.
+// Navnet følger Enhetsregisteret (HILLEREN MARKEDSFØRING) til navneendringen til Orvelo er godkjent.
+const ORVELO={
+  navn:"Hilleren Markedsføring (Orvelo) v/ Preben Hilleren",
+  orgnr:"938 720 673",
+  adresse:"Bergen",
+  epost:"hilleren.bedrift@gmail.com",
+  telefon:"412 32 557", // mobilnummeret til Preben
+  nettside:"", // settes til "orvelo.no" når domenet virker
+  signatar:"Preben Hilleren"
+};
 const $=id=>document.getElementById(id);
+$("lNavn").value=ORVELO.navn;$("lOrgnr").value=ORVELO.orgnr;$("lAdresse").value=ORVELO.adresse;
+$("lEpost").value=ORVELO.epost;$("lTlf").value=ORVELO.telefon;$("lSign").value=ORVELO.signatar;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const iso=d=>d.toISOString().slice(0,10);
 const om=(n)=>{const d=new Date();d.setDate(d.getDate()+n);return iso(d);};
@@ -129,6 +142,10 @@ function data(){
     regneeksempel:$("regneeksempel").value.trim(),merknad:$("merknad").value.trim()
   };
 }
+// E-postsignatur: navn, firma, mobil, e-post og nettside (det som er fylt ut).
+function signatur(l){
+  return [l.signatar||"Preben Hilleren","Orvelo · KI-sekretær for små bedrifter",l.telefon?"Mobil: "+l.telefon:"",l.epost,ORVELO.nettside,"Org.nr. "+(l.orgnr||ORVELO.orgnr)].filter(Boolean).join("\n");
+}
 async function post(path,body){const r=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const d=await r.json().catch(()=>({feil:"Ugyldig svar fra workeren"}));if(!r.ok)throw new Error(d.feil||"Noe gikk galt");return d;}
 
 $("forh").onclick=()=>{const d=data();d.nr="(utkast)";localStorage.setItem("orvelo-avtale-utkast",JSON.stringify(d));window.open("/avtale?forhandsvis=1","_blank");};
@@ -141,7 +158,7 @@ $("f").addEventListener("submit",async e=>{
     const r=await post("/avtale/ny",{kode:$("kode").value,avtale:d});
     $("res").hidden=false;$("lenke").textContent=r.lenke;$("apne").href=r.lenke;
     const fornavn=(d.kunde.kontaktperson||"").split(" ")[0];
-    const tekst=`Hei${fornavn?" "+fornavn:""}!\n\nTakk for sist. Her er tilbudet og avtalen for KI-sekretæren, som vi snakket om:\n${r.lenke}\n\nPå lenken kan du lese alt, velge alternativ og signere digitalt. Du får en kopi du kan lagre som PDF med en gang.\nTilbudet gjelder til ${new Date(d.gyldigTil+"T12:00").toLocaleDateString("nb-NO",{day:"numeric",month:"long"})}.\n\nSi fra hvis du har spørsmål!\n\nVennlig hilsen\nPreben Hilleren\nOrvelo\n${d.leverandor.epost}`;
+    const tekst=`Hei${fornavn?" "+fornavn:""}!\n\nTakk for sist. Her er tilbudet og avtalen for KI-sekretæren, som vi snakket om:\n${r.lenke}\n\nPå lenken kan du lese alt, velge alternativ og signere digitalt. Du får en kopi du kan lagre som PDF med en gang.\nTilbudet gjelder til ${new Date(d.gyldigTil+"T12:00").toLocaleDateString("nb-NO",{day:"numeric",month:"long"})}.\n\nSi fra hvis du har spørsmål!\n\nVennlig hilsen\n${signatur(d.leverandor)}`;
     const emne=`Tilbud nr. ${r.nr}: KI-sekretær for ${d.kunde.firma}`;
     $("epostTekst").textContent="Emne: "+emne+"\n\n"+tekst;
     $("gmail").href=`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(d.kunde.epost)}&su=${encodeURIComponent(emne)}&body=${encodeURIComponent(tekst)}`;
