@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Oppstartsskjema · Orvelo KI-sekretær</title><meta name="robots" content="noindex,nofollow">
+<meta name="description" content="Fyll inn det KI-sekretæren trenger å vite om bedriften deres.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<!-- Oppstartsskjema for nye kunder. Svarene sendes med FormSubmit til Preben, sammen med en ferdig profil (JSON)
+     som limes inn på /lag på orvelo-sekretar-workeren («Flett inn oppstartsskjema»).
+     Forhåndsutfylling:
+       ?firma=&kontakt=&epost=&tlf=&nettside=&bransje=&type=time|befaring&pakke=Starter|Pro|Komplett&kunde=<id>
+       #p=<base64url(JSON-profil)>   (lages av knappen «Oppstartsskjema til kunden» på /lag)
+     Utkast lagres i nettleseren (localStorage), så kunden kan ta pause og fortsette senere. -->
+<style>
+:root{--bg:#0f0e17;--card:#1a1928;--ink:#eeedf7;--muted:#a3a0bd;--line:#2e2c44;--acc:#8f78ff;--acc2:#2fd0ee;--ok:#5fd59a;--warn:#ffb547;--field:#13121e;color-scheme:dark}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%;scroll-padding-top:16px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:24px 16px 130px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.02em;color:var(--muted);font-size:13px;text-transform:uppercase}
+.brand img{height:26px}
+h1{font-size:clamp(26px,5.5vw,36px);line-height:1.15;margin:14px 0 8px}h1 span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-size:19px;margin:0 0 4px;display:flex;gap:10px;align-items:baseline}
+h2 .nr{font-size:13px;font-weight:700;color:#0f0e17;background:var(--acc);border-radius:99px;min-width:24px;height:24px;display:inline-grid;place-items:center;flex:none}
+h3{font-size:15px;margin:16px 0 6px}
+p.lead{color:var(--muted);margin:0 0 18px}
+p.hint{color:var(--muted);margin:0 0 14px;font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--muted)}
+label.f .valg{font-weight:400}
+input,textarea,select{font:inherit;font-size:16px;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%;min-width:0}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--acc);outline-offset:1px;border-color:transparent}
+input:invalid:not(:placeholder-shown){border-color:var(--warn)}
+textarea{min-height:80px;resize:vertical}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:620px){.g{grid-template-columns:1fr}}
+.full{grid-column:1/-1}
+.mt{margin-top:12px}
+button,a.btn{font:inherit;font-weight:600;border-radius:10px;padding:10px 15px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;min-height:44px}
+button.p,a.p{background:var(--acc);border-color:var(--acc);color:#0f0e17}
+button.liten{min-height:36px;padding:6px 11px;font-size:14px}
+button.x{min-height:40px;min-width:40px;justify-content:center;padding:0;color:var(--muted)}
+button:disabled{opacity:.5;cursor:wait}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+/* valg (radio/checkbox) */
+.valg{display:grid;gap:8px}
+.valg.to{grid-template-columns:1fr 1fr}@media(max-width:620px){.valg.to{grid-template-columns:1fr}}
+.v{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;background:var(--field);color:var(--ink);font-size:15px;font-weight:400}
+.v input{width:18px;height:18px;margin:2px 0 0;flex:none;accent-color:var(--acc)}
+.v small{display:block;color:var(--muted);font-size:13px}
+.v:has(input:checked){border-color:var(--acc);background:rgba(143,120,255,.1)}
+/* pakker */
+.pakker{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}@media(max-width:620px){.pakker{grid-template-columns:1fr}}
+.pakker .v{flex-direction:column;gap:2px}.pakker .v input{position:absolute;opacity:0;pointer-events:none}
+.pakker .v b{font-size:17px}.pakker .v .pris{font-size:20px;font-weight:800}
+/* åpningstider */
+.dag{display:grid;grid-template-columns:90px 150px 1fr;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.dag:first-of-type{border-top:0}
+.dag b{font-weight:600}
+.tider{display:flex;gap:6px;align-items:center}.tider input{width:auto;flex:1}
+@media(max-width:560px){.dag{grid-template-columns:1fr 1fr}.dag .tider{grid-column:1/-1}}
+/* tjenester */
+.kat{border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px;background:rgba(255,255,255,.015)}
+.kathode{display:flex;gap:8px;align-items:center;margin-bottom:8px}.kathode input{font-weight:700}
+.tj{display:grid;grid-template-columns:1fr 150px 130px 40px;gap:8px;align-items:center;margin-bottom:8px}
+.tjhode{display:grid;grid-template-columns:1fr 150px 130px 40px;gap:8px;font-size:12px;color:var(--muted);font-weight:600;margin:0 0 4px}
+@media(max-width:620px){.tjhode{display:none}.tj{grid-template-columns:1fr 1fr 40px;padding:10px 0;border-top:1px solid var(--line)}.tj .navn{grid-column:1/-1}}
+/* liste-rader (ansatte, FAQ) */
+.par{display:grid;grid-template-columns:1fr 1.4fr 40px;gap:8px;align-items:start;margin-bottom:8px}
+@media(max-width:620px){.par{grid-template-columns:1fr 40px;padding:10px 0;border-top:1px solid var(--line)}.par>:nth-child(2){grid-column:1/2;grid-row:2}}
+.par textarea{min-height:44px}
+/* fremdrift + bunnlinje */
+.fremdrift{position:sticky;top:0;z-index:5;background:rgba(15,14,23,.94);backdrop-filter:blur(8px);margin:0 -16px 16px;padding:10px 16px;border-bottom:1px solid var(--line)}
+.fremdrift .in{max-width:860px;margin:0 auto;display:flex;gap:10px;align-items:center;font-size:13px;color:var(--muted)}
+.linje{flex:1;height:6px;background:var(--line);border-radius:99px;overflow:hidden}.linje i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:width .3s}
+.bar{position:fixed;left:0;right:0;bottom:0;background:rgba(15,14,23,.94);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom));z-index:5}
+.bar .in{max-width:860px;margin:0 auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.msg{font-size:14px;flex:1;min-width:160px}.err{color:var(--warn)}.ok{color:var(--ok)}
+.utkast{border-color:var(--acc)}
+.takk{text-align:center;padding:40px 18px}.takk h2{justify-content:center;font-size:24px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.hp{display:none}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+</style></head><body><div class="wrap">
+
+<div class="fremdrift" aria-hidden="true"><div class="in"><span id="fremTekst">0 av 8 deler</span><div class="linje"><i id="fremLinje"></i></div></div></div>
+
+<div class="brand"><img src="../assets/orvelo-logo.svg" alt="Orvelo" onerror="this.remove()"><span>KI-sekretær</span></div>
+<h1>Oppstartsskjema for <span id="tittelNavn">KI-sekretæren deres</span></h1>
+<p class="lead">Her forteller dere sekretæren alt den trenger å vite: hva dere gjør, hva det koster, når dere har åpent, og når den skal sette over til dere. Det tar 10–15 minutter. Svarene lagres i nettleseren mens du skriver, så du kan ta en pause og fortsette senere. Er du usikker på noe, hopp over det, så tar vi det på telefonen.</p>
+
+<div class="card utkast" id="utkastBoks" hidden>
+  <div class="row"><span class="msg ok" style="flex:1">Vi fant det du skrev sist. Du kan fortsette der du slapp.</span><button type="button" class="liten" id="nullstill">Start på nytt</button></div>
+</div>
+
+<form id="skjema" novalidate autocomplete="on">
+  <input type="text" name="_honey" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+  <!-- 1 -->
+  <section class="card" id="del1" data-del>
+    <h2><span class="nr">1</span>Om bedriften</h2>
+    <p class="hint" id="forhand" hidden>Det som er fylt inn fra før, har Preben hentet fra nettsiden deres. Rett gjerne.</p>
+    <div class="g">
+      <label class="f">Firmanavn *<input id="navn" required placeholder="Berg Rør AS" autocomplete="organization"></label>
+      <label class="f">Org.nr.<input id="orgnr" inputmode="numeric" pattern="[0-9 ]{9,11}" placeholder="9 siffer"></label>
+      <label class="f">Bransje / fag *<input id="bransje" required placeholder="rørlegger, frisørsalong, elektriker …"></label>
+      <label class="f">Nettside<input id="nettside" placeholder="bergror.no" autocomplete="url"></label>
+      <label class="f">Adresse<input id="adresse" placeholder="Gate 1, 5000 Bergen" autocomplete="street-address"></label>
+      <label class="f">Område dere dekker<input id="omraade" placeholder="Bergen og omegn"></label>
+      <label class="f">Telefonnummer kundene ringer i dag<input id="telefon" inputmode="tel" autocomplete="tel"></label>
+      <label class="f">E-post for kunder<input id="epost" type="email" placeholder="post@firma.no" autocomplete="email"></label>
+    </div>
+    <h3>Hvordan møter dere kundene?</h3>
+    <div class="valg to">
+      <label class="v"><input type="radio" name="type" value="befaring" checked><span>Vi drar ut til kunden<small>Rørlegger, elektriker, maler, snekker, rengjøring …</small></span></label>
+      <label class="v"><input type="radio" name="type" value="time"><span>Kunden kommer til oss<small>Frisør, verksted, klinikk, studio …</small></span></label>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="card" id="del2" data-del>
+    <h2><span class="nr">2</span>Kontaktperson og pakke</h2>
+    <div class="g">
+      <label class="f">Ditt navn *<input id="kontaktperson" required autocomplete="name"></label>
+      <label class="f">Rolle<input id="rolle" placeholder="daglig leder, eier …" autocomplete="organization-title"></label>
+      <label class="f">Mobil *<input id="kontaktTlf" required inputmode="tel" autocomplete="tel"></label>
+      <label class="f">E-post *<input id="kontaktEpost" required type="email" autocomplete="email"></label>
+    </div>
+    <h3>Hvilken pakke ønsker dere?</h3>
+    <div class="pakker" role="radiogroup" aria-label="Pakke">
+      <label class="v"><input type="radio" name="pakke" value="Starter"><b>Starter</b><span class="pris">790 kr<small style="display:inline"> /mnd</small></span><small>50 minutter med stemme</small></label>
+      <label class="v"><input type="radio" name="pakke" value="Pro"><b>Pro</b><span class="pris">1 490 kr<small style="display:inline"> /mnd</small></span><small>200 minutter med stemme</small></label>
+      <label class="v"><input type="radio" name="pakke" value="Komplett"><b>Komplett</b><span class="pris">2 990 kr<small style="display:inline"> /mnd</small></span><small>500 minutter med stemme</small></label>
+    </div>
+    <p class="hint mt">Alle priser eks. mva. Chat er ubegrenset i alle pakkene. Ingen oppstartspris. Er dere usikre, la det stå tomt, så finner vi ut av det sammen.</p>
+    <label class="f">Når ønsker dere å starte?<input id="start" type="date"></label>
+  </section>
+
+  <!-- 3 -->
+  <section class="card" id="del3" data-del>
+    <h2><span class="nr">3</span>Tjenester og priser</h2>
+    <p class="hint">Skriv det kundene oftest spør om. Pris kan skrives fritt, f.eks. «fra 2 200 kr», «950 kr per time» eller «pris etter befaring». Tiden er hvor lang tid sekretæren skal sette av.</p>
+    <div id="kategorier"></div>
+    <button type="button" class="liten" id="nyKat">+ Ny kategori</button>
+    <label class="f mt">Andre ting om pris sekretæren kan si<span class="valg">f.eks. oppmøtegebyr, timepris, kjøring, rabatter</span>
+      <textarea id="prisinfo" rows="2" placeholder="Oppmøte 690 kr inkl. første halvtime. Timepris 950 kr. Kjøring innenfor Bergen er gratis."></textarea></label>
+    <label class="f mt">Dette gjør dere IKKE<span class="valg">så sekretæren kan si nei høflig</span>
+      <textarea id="ikke" rows="2" placeholder="Vi tar ikke småjobber under 2 timer. Vi jobber ikke på hytter."></textarea></label>
+  </section>
+
+  <!-- 4 -->
+  <section class="card" id="del4" data-del>
+    <h2><span class="nr">4</span>Åpningstider</h2>
+    <p class="hint">Sekretæren svarer døgnet rundt, men tilbyr bare tider innenfor disse.</p>
+    <div id="dager"></div>
+    <label class="f mt">Helligdager, ferie og unntak<textarea id="unntak" rows="2" placeholder="Stengt i romjulen. Fellesferie uke 28–30."></textarea></label>
+  </section>
+
+  <!-- 5 -->
+  <section class="card" id="del5" data-del>
+    <h2><span class="nr">5</span>Booking</h2>
+    <h3>Hva skal sekretæren gjøre når noen vil ha en time eller befaring?</h3>
+    <div class="valg">
+      <label class="v"><input type="radio" name="bookmodus" value="foresla" checked><span>Foreslå en tid som vi bekrefter<small>Anbefalt i starten. Kunden får beskjed om at dere bekrefter tiden.</small></span></label>
+      <label class="v"><input type="radio" name="bookmodus" value="book"><span>Booke direkte i kalenderen<small>Krever at vi kobler til kalenderen deres.</small></span></label>
+      <label class="v"><input type="radio" name="bookmodus" value="beskjed"><span>Bare ta imot beskjed, så ringer vi tilbake</span></label>
+    </div>
+    <div class="g mt">
+      <label class="f">Hvor bookes det i dag?
+        <select id="system"><option value="">Velg …</option><option>Google Kalender</option><option>Outlook / Microsoft 365</option><option>Timma</option><option>FixIt / Easyweb</option><option>Bokadirekt</option><option>Tripletex / fagsystem</option><option>Papir / telefon</option><option>Annet</option></select></label>
+      <label class="f">Navn på systemet hvis annet<input id="systemAnnet"></label>
+      <label class="f">Korteste varsel for en ny time<select id="varsel"><option value="">Velg …</option><option>Samme dag</option><option>Neste dag</option><option>2 dager</option><option>1 uke</option></select></label>
+      <label class="f">Hvor langt frem kan de booke?<select id="frem"><option value="">Velg …</option><option>1 uke</option><option>2 uker</option><option>4 uker</option><option>3 måneder</option></select></label>
+      <label class="f">Pause mellom jobber/timer<select id="buffer"><option value="0">Ingen</option><option value="10">10 min</option><option value="15">15 min</option><option value="30">30 min</option><option value="60">1 time (kjøring)</option></select></label>
+      <label class="f">Avbestilling<input id="avbestilling" placeholder="Senest 24 timer før, ellers 50 % av prisen"></label>
+    </div>
+    <h3>Dette skal sekretæren alltid spørre om</h3>
+    <div class="valg to" id="sporOm">
+      <label class="v"><input type="checkbox" value="navn" checked disabled><span>Navn</span></label>
+      <label class="v"><input type="checkbox" value="telefonnummer" checked disabled><span>Telefonnummer</span></label>
+      <label class="v"><input type="checkbox" value="adresse der jobben skal gjøres"><span>Adresse der jobben skal gjøres</span></label>
+      <label class="v"><input type="checkbox" value="e-post"><span>E-post</span></label>
+      <label class="v"><input type="checkbox" value="kort beskrivelse av jobben"><span>Kort beskrivelse av jobben</span></label>
+      <label class="v"><input type="checkbox" value="om de kan sende bilder"><span>Om de kan sende bilder</span></label>
+      <label class="v"><input type="checkbox" value="hvor haster det"><span>Hvor mye det haster</span></label>
+      <label class="v"><input type="checkbox" value="om de er ny eller fast kunde"><span>Om de er ny eller fast kunde</span></label>
+    </div>
+    <label class="f mt">Annet sekretæren skal spørre om<input id="sporAnnet" placeholder="f.eks. bilmerke og reg.nr., hårlengde, boligtype"></label>
+  </section>
+
+  <!-- 6 -->
+  <section class="card" id="del6" data-del>
+    <h2><span class="nr">6</span>Når skal den sette over til dere?</h2>
+    <p class="hint">Alt annet tar sekretæren selv, og dere får en kort oppsummering på SMS eller e-post etter hver samtale.</p>
+    <div class="valg to" id="overNar">
+      <label class="v"><input type="checkbox" value="akutte saker som ikke kan vente" checked><span>Akutte saker</span></label>
+      <label class="v"><input type="checkbox" value="klager eller misfornøyde kunder" checked><span>Klager</span></label>
+      <label class="v"><input type="checkbox" value="kunden ber om å snakke med et menneske" checked><span>Kunden ber om et menneske</span></label>
+      <label class="v"><input type="checkbox" value="store jobber eller anbud"><span>Store jobber / anbud</span></label>
+      <label class="v"><input type="checkbox" value="faste kunder og samarbeidspartnere"><span>Faste kunder og partnere</span></label>
+      <label class="v"><input type="checkbox" value="spørsmål sekretæren ikke kan svare på"><span>Spørsmål den ikke kan svare på</span></label>
+    </div>
+    <label class="f mt">Andre ganger den skal sette over<input id="overAnnet" placeholder="f.eks. jobber over 50 000 kr, forsikringssaker"></label>
+    <div class="g mt">
+      <label class="f">Hvem skal den sette over til?<input id="overNavn" placeholder="Navn"></label>
+      <label class="f">Nummer<input id="overTlf" inputmode="tel"></label>
+      <label class="f">Når kan dere ta imot?<select id="overTid"><option>Bare i åpningstiden</option><option>Hverdager 07–22</option><option>Hele døgnet ved akutte saker</option><option>Aldri, bare send beskjed</option></select></label>
+      <label class="f">Hvordan vil dere få beskjed?<select id="varsling"><option>SMS</option><option>E-post</option><option>Både SMS og e-post</option></select></label>
+    </div>
+    <h3>Har dere døgnvakt / akuttvakt?</h3>
+    <div class="valg to">
+      <label class="v"><input type="radio" name="vakt" value="nei" checked><span>Nei</span></label>
+      <label class="v"><input type="radio" name="vakt" value="ja"><span>Ja</span></label>
+    </div>
+    <label class="f mt" id="vaktBoks" hidden>Vakt: pris og hvordan den fungerer<input id="vaktInfo" placeholder="Utrykning kveld/helg 2 500 kr + timepris. Ring vaktnummeret."></label>
+  </section>
+
+  <!-- 7 -->
+  <section class="card" id="del7" data-del>
+    <h2><span class="nr">7</span>Spørsmål kundene ofte stiller</h2>
+    <p class="hint">Skriv svaret slik dere selv ville sagt det. Fem gode er nok.</p>
+    <div id="faq"></div>
+    <button type="button" class="liten" id="nyFaq">+ Legg til spørsmål</button>
+    <h3>Ansatte sekretæren kan nevne</h3>
+    <p class="hint">Fornavn og hva de gjør. La stå tomt om dere ikke vil at navn nevnes.</p>
+    <div id="ansatte"></div>
+    <button type="button" class="liten" id="nyAnsatt">+ Legg til person</button>
+  </section>
+
+  <!-- 8 -->
+  <section class="card" id="del8" data-del>
+    <h2><span class="nr">8</span>Tone og stil</h2>
+    <div class="g">
+      <label class="f">Hva skal sekretæren hete?<input id="sekNavn" placeholder="Liora"></label>
+      <label class="f">Tiltale<select id="tiltale"><option value="du">Du (vanlig)</option><option value="De">De (formelt)</option></select></label>
+    </div>
+    <h3>Hvordan skal den høres ut?</h3>
+    <div class="valg to">
+      <label class="v"><input type="radio" name="tone" value="vennlig og avslappet" checked><span>Vennlig og avslappet</span></label>
+      <label class="v"><input type="radio" name="tone" value="profesjonell og saklig"><span>Profesjonell og saklig</span></label>
+      <label class="v"><input type="radio" name="tone" value="kort og effektiv"><span>Kort og effektiv</span></label>
+      <label class="v"><input type="radio" name="tone" value="varm og personlig"><span>Varm og personlig</span></label>
+    </div>
+    <label class="f mt">Slik skal den hilse<input id="hilsen" placeholder="Hei, du har kommet til Berg Rør, jeg heter Liora. Hva kan jeg hjelpe deg med?"></label>
+    <label class="f mt">Dette skal den aldri si eller love<textarea id="aldri" rows="2" placeholder="Aldri gi fast pris på telefon. Aldri love at vi kommer samme dag."></textarea></label>
+    <label class="f mt">Ord og navn som er vanskelige å høre<span class="valg">gatenavn, merker, fagord (skill med komma)</span><input id="stikkord" placeholder="Danmarksplass, Uponor, varmepumpe"></label>
+    <label class="f mt">Annet sekretæren bør vite<textarea id="ekstra" rows="4" placeholder="Spesialiteter, merker dere jobber med, garanti, parkering, betaling …"></textarea></label>
+  </section>
+
+  <section class="card">
+    <label class="v"><input type="checkbox" id="ok" required><span>Jeg bekrefter at opplysningene stemmer, og at Orvelo kan bruke dem til å sette opp KI-sekretæren vår.<small>Opplysningene brukes bare til sekretæren deres og behandles etter databehandleravtalen i kundeavtalen.</small></span></label>
+  </section>
+</form>
+
+<div class="card takk" id="takk" hidden>
+  <h2>Takk! 🎉</h2>
+  <p class="lead" style="margin:8px auto 18px;max-width:520px">Preben har fått svarene og setter opp sekretæren. Du hører fra ham innen én arbeidsdag med en lenke der dere kan teste den.</p>
+  <div class="row" style="justify-content:center"><button type="button" id="lastNed">Last ned en kopi</button></div>
+</div>
+
+<div class="card" id="reserve" hidden>
+  <h2>Det gikk ikke å sende</h2>
+  <p class="hint">Ingenting er tapt. Send svarene på e-post i stedet, eller last ned en kopi og send den til hilleren.bedrift@gmail.com.</p>
+  <div class="row"><a class="btn p" id="mailto">Send på e-post</a><button type="button" id="lastNed2">Last ned en kopi</button></div>
+</div>
+</div>
+
+<div class="bar" id="bar"><div class="in">
+  <button class="p" id="send">Send til Orvelo</button>
+  <span class="msg" id="msg" role="status" aria-live="polite">Utkastet lagres automatisk i nettleseren.</span>
+</div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const TIL="hilleren.bedrift@gmail.com";
+const q=new URLSearchParams(location.search);
+const KUNDE=(q.get("kunde")||"").replace(/[^a-z0-9-]/g,"").slice(0,60);
+const NOKKEL="orvelo-oppstart:"+(KUNDE||"ny");
+const DAGNAVN=["Søndag","Mandag","Tirsdag","Onsdag","Torsdag","Fredag","Lørdag"];
+const REKKE=[1,2,3,4,5,6,0];
+const VARIGHET=[];for(let m=15;m<=480;m+=15)VARIGHET.push(m);
+const minTekst=m=>{const t=Math.floor(m/60),r=m%60;return t?(t+" t"+(r?" "+r+" min":"")):(r+" min");};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const radio=n=>(document.querySelector(`input[name="${n}"]:checked`)||{}).value||"";
+const settRadio=(n,v)=>{const el=document.querySelector(`input[name="${n}"][value="${v}"]`);if(el)el.checked=true;};
+const FELT=["navn","orgnr","bransje","nettside","adresse","omraade","telefon","epost","kontaktperson","rolle","kontaktTlf","kontaktEpost","start",
+  "prisinfo","ikke","unntak","system","systemAnnet","varsel","frem","buffer","avbestilling","sporAnnet","overAnnet","overNavn","overTlf","overTid","varsling",
+  "vaktInfo","sekNavn","tiltale","hilsen","aldri","stikkord","ekstra"];
+const RADIOER=["type","pakke","bookmodus","vakt","tone"];
+
+/* ---------- tjenester ---------- */
+function varighetSelect(v){const near=VARIGHET.reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a,60);
+  return `<select class="min" aria-label="Varighet">${VARIGHET.map(m=>`<option value="${m}"${m===near?" selected":""}>${minTekst(m)}</option>`).join("")}</select>`;}
+function tjRad(t=["","",60]){const d=document.createElement("div");d.className="tj";
+  d.innerHTML=`<input class="navn" aria-label="Tjeneste" placeholder="Tjeneste" value="${esc(t[0])}"><input class="pris" aria-label="Pris" placeholder="Pris" value="${esc(t[1])}">${varighetSelect(Number(t[2])||60)}<button type="button" class="x" title="Fjern" aria-label="Fjern tjenesten">✕</button>`;
+  d.querySelector(".x").onclick=()=>{d.remove();endret();};return d;}
+function katBoks(k=["",[["","",60],["","",60]]]){const d=document.createElement("div");d.className="kat";
+  d.innerHTML=`<div class="kathode"><input class="katnavn" aria-label="Kategori" placeholder="Kategori, f.eks. Bad og våtrom" value="${esc(k[0])}"><button type="button" class="x" title="Fjern kategorien" aria-label="Fjern kategorien">✕</button></div>
+  <div class="tjhode"><span>Tjeneste</span><span>Pris</span><span>Tid</span><span></span></div><div class="rader"></div>
+  <button type="button" class="liten ny">+ Legg til tjeneste</button>`;
+  const rader=d.querySelector(".rader");k[1].forEach(t=>rader.appendChild(tjRad(t)));
+  d.querySelector(".ny").onclick=()=>{const r=tjRad();rader.appendChild(r);r.querySelector("input").focus();endret();};
+  d.querySelector(".kathode .x").onclick=()=>{if(confirm("Fjerne hele kategorien «"+(d.querySelector(".katnavn").value||"uten navn")+"»?")){d.remove();endret();}};
+  return d;}
+function lesTjenester(){return[...document.querySelectorAll(".kat")].map(k=>[k.querySelector(".katnavn").value.trim()||"Tjenester",
+  [...k.querySelectorAll(".tj")].map(r=>[r.querySelector(".navn").value.trim(),r.querySelector(".pris").value.trim(),Number(r.querySelector(".min").value)]).filter(t=>t[0])]).filter(k=>k[1].length);}
+
+/* ---------- par-lister (FAQ, ansatte) ---------- */
+function parRad(boks,a="",b="",ph=["",""]){const d=document.createElement("div");d.className="par";
+  d.innerHTML=`<input class="a" aria-label="${esc(ph[0])}" placeholder="${esc(ph[0])}" value="${esc(a)}"><textarea class="b" rows="1" aria-label="${esc(ph[1])}" placeholder="${esc(ph[1])}">${esc(b)}</textarea><button type="button" class="x" title="Fjern" aria-label="Fjern">✕</button>`;
+  d.querySelector(".x").onclick=()=>{d.remove();endret();};$(boks).appendChild(d);return d;}
+const FAQ_PH=["Spørsmål, f.eks. Tar dere småjobber?","Svar, f.eks. Ja, men minstepris er 1 200 kr."];
+const ANS_PH=["Fornavn","Hva personen gjør, f.eks. eier, tar bad og våtrom"];
+const lesPar=boks=>[...$(boks).querySelectorAll(".par")].map(d=>[d.querySelector(".a").value.trim(),d.querySelector(".b").value.trim()]).filter(p=>p[0]);
+
+/* ---------- åpningstider ---------- */
+function dagRad(d,v){const el=document.createElement("div");el.className="dag";el.dataset.d=d;
+  const modus=Array.isArray(v)?"apen":v==="avtale"?"avtale":"stengt";const [fra,til]=Array.isArray(v)?v:["08:00","16:00"];
+  el.innerHTML=`<b>${DAGNAVN[d]}</b><select class="modus" aria-label="${DAGNAVN[d]}"><option value="apen">Åpent</option><option value="avtale">Etter avtale</option><option value="stengt">Stengt</option></select>
+  <div class="tider"><input type="time" class="fra" step="900" value="${fra}" aria-label="${DAGNAVN[d]} fra"> – <input type="time" class="til" step="900" value="${til}" aria-label="${DAGNAVN[d]} til"></div>`;
+  el.querySelector(".modus").value=modus;
+  const vis=()=>{el.querySelector(".tider").style.display=el.querySelector(".modus").value==="apen"?"":"none";};vis();
+  el.addEventListener("change",vis);return el;}
+function lesApent(){const a={};document.querySelectorAll(".dag").forEach(el=>{const m=el.querySelector(".modus").value,d=el.dataset.d;
+  a[d]=m==="apen"?[el.querySelector(".fra").value,el.querySelector(".til").value]:m==="avtale"?"avtale":null;});return a;}
+function kl(t){const[h,m]=t.split(":");return String(Number(h))+(m!=="00"?"."+m:"");}
+function apentTekst(a){const deler=[];let i=0;const lik=(x,y)=>JSON.stringify(x)===JSON.stringify(y);
+  while(i<REKKE.length){let j=i;while(j+1<REKKE.length&&lik(a[REKKE[j+1]],a[REKKE[i]]))j++;
+    const navn=i===j?DAGNAVN[REKKE[i]]:DAGNAVN[REKKE[i]]+" til "+DAGNAVN[REKKE[j]].toLowerCase();const v=a[REKKE[i]];
+    deler.push(navn+": "+(Array.isArray(v)?kl(v[0])+" til "+kl(v[1]):v==="avtale"?"etter avtale":"stengt"));i=j+1;}
+  return deler.join(". ")+".";}
+
+/* ---------- les hele skjemaet ---------- */
+function lesAlt(){const s={};FELT.forEach(f=>s[f]=$(f).value.trim());RADIOER.forEach(r=>s[r]=radio(r));
+  s.tjenester=lesTjenester();s.apent=lesApent();s.faq=lesPar("faq");s.ansatte=lesPar("ansatte");
+  s.sporOm=[...document.querySelectorAll("#sporOm input:checked:not(:disabled)")].map(x=>x.value);
+  s.overNar=[...document.querySelectorAll("#overNar input:checked")].map(x=>x.value);
+  s.ok=$("ok").checked;return s;}
+function fyllAlt(s){FELT.forEach(f=>{if(s[f]!=null&&s[f]!=="")$(f).value=s[f];});RADIOER.forEach(r=>{if(s[r])settRadio(r,s[r]);});
+  if(Array.isArray(s.tjenester)&&s.tjenester.length){$("kategorier").innerHTML="";s.tjenester.forEach(k=>$("kategorier").appendChild(katBoks(k)));}
+  if(s.apent){$("dager").innerHTML="";REKKE.forEach(d=>$("dager").appendChild(dagRad(d,s.apent[d]??s.apent[String(d)])));}
+  if(Array.isArray(s.faq)&&s.faq.length){$("faq").innerHTML="";s.faq.forEach(p=>parRad("faq",p[0],p[1],FAQ_PH));}
+  if(Array.isArray(s.ansatte)&&s.ansatte.length){$("ansatte").innerHTML="";s.ansatte.forEach(p=>Array.isArray(p)?parRad("ansatte",p[0],p[1],ANS_PH):parRad("ansatte",p,"",ANS_PH));}
+  if(Array.isArray(s.sporOm))document.querySelectorAll("#sporOm input:not(:disabled)").forEach(x=>x.checked=s.sporOm.includes(x.value));
+  if(Array.isArray(s.overNar))document.querySelectorAll("#overNar input").forEach(x=>x.checked=s.overNar.includes(x.value));
+  if(typeof s.ok==="boolean")$("ok").checked=s.ok;}
+
+/* ---------- profil til sekretæren (samme format som workeren bruker) ---------- */
+function lagProfil(s){
+  const type=s.type==="time"?"time":"befaring";
+  const b=(s.bransje||"").toLowerCase();
+  const sted=type==="befaring"?"firmaet":/verksted|bil|dekk|mek/.test(b)?"verkstedet":/studio|trening|yoga|tatto/.test(b)?"studioet":/klinikk|fysio|tann|vet|dyr/.test(b)?"klinikken":"salongen";
+  const L=[];
+  const modus={foresla:"Foreslå en ledig tid og si at bedriften bekrefter tiden.",book:"Book timen direkte i kalenderen.",beskjed:"Ikke avtal tid. Ta imot beskjed, så ringer bedriften tilbake."}[s.bookmodus]||"";
+  if(s.ekstra)L.push(s.ekstra);
+  if(s.prisinfo)L.push("Pris: "+s.prisinfo);
+  if(s.ikke)L.push("Gjør ikke: "+s.ikke);
+  if(s.unntak)L.push("Unntak fra åpningstidene: "+s.unntak);
+  if(modus)L.push("Booking: "+modus+(s.varsel?" Tidligst: "+s.varsel.toLowerCase()+".":"")+(s.frem?" Maks "+s.frem+" frem.":"")+(Number(s.buffer)?" "+s.buffer+" min pause mellom avtaler.":""));
+  if(s.avbestilling)L.push("Avbestilling: "+s.avbestilling);
+  const spor=["navn","telefonnummer",...s.sporOm,...(s.sporAnnet?[s.sporAnnet]:[])];L.push("Spør alltid om: "+spor.join(", ")+".");
+  const over=[...s.overNar,...(s.overAnnet?[s.overAnnet]:[])];
+  if(over.length)L.push("Sett over til "+(s.overNavn||"eieren")+(s.overTid?" ("+s.overTid.toLowerCase()+")":"")+" ved: "+over.join(", ")+". Ellers: ta beskjed.");
+  if(s.vakt==="ja")L.push("Døgnvakt: "+(s.vaktInfo||"ja, spør eieren om detaljer")+".");
+  if(s.aldri)L.push("Aldri: "+s.aldri);
+  L.push("Tone: "+(s.tone||"vennlig")+". Si «"+(s.tiltale||"du")+"» til kunden."+(s.sekNavn?" Du heter "+s.sekNavn+".":"")+(s.hilsen?" Hils slik: «"+s.hilsen+"»":""));
+  if(s.faq.length)L.push("Vanlige spørsmål: "+s.faq.map(([sp,sv])=>sp+" "+(sv||"(spør bedriften)")).join(" | "));
+  const ekstra=L.join("\n");
+  const usikkert=[];if(ekstra.length>1200)usikkert.push("«ekstra» er "+ekstra.length+" tegn, men sekretæren leser bare de første 1200. Kort ned før du lagrer.");
+  if(!s.tjenester.length)usikkert.push("Kunden fylte ikke inn tjenester.");
+  return {
+    navn:s.navn,kortnavn:s.navn.replace(/\s+(AS|ASA|ENK|DA|ANS)$/i,""),bransje:s.bransje.toLowerCase(),type,sted,
+    kontaktperson:(s.kontaktperson||"").split(" ")[0],adresse:s.adresse,omraade:s.omraade,telefon:s.telefon,epost:s.epost,nettside:s.nettside,
+    apent:s.apent,apentTekst:apentTekst(s.apent),ansatte:s.ansatte.map(p=>p[0]).slice(0,6),tjenester:s.tjenester,ekstra,
+    stikkord:s.stikkord.split(",").map(x=>x.trim()).filter(Boolean).slice(0,20),usikkert};
+}
+
+/* ---------- lesbar oppsummering til e-post ---------- */
+function oppsummering(s){const t=[];const ja=(l,v)=>{if(v)t.push(l+": "+v);};
+  t.push("== 1. Bedriften ==");ja("Firma",s.navn);ja("Org.nr.",s.orgnr);ja("Bransje",s.bransje);ja("Type",s.type==="time"?"Kunden kommer til oss":"Vi drar ut til kunden");
+  ja("Nettside",s.nettside);ja("Adresse",s.adresse);ja("Område",s.omraade);ja("Telefon",s.telefon);ja("E-post",s.epost);
+  t.push("","== 2. Kontakt og pakke ==");ja("Kontaktperson",s.kontaktperson+(s.rolle?" ("+s.rolle+")":""));ja("Mobil",s.kontaktTlf);ja("E-post",s.kontaktEpost);
+  ja("Pakke",s.pakke||"ikke valgt");ja("Ønsket start",s.start);
+  t.push("","== 3. Tjenester og priser ==");s.tjenester.forEach(([k,l])=>{t.push(k+":");l.forEach(([n,p,m])=>t.push("  - "+n+" · "+(p||"(ingen pris)")+" · "+minTekst(m)));});
+  ja("Om pris",s.prisinfo);ja("Gjør ikke",s.ikke);
+  t.push("","== 4. Åpningstider ==",apentTekst(s.apent));ja("Unntak",s.unntak);
+  t.push("","== 5. Booking ==");ja("Sekretæren skal",{foresla:"foreslå tid som de bekrefter",book:"booke direkte",beskjed:"bare ta beskjed"}[s.bookmodus]);
+  ja("System i dag",[s.system,s.systemAnnet].filter(Boolean).join(": "));ja("Korteste varsel",s.varsel);ja("Maks frem",s.frem);ja("Pause",Number(s.buffer)?s.buffer+" min":"");
+  ja("Avbestilling",s.avbestilling);ja("Spør alltid om",["navn","telefonnummer",...s.sporOm,s.sporAnnet].filter(Boolean).join(", "));
+  t.push("","== 6. Sette over ==");ja("Når",[...s.overNar,s.overAnnet].filter(Boolean).join("; "));ja("Til",[s.overNavn,s.overTlf].filter(Boolean).join(", "));
+  ja("Tid",s.overTid);ja("Varsling",s.varsling);ja("Døgnvakt",s.vakt==="ja"?"ja"+(s.vaktInfo?": "+s.vaktInfo:""):"nei");
+  t.push("","== 7. Spørsmål og ansatte ==");s.faq.forEach(([a,b])=>t.push("  Sp: "+a,"  Sv: "+(b||"(ikke svart)")));s.ansatte.forEach(([a,b])=>t.push("  Ansatt: "+a+(b?" ("+b+")":"")));
+  t.push("","== 8. Tone ==");ja("Navn",s.sekNavn);ja("Tiltale",s.tiltale);ja("Tone",s.tone);ja("Hilsen",s.hilsen);ja("Aldri",s.aldri);ja("Vanskelige ord",s.stikkord);ja("Annet",s.ekstra);
+  return t.join("\n");}
+
+/* ---------- utkast og fremdrift ---------- */
+let lagreTimer=null;
+function endret(){clearTimeout(lagreTimer);lagreTimer=setTimeout(()=>{try{localStorage.setItem(NOKKEL,JSON.stringify(lesAlt()));}catch{}fremdrift();},400);}
+function fremdrift(){const s=lesAlt();const deler=[s.navn&&s.bransje,s.kontaktperson&&s.kontaktTlf&&s.kontaktEpost,s.tjenester.length,
+  Object.values(s.apent).some(v=>v),s.bookmodus,s.overNar.length||s.overAnnet,s.faq.length,s.tone];
+  const n=deler.filter(Boolean).length;$("fremTekst").textContent=n+" av 8 deler";$("fremLinje").style.width=(n/8*100)+"%";
+  $("tittelNavn").textContent=s.navn?s.navn.replace(/\s+(AS|ASA|ENK|DA|ANS)$/i,""):"KI-sekretæren deres";}
+document.addEventListener("input",e=>{if(e.target.closest("#skjema"))endret();});
+document.addEventListener("change",e=>{if(e.target.closest("#skjema"))endret();if(e.target.name==="vakt")$("vaktBoks").hidden=radio("vakt")!=="ja";});
+
+/* ---------- start ---------- */
+function b64tilJson(b){b=b.replace(/-/g,"+").replace(/_/g,"/");while(b.length%4)b+="=";
+  return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b),c=>c.charCodeAt(0))));}
+function start(){
+  $("kategorier").appendChild(katBoks());REKKE.forEach(d=>$("dager").appendChild(dagRad(d,d>=1&&d<=5?["08:00","16:00"]:null)));
+  for(let i=0;i<3;i++)parRad("faq","","",FAQ_PH);parRad("ansatte","","",ANS_PH);
+  // 1) profil fra Preben (#p=...)
+  const h=new URLSearchParams(location.hash.slice(1)).get("p");
+  if(h){try{const p=b64tilJson(h);$("forhand").hidden=false;fyllAlt({navn:p.navn,bransje:p.bransje,nettside:p.nettside,adresse:p.adresse,omraade:p.omraade,telefon:p.telefon,epost:p.epost,
+    type:p.type,kontaktperson:p.kontaktperson,tjenester:p.tjenester,apent:p.apent,ansatte:p.ansatte,ekstra:p.ekstra,stikkord:(p.stikkord||[]).join(", ")});}catch(e){console.warn("Kunne ikke lese #p",e);}}
+  // 2) enkle felt i lenken
+  const map={firma:"navn",kontakt:"kontaktperson",kontaktperson:"kontaktperson",epost:"kontaktEpost",tlf:"kontaktTlf",nettside:"nettside",bransje:"bransje",start:"start"};
+  for(const [k,f] of Object.entries(map))if(q.get(k))$(f).value=q.get(k);
+  if(q.get("type"))settRadio("type",q.get("type"));if(q.get("pakke"))settRadio("pakke",q.get("pakke"));
+  // 3) kundens eget utkast vinner
+  try{const u=JSON.parse(localStorage.getItem(NOKKEL)||"null");if(u){fyllAlt(u);$("utkastBoks").hidden=false;}}catch{}
+  $("vaktBoks").hidden=radio("vakt")!=="ja";fremdrift();}
+start();
+$("nyKat").onclick=()=>{const k=katBoks();$("kategorier").appendChild(k);k.querySelector("input").focus();endret();};
+$("nyFaq").onclick=()=>{parRad("faq","","",FAQ_PH).querySelector("input").focus();endret();};
+$("nyAnsatt").onclick=()=>{parRad("ansatte","","",ANS_PH).querySelector("input").focus();endret();};
+$("nullstill").onclick=()=>{if(confirm("Slette det du har skrevet og starte på nytt?")){try{localStorage.removeItem(NOKKEL);}catch{}location.reload();}};
+
+/* ---------- send ---------- */
+let sist=null;
+function kopiTekst(){return sist?sist.tekst+"\n\n== Profil (for Preben) ==\n"+sist.json:"";}
+function lastNed(){const blob=new Blob([kopiTekst()],{type:"text/plain;charset=utf-8"});const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);a.download="oppstartsskjema-"+(sist.s.navn||"orvelo").toLowerCase().replace(/[^a-z0-9æøå]+/g,"-")+".txt";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);}
+$("lastNed").onclick=lastNed;$("lastNed2").onclick=lastNed;
+function feil(msg,el){$("msg").className="msg err";$("msg").textContent=msg;if(el){el.scrollIntoView({behavior:"smooth",block:"center"});setTimeout(()=>el.focus(),300);}}
+$("send").onclick=async()=>{
+  const s=lesAlt();
+  for(const f of ["navn","bransje","kontaktperson","kontaktTlf","kontaktEpost"])if(!s[f])return feil("Fyll inn «"+$(f).parentElement.firstChild.textContent.replace("*","").trim()+"».",$(f));
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s.kontaktEpost))return feil("Sjekk e-postadressen din.",$("kontaktEpost"));
+  for(const [d,v] of Object.entries(s.apent))if(Array.isArray(v)&&!(v[0]&&v[1]&&v[0]<v[1]))return feil(DAGNAVN[d]+": «fra» må være før «til».",document.querySelector(`.dag[data-d="${d}"] .fra`));
+  if(!s.ok)return feil("Huk av for at opplysningene stemmer, nederst i skjemaet.",$("ok"));
+  if(document.querySelector('[name="_honey"]').value)return;
+  const profil=lagProfil(s);const tekst=oppsummering(s);const json=JSON.stringify(profil);sist={s,tekst,json};
+  const b=$("send");b.disabled=true;$("msg").className="msg";$("msg").textContent="Sender …";
+  try{
+    const r=await fetch("https://formsubmit.co/ajax/"+TIL,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},
+      body:JSON.stringify({_subject:"Oppstartsskjema: "+s.navn+(s.pakke?" ("+s.pakke+")":""),_template:"box",_captcha:"false",_replyto:s.kontaktEpost,
+        Firma:s.navn,Kontaktperson:s.kontaktperson,Mobil:s.kontaktTlf,"E-post":s.kontaktEpost,Pakke:s.pakke||"ikke valgt","Sekretær-id":KUNDE||"(ny, lag på /lag)",
+        ...Object.fromEntries(tekst.split("\n\n").map(b=>{const [h,...r]=b.split("\n");return [h.replace(/=/g,"").trim(),r.join("\n")||"(tomt)"];})),"Profil til /lag (lim inn under «Flett inn oppstartsskjema»)":json})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||String(d.success)!=="true")throw new Error(d.message||"Feil "+r.status);
+    try{localStorage.removeItem(NOKKEL);}catch{}
+    $("skjema").hidden=true;$("bar").hidden=true;$("utkastBoks").hidden=true;$("takk").hidden=false;scrollTo({top:0,behavior:"smooth"});
+  }catch(e){console.warn(e);
+    $("mailto").href="mailto:"+TIL+"?subject="+encodeURIComponent("Oppstartsskjema: "+s.navn)+"&body="+encodeURIComponent(tekst.slice(0,1800)+(tekst.length>1800?"\n\n(Resten ligger i kopien jeg legger ved.)":""));
+    $("reserve").hidden=false;$("reserve").scrollIntoView({behavior:"smooth"});feil("Kunne ikke sende akkurat nå. Se under.");
+  }finally{b.disabled=false;}
+};
+</script></body></html>

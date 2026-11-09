@@ -50,7 +50,9 @@ details summary{cursor:pointer;color:var(--muted);font-weight:600;margin-top:6px
   <div class="mail"><div class="subj" id="emne"></div><div id="tekst"></div></div>
   <div class="row"><a class="btn p" id="gmail" target="_blank" rel="noopener">Åpne i Gmail</a><button type="button" id="kopierTekst">Kopier tekst</button><a class="btn" id="apne" target="_blank" rel="noopener">Test sekretæren</a><span class="msg" id="msg3"></span></div>
   <div id="usikker"></div>
-  <div class="row"><button type="button" id="retteBtn">Lenke kunden kan rette selv</button><span class="msg" id="msg4"></span></div>
+  <div class="row"><button type="button" id="retteBtn">Lenke kunden kan rette selv</button><button type="button" id="oppstartBtn">Oppstartsskjema til kunden</button><span class="msg" id="msg4"></span></div>
+  <div id="oppstartBoks" hidden style="margin-top:10px"><p class="lead" style="margin:0 0 6px">Når kunden har sagt ja: send denne lenken. Skjemaet er fylt ut med det Grok fant, så kunden bare retter og legger til booking-regler, når den skal sette over, vanlige spørsmål og tone. Svarene kommer på e-post til deg.</p>
+    <div class="link" id="oppstartLenke"></div><div class="row"><button type="button" id="kopierOppstart">Kopier</button><a class="btn" id="apneOppstart" target="_blank" rel="noopener">Åpne</a></div></div>
   <div id="retteBoks" hidden style="margin-top:10px"><p class="lead" style="margin:0 0 6px">Kunden kan rette tjenester, priser, varighet og åpningstider her. Du får e-post når noe endres, og forrige versjon lagres.</p>
     <div class="link" id="retteLenke"></div><div class="row"><button type="button" id="kopierRette">Kopier</button><a class="btn" id="apneRette" target="_blank" rel="noopener">Åpne</a></div></div>
   <details>
@@ -59,6 +61,12 @@ details summary{cursor:pointer;color:var(--muted);font-weight:600;margin-top:6px
     <div class="link" id="lenke"></div>
     <textarea id="json" spellcheck="false" style="margin-top:10px"></textarea>
     <div class="row"><button type="button" id="lagre">Lagre endringer</button><button type="button" id="kopier">Kopier lenke</button><span class="msg" id="msg2"></span></div>
+  </details>
+  <details>
+    <summary>3. Flett inn oppstartsskjema</summary>
+    <p class="lead" style="margin:10px 0 6px">Lim inn «Profil til /lag» fra e-posten med oppstartsskjemaet. Det kunden har fylt inn erstatter det som står i sekretæren nå, og resten (id, kilder, møtetekst) beholdes. Sekretæren lagres med en gang.</p>
+    <textarea id="oppstartJson" spellcheck="false" style="min-height:160px" placeholder='{ "navn": "...", "tjenester": [...] }'></textarea>
+    <div class="row"><button type="button" id="flett">Flett inn og lagre</button><span class="msg" id="msg5"></span></div>
   </details>
 </div>
 <script>
@@ -139,6 +147,24 @@ $("hentBtn").addEventListener("click",async()=>{$("msg").className="msg";$("msg"
     $("msg").className="msg ok";$("msg").textContent="Åpnet.";$("res").scrollIntoView({behavior:"smooth"});}
   catch(err){$("msg").className="msg err";$("msg").textContent=err.message;}});
 $("kopier").addEventListener("click",()=>kopi($("lenke").textContent,$("kopier"),"Kopiert!"));
+// Oppstartsskjema: lenke til orvelo.no/oppstart/ med profilen i #p (base64url, sendes aldri til en server)
+const OPPSTART_URL="https://preben-creator.github.io/Marketing-agency-/oppstart/";
+function b64url(o){const b=new TextEncoder().encode(JSON.stringify(o));let s="";b.forEach(x=>s+=String.fromCharCode(x));return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");}
+function oppstartLenke(){let p=profil||{};try{p=JSON.parse($("json").value);}catch{}
+  const {navn,bransje,type,adresse,omraade,telefon,epost,nettside,kontaktperson,apent,ansatte,tjenester,stikkord}=p;
+  const u=new URL(OPPSTART_URL);u.searchParams.set("kunde",id);if($("til").value.trim())u.searchParams.set("epost",$("til").value.trim());
+  u.hash="p="+b64url({navn,bransje,type,adresse,omraade,telefon,epost,nettside,kontaktperson,apent,ansatte,tjenester,stikkord});return u.toString();}
+$("oppstartBtn").addEventListener("click",()=>{const l=oppstartLenke();$("oppstartLenke").textContent=l;$("apneOppstart").href=l;$("oppstartBoks").hidden=false;});
+$("kopierOppstart").addEventListener("click",()=>kopi($("oppstartLenke").textContent,$("kopierOppstart"),"Kopiert!"));
+$("flett").addEventListener("click",async()=>{let ny,gml;$("msg5").className="msg";
+  try{ny=JSON.parse($("oppstartJson").value);}catch{$("msg5").className="msg err";$("msg5").textContent="Teksten er ikke gyldig JSON. Kopier hele blokken fra e-posten.";return;}
+  try{gml=JSON.parse($("json").value);}catch{gml=profil||{};}
+  const tom=v=>v==null||v===""||(Array.isArray(v)&&!v.length);
+  const p={...gml};for(const [k,v] of Object.entries(ny))if(!tom(v)||k==="usikkert")p[k]=v;
+  $("msg5").textContent="Lagrer …";
+  try{const d=await post("/lagre",{kode:$("kode").value,id,profil:p});vis(d);$("msg5").className="msg ok";
+    $("msg5").textContent="Flettet inn og lagret."+((ny.usikkert||[]).length?" Sjekk: "+ny.usikkert.join(" "):"");}
+  catch(err){$("msg5").className="msg err";$("msg5").textContent=err.message;}});
 $("kopierTekst").addEventListener("click",()=>kopi($("tekst").textContent,$("kopierTekst"),"Kopiert!"));
 if(q.get("auto")==="1"&&$("firma").value){if($("kode").value)lag();else{$("msg").className="msg err";$("msg").textContent="Skriv inn admin-koden én gang og trykk «Lag sekretær». Etter det husker nettleseren den.";$("kode").focus();}}
 </script></div></body></html>
