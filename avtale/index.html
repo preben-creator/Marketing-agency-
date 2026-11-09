@@ -116,7 +116,7 @@ function prisTabell(p){
   const head=alt.map(a=>`<th class="n"><div class="alt-head">Alternativ ${esc(a.kode)}</div>${esc(a.navn)}</th>`).join("");
   const rad=(t,f)=>`<tr><td>${t}</td>${alt.map(a=>`<td class="n">${f(a)}</td>`).join("")}</tr>`;
   let h=`<table><thead><tr><th></th>${head}</tr></thead><tbody>`;
-  h+=rad("Oppstart (én gang)",()=>kr(p.oppstart));
+  if(Number(p.oppstart)>0)h+=rad("Oppstart (én gang)",()=>kr(p.oppstart));
   h+=rad("Månedspris",a=>kr(a.mnd));
   if(alt.some(a=>Number(a.prosent)>0))h+=rad("I tillegg",a=>Number(a.prosent)>0?`${esc(a.prosent)} % av verdien på timer bestilt via sekretæren`:"Ingenting");
   if(alt.some(a=>a.passer))h+=rad("Passer best når",a=>esc(a.passer||""));
@@ -146,13 +146,13 @@ function tegn(){
   if(A.innledning)h+=`<p style="margin-top:16px">${esc(A.innledning).replace(/\n/g,"<br>")}</p>`;
   if((A.tjenester||[]).length){h+=`<h2>Dette får dere</h2><ul>`+A.tjenester.map(t=>`<li>${t.t?`<b>${esc(t.t)}:</b> `:""}${esc(t.b)}</li>`).join("")+`</ul>`;}
   h+=`<h2>Pris</h2>`;
-  if(alt.length>1&&!S)h+=`<p>Oppstarten koster ${kr(P.oppstart)} én gang. Deretter velger dere ett av alternativene for månedsprisen.</p>`;
+  if(alt.length>1&&!S)h+=Number(P.oppstart)>0?`<p>Oppstarten koster ${kr(P.oppstart)} én gang. Deretter velger dere ett av alternativene for månedsprisen.</p>`:`<p>Det er ingen oppstartspris. Dere velger ett av alternativene for månedsprisen.</p>`;
   h+=prisTabell(P);
-  if(valgt)h+=`<div class="boks"><b>Valgt: Alternativ ${esc(valgt.kode)} (${esc(valgt.navn)}).</b> Oppstart ${kr(P.oppstart)}, deretter ${kr(valgt.mnd)} per måned${Number(valgt.prosent)>0?` pluss ${esc(valgt.prosent)} % av verdien på timer bestilt via sekretæren`:""}.</div>`;
+  if(valgt)h+=`<div class="boks"><b>Valgt: Alternativ ${esc(valgt.kode)} (${esc(valgt.navn)}).</b> ${Number(P.oppstart)>0?`Oppstart ${kr(P.oppstart)}, deretter `:""}${kr(valgt.mnd)} per måned${Number(valgt.prosent)>0?` pluss ${esc(valgt.prosent)} % av verdien på timer bestilt via sekretæren`:""}.</div>`;
   if(A.regneeksempel)h+=`<p class="liten"><b>Regneeksempel:</b> ${esc(A.regneeksempel)}</p>`;
   h+=`<h2>Hovedpunkter</h2><ul>
     <li><b>Bindingstid:</b> ${Number(A.bindingMnd||12)===1?"1 måned":esc(A.bindingMnd)+" måneder"} fra oppstartsdato. Avtalen fornyes deretter automatisk med nye ${Number(A.bindingMnd||12)===1?"1 måned":esc(A.bindingMnd||12)+" måneder"}, med mindre den sies opp skriftlig senest 2 måneder før perioden går ut. Dere får en påminnelse senest 3 måneder før.</li>
-    <li><b>Fakturering:</b> oppstart faktureres ved oppstart, månedsprisen forskuddsvis hver måned${alt.some(a=>Number(a.prosent)>0)?", og en eventuell andel av bookinger etterskuddsvis for måneden før":""}. Betalingsfrist 14 dager.</li>
+    <li><b>Fakturering:</b> ${Number(P.oppstart)>0?"oppstart faktureres ved oppstart, ":""}månedsprisen forskuddsvis hver måned${alt.some(a=>Number(a.prosent)>0)?", og en eventuell andel av bookinger etterskuddsvis for måneden før":""}. Betalingsfrist 14 dager.</li>
     <li><b>Mva:</b> prisene er uten mva. Mva kommer i tillegg hvis Orvelo er eller blir mva-registrert.</li>
     ${A.merknad?`<li><b>Merknad:</b> ${esc(A.merknad)}</li>`:""}
   </ul>`;

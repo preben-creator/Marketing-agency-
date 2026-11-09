@@ -1,6 +1,7 @@
 // Lager PDF-maler av tilbud og avtale fra avtale/index.html + avtale/vilkar.html (samme oppsett som kunden ser).
 // Bruk: node tools/lag-avtale-pdf.mjs [utmappe]   (krever Playwright)
 //   tilbud-og-avtale-mal.pdf       tom mal med linjer å fylle ut og signere på papir
+//   tilbud-og-avtale-telefon.pdf  mal etter salg på telefon (etter demo)
 //   tilbud-og-avtale-deja-vu.pdf   utfylt eksempel for Deja Vu Frisør
 import fs from "fs"; import path from "path"; import { createRequire } from "module";
 const require = createRequire(import.meta.url);
@@ -27,11 +28,13 @@ const TJENESTER_DEJAVU = [
   { t: "Oppsett", b: "jeg setter opp alt, legger inn tjenestene og prislisten deres, og tester sammen med dere. Det tar rundt 30 minutter av deres tid." },
   { t: "Endringer", b: "send meg nye priser, tjenester eller åpningstider på e-post, så oppdaterer jeg sekretæren innen to virkedager." },
 ];
-// Gjeldende pris fra november 2026: 7 990 kr oppstart (inkl. første måned) + 1 490 kr/mnd, 12 mnd binding.
-const PRIS = { oppstart: 7990, alternativer: [
-  { kode: "A", navn: "Fast månedspris", mnd: 1490, prosent: 0, passer: "" },
+// Gjeldende pris fra 9. november 2026: tre pakker, ingen oppstartspris, 12 mnd binding.
+const PRIS = { oppstart: 0, alternativer: [
+  { kode: "A", navn: "Starter", mnd: 790, prosent: 0, passer: "50 samtaleminutter med stemme per måned" },
+  { kode: "B", navn: "Pro", mnd: 1490, prosent: 0, passer: "200 samtaleminutter med stemme per måned" },
+  { kode: "C", navn: "Komplett", mnd: 2990, prosent: 0, passer: "500 samtaleminutter med stemme per måned" },
 ] };
-const MERKNAD = "Oppstartsprisen dekker også første måned. Månedsprisen faktureres fra og med måned 2.";
+const MERKNAD = "Chat er ubegrenset i alle pakker. Går dere over minuttene i pakken, koster ekstra minutter 5 kr per minutt.";
 // Tilbudet Deja Vu fikk 6. november 2026 (gammel pris), beholdt slik det ble sendt.
 const PRIS_DEJAVU = { oppstart: 14990, alternativer: [
   { kode: "A", navn: "Fast månedspris", mnd: 1990, prosent: 0, passer: "Sekretæren booker for mer enn 15 000 kr i måneden" },
@@ -42,6 +45,8 @@ const felles = { tittel: "Tilbud og avtale: KI-sekretær", bindingMnd: 12, tjene
 const filer = {
   "tilbud-og-avtale-mal.pdf": { ...felles, nr: "", dato: "", gyldigTil: "", leverandor: ORVELO, kunde: {},
     innledning: "Her er tilbudet på en KI-sekretær som er laget for firmaet deres, og som svarer kundene deres døgnet rundt." },
+  "tilbud-og-avtale-telefon.pdf": { ...felles, nr: "", dato: "", gyldigTil: "", leverandor: ORVELO, kunde: {},
+    innledning: "Takk for samtalen i dag. Som avtalt på telefonen får dere her tilbudet skriftlig. Dere har allerede prøvd KI-sekretæren som er laget for firmaet deres, og avtalen gjelder den sekretæren, tilpasset slik vi ble enige om.\nAvtalen er ikke inngått før dere har signert den. Les gjennom i ro og mak, og signer digitalt med lenken du har fått på SMS eller e-post." },
   "tilbud-og-avtale-deja-vu.pdf": { ...felles, tjenester: TJENESTER_DEJAVU, bindingMnd: 12, pris: PRIS_DEJAVU, merknad: "", nr: "2026-001", dato: "2026-11-06", gyldigTil: "2026-11-24",
     leverandor: ORVELO,
     kunde: { firma: "Deja Vu Frisør AS", orgnr: "", adresse: "Solheimsgaten 78, 5054 Bergen", kontaktperson: "Jessica Van Tran", epost: "post@dejavubergen.no" },

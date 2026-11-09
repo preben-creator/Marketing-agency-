@@ -593,7 +593,7 @@ async function avtaleRute(request, env, ctx, url) {
     const v = alt.find((x) => x.kode === valgt);
     const varsel = varsle(env, `Signert: tilbud ${rec.nr} fra ${firma}`, [
       `${navn} (${rolle}) har signert tilbud ${rec.nr} for ${firma}, org.nr. ${orgnrFin}.`,
-      `Valgt: alternativ ${valgt} (${v.navn}), ${v.mnd} kr/mnd${v.prosent ? ` + ${v.prosent} % av bookinger` : ""}. Oppstart ${rec.pris.oppstart} kr.`,
+      `Valgt: alternativ ${valgt} (${v.navn}), ${v.mnd} kr/mnd${v.prosent ? ` + ${v.prosent} % av bookinger` : ""}.${rec.pris.oppstart ? ` Oppstart ${rec.pris.oppstart} kr.` : ""}`,
       `E-post: ${epost}`,
       `Signert kopi: ${url.origin}/avtale?id=${id}&t=${rec.token}`,
     ]);
