@@ -1,7 +1,7 @@
 # Orvelo ringeagent («ring meg»)
 
 `ringeagent-worker.js` er en egen Cloudflare Worker. Den gir en «ring meg»-side der en bedrift legger inn mobilnummeret sitt.
-Nummeret bekreftes med en SMS-kode (Twilio), og deretter ringer Ara (Grok-stemmen) opp fra et norsk nummer via Telnyx. Hun forteller om KI-sekretæren
+Nummeret bekreftes med en SMS-kode (Twilio), og deretter ringer Liora (Grok-stemmen) opp fra et norsk nummer via Telnyx. Hun forteller om KI-sekretæren
 og sender bookinglenken (Google Avtaleplan) på SMS. Etter samtalen får Preben et sammendrag på e-post.
 
 Hvorfor SMS-kode og avkrysning: markedsføringsloven § 15 krever forhåndssamtykke for automatiske oppringinger til
