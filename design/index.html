@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="robots" content="noindex">
+<title>Orvelo designforslag</title>
+<link rel="icon" href="../assets/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* Rutenett med levende forhåndsvisninger, ett kort per forslag */
+:root{--bg:#f4f5f7;--fg:#14161c;--muted:#5d6370;--card:#ffffff;--line:#dfe2e8;--accent:#3f4cc9;
+  --head:"Space Grotesk",system-ui,sans-serif;--body:"Inter",system-ui,sans-serif}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#111318;--fg:#eef0f4;--muted:#9aa1ae;--card:#1a1d24;--line:#2a2e38;--accent:#9aa6ff;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#111318;--fg:#eef0f4;--muted:#9aa1ae;--card:#1a1d24;--line:#2a2e38;--accent:#9aa6ff;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:400 16px/1.5 var(--body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:1240px;margin:0 auto;padding-block:36px 60px}
+h1,h2{font-family:var(--head);margin:0;text-wrap:balance}
+h1{font-size:clamp(1.7rem,4vw,2.4rem)}
+.lead{color:var(--muted);max-width:62ch;margin:8px 0 28px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,520px),1fr));gap:22px}
+.v{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.frame{position:relative;aspect-ratio:16/11;overflow:hidden;border-bottom:1px solid var(--line);max-width:100%}
+.frame iframe{position:absolute;top:0;left:0;width:1280px;height:880px;border:0;transform-origin:0 0;pointer-events:none}
+.info{padding:16px 18px 18px;display:grid;gap:6px;min-width:0}
+.nr{font-size:.75rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.info p{margin:0;color:var(--muted)}
+.open{justify-self:start;margin-top:6px;color:var(--accent);font-weight:600}
+.open:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Tre designforslag for orvelo.no</h1>
+  <p class="lead">Samme tekst og demo som forsiden, med ulike farger, skrift og stil. Trykk «Åpne hele siden» for å prøve en av dem. Forsiden endres ikke før du har valgt.</p>
+  <div class="grid">
+    <article class="v" id="naa">
+      <div class="frame"><iframe src="naa/index.html" title="Dagens side" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info">
+        <span class="nr">Slik er den nå</span>
+        <h2>Dagens side</h2>
+        <p>Mørk, lilla og cyan. Teknisk og moderne.</p>
+        <a class="open" href="naa/index.html" target="_top">Åpne hele siden</a>
+      </div>
+    </article>
+    <article class="v" id="fjord">
+      <div class="frame"><iframe src="fjord/index.html" title="Fjord" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info">
+        <span class="nr">Forslag 1</span>
+        <h2>Fjord</h2>
+        <p>Lys og rolig. Dyp fjordblå og grønnblå. Ryddig og tillitsvekkende.</p>
+        <a class="open" href="fjord/index.html" target="_top">Åpne hele siden</a>
+      </div>
+    </article>
+    <article class="v" id="verksted">
+      <div class="frame"><iframe src="verksted/index.html" title="Verksted" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info">
+        <span class="nr">Forslag 2</span>
+        <h2>Verksted</h2>
+        <p>Mørk grafitt med signaloransje. Kraftig, rett fram, laget for håndverkere.</p>
+        <a class="open" href="verksted/index.html" target="_top">Åpne hele siden</a>
+      </div>
+    </article>
+    <article class="v" id="vennlig">
+      <div class="frame"><iframe src="vennlig/index.html" title="Vennlig" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="info">
+        <span class="nr">Forslag 3</span>
+        <h2>Vennlig</h2>
+        <p>Lys mintgrønn med korall. Myk, rund og imøtekommende.</p>
+        <a class="open" href="vennlig/index.html" target="_top">Åpne hele siden</a>
+      </div>
+    </article>
+  </div>
+</main>
+<script>
+function skaler(){document.querySelectorAll('.frame').forEach(f=>{const i=f.querySelector('iframe');i.style.transform='scale('+(f.clientWidth/1280)+')';});}
+addEventListener('resize',skaler);skaler();
+</script>
+</body>
+</html>
