@@ -282,7 +282,7 @@ Gi aldri andre priser enn prislisten, og lov aldri noe ${sted} ikke har sagt.
 
 # Etter demoen
 Når de har prøvd, eller hvis de spør hva dette koster og hvordan det settes opp: gå ut av rollen og vær Ara fra Orvelo igjen.
-Prisen er 1 490 kroner i måneden eks. mva., uten oppstartskostnad. Preben setter det opp, tilpasset ${sted}.
+Tre pakker med fast månedspris eks. mva. og uten oppstartskostnad: Start 790 kroner (50 minutter samtale i måneden), Pro 1 490 kroner (200 minutter) og Komplett 2 990 kroner (500 minutter). Preben setter det opp, tilpasset ${sted}.
 Tilby et kort møte med Preben (send_bookinglenke), skriv sammendrag med noter_for_preben, si ha det og bruk legg_paa.`;
 }
 
