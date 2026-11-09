@@ -20,7 +20,7 @@
 //   TELNYX_FROM          (Text,   valgfri)  det norske Telnyx-nummeret, f.eks. +4755123456
 //   BOOKING_URL          (Text,   valgfri)  Google Avtaleplan-lenken
 //   VARSEL_EPOST         (Text,   valgfri)  hvor sammendrag sendes (via FormSubmit)
-//   STEMME               (Text,   valgfri)  Grok-stemme, standard «ara»
+//   STEMME               (Text,   valgfri)  Grok-stemme, standard «liora»
 //   SMS_AVSENDER         (Text,   valgfri)  navnet SMS-ene kommer fra, standard «Orvelo» (tom = Twilio-nummeret)
 //   KUNDER               (KV-binding, valgfri) samme KV som orvelo-sekretar (orvelo-kunder). Uten den kan
 //                        innringere bare høre en eksempelsekretær, ikke sitt eget firma.
@@ -148,7 +148,7 @@ async function varsle(env, emne, felter) {
 
 function instruksjoner(navn, firma) {
   const hvem = [navn, firma].filter(Boolean).join(" fra ");
-  return `Du er Ara, en KI-assistent som ringer på vegne av Orvelo, et lite norsk selskap i Bergen drevet av Preben Hilleren.
+  return `Du er Liora, en KI-assistent som ringer på vegne av Orvelo, et lite norsk selskap i Bergen drevet av Preben Hilleren.
 Du snakker norsk (bokmål), varmt, rolig og kort, som i en vanlig telefonsamtale. Maks to-tre setninger om gangen, og la kunden snakke.
 
 Hvorfor du ringer: Kunden${hvem ? ` (${hvem})` : ""} har selv bedt om å bli ringt opp via nettsiden til Orvelo for å høre hvordan en KI-sekretær høres ut.
@@ -281,13 +281,13 @@ Spørsmål du ikke kan svare på, flytting og klager: bruk legg_igjen_beskjed og
 Gi aldri andre priser enn prislisten, og lov aldri noe ${sted} ikke har sagt.
 
 # Etter demoen
-Når de har prøvd, eller hvis de spør hva dette koster og hvordan det settes opp: gå ut av rollen og vær Ara fra Orvelo igjen.
+Når de har prøvd, eller hvis de spør hva dette koster og hvordan det settes opp: gå ut av rollen og vær Liora fra Orvelo igjen.
 Tre pakker med fast månedspris eks. mva. og uten oppstartskostnad: Starter 790 kroner (50 minutter samtale i måneden), Pro 1 490 kroner (200 minutter) og Komplett 2 990 kroner (500 minutter). Minutter utover pakken koster 5 kroner. Preben setter det opp, tilpasset ${sted}.
 Tilby et kort møte med Preben (send_bookinglenke), skriv sammendrag med noter_for_preben, si ha det og bruk legg_paa.`;
 }
 
 function innringInstruks() {
-  return `Du er Ara, en KI-assistent fra Orvelo, et lite norsk selskap i Bergen drevet av Preben Hilleren. Orvelo lager KI-sekretærer som svarer telefonen for håndverkere og andre små bedrifter.
+  return `Du er Liora, en KI-assistent fra Orvelo, et lite norsk selskap i Bergen drevet av Preben Hilleren. Orvelo lager KI-sekretærer som svarer telefonen for håndverkere og andre små bedrifter.
 Du snakker norsk (bokmål), varmt og kort, maks to setninger om gangen. Si tydelig at du er en KI hvis noen spør.
 
 Noen har ringt Orvelos demonummer, trolig etter en e-post der vi skrev at vi har laget en KI-sekretær til firmaet deres.
@@ -444,7 +444,7 @@ async function koblSamtale(env, tlfWs, urlParam) {
     tilXai({
       type: "session.update",
       session: {
-        voice: env.STEMME || "ara",
+        voice: env.STEMME || "liora",
         instructions: kunde.inn ? innringInstruks() : instruksjoner(kunde.navn, kunde.firma),
         tools: kunde.inn ? INN_VERKTOY() : VERKTOY,
         turn_detection: { type: "server_vad" },
@@ -456,8 +456,8 @@ async function koblSamtale(env, tlfWs, urlParam) {
     });
     const hei = kunde.navn ? `Hei, ${kunde.navn.split(" ")[0]}!` : "Hei!";
     const forste = kunde.inn
-      ? "Hei, du har ringt Orvelo! Jeg er Ara, en KI-assistent. Hvilket firma ringer du fra, så finner jeg KI-sekretæren vi har laget til dere?"
-      : `${hei} Dette er Ara, en KI-assistent fra Orvelo. Du ba om å bli ringt for å høre hvordan en KI-sekretær høres ut, så her er jeg! Har du et par minutter?`;
+      ? "Hei, du har ringt Orvelo! Jeg er Liora, en KI-assistent. Hvilket firma ringer du fra, så finner jeg KI-sekretæren vi har laget til dere?"
+      : `${hei} Dette er Liora, en KI-assistent fra Orvelo. Du ba om å bli ringt for å høre hvordan en KI-sekretær høres ut, så her er jeg! Har du et par minutter?`;
     tilXai({
       type: "conversation.item.create",
       item: {
@@ -476,7 +476,7 @@ async function koblSamtale(env, tlfWs, urlParam) {
         return;
       }
       if (t === "response.output_audio_transcript.done" || t === "response.audio_transcript.done") {
-        if (e.transcript && e.transcript.trim()) logg.push(`[${tid()}] Ara: ${e.transcript.trim()}`);
+        if (e.transcript && e.transcript.trim()) logg.push(`[${tid()}] Liora: ${e.transcript.trim()}`);
         return;
       }
       if (t.includes("input_audio_transcription.completed")) {
@@ -731,7 +731,7 @@ button{width:100%;padding:14px;border:0;border-radius:10px;background:var(--akse
 .skjult{display:none}.felle{position:absolute;left:-9999px}.liten{font-size:.85rem;margin-top:18px}.liten a{color:var(--aksent)}
 </style></head><body><main><div class="kort">
 <h1>Hør hvordan en KI-sekretær høres ut</h1>
-<p>Legg inn mobilnummeret ditt, så ringer Ara, vår KI-assistent, deg om et øyeblikk. Hun forteller hvordan Orvelo kan svare telefonen for bedriften din, og kan avtale et kort møte med Preben.</p>
+<p>Legg inn mobilnummeret ditt, så ringer Liora, vår KI-assistent, deg om et øyeblikk. Hun forteller hvordan Orvelo kan svare telefonen for bedriften din, og kan avtale et kort møte med Preben.</p>
 <form id="steg1">
 <label for="navn">Navnet ditt</label><input id="navn" type="text" autocomplete="name" maxlength="60">
 <label for="firma">Bedrift</label><input id="firma" type="text" value="${f}" maxlength="80">
