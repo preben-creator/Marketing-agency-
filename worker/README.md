@@ -84,6 +84,47 @@ ansatte, kontaktinfo og «dette bør sekretæren vite». Firmanavn, bransje og t
 Rettekoden ligger i KV under `rediger:<id>` og er en annen enn `DEMO_KODE`, så de som bare har demolenken kan ikke endre noe.
 Siden hentes fra `snakk/rediger.html` på GitHub. Ingen nye innstillinger trengs, men den nye workerkoden må limes inn i Cloudflare én gang.
 
+## Tilleggstjenester på SMS: påminnelse, tapt anrop og Google-anmeldelse
+
+Samme worker kan sende SMS til kundene til kundene dine:
+
+1. **Bekreftelse og påminnelse før timen** (standard 24 timer før). Gir færre som ikke møter opp.
+2. **SMS ved tapt anrop**: «Du ringte Deja Vu, men vi fikk ikke tatt telefonen. Vi ringer deg tilbake.» Kunden får en liste over hvem som skal ringes tilbake.
+3. **Be om Google-anmeldelse** et par timer etter timen, bare til dem som har sagt ja. Hver SMS har en «nei takk»-lenke.
+
+SMS sendes aldri mellom 21 og 08. Navn og mobilnummer slettes en uke etter timen, tapte anrop etter 14 dager.
+
+### Trygt som standard
+- Ingenting sendes før `SMS_PA` = `ja`.
+- Så lenge «Ekte utsending» ikke er krysset av for en kunde, går alle SMS-ene til `SMS_TEST_NUMMER` (din mobil) med «[TEST ...]» foran.
+- Maks 200 SMS per kunde per dag (`SMS_MAKS_DAG`).
+
+### Oppsett (én gang, ca. 5 minutter)
+1. `orvelo-sekretar` → **Settings → Variables and Secrets**:
+   - Secret `TWILIO_ACCOUNT_SID` og Secret `TWILIO_AUTH_TOKEN` (samme som i `orvelo-ring`)
+   - Text `SMS_TEST_NUMMER` = mobilen din, f.eks. `41232557`
+   - Text `SMS_PA` = `ja`
+   - (valgfritt) Text `TWILIO_FROM` = reservenummer hvis avsendernavnet blir avvist
+2. **Settings → Triggers → Cron Triggers → Add**: `*/15 * * * *` (sjekker hvert kvarter om noe skal sendes).
+3. Lim inn nyeste `worker/sekretar-worker.js` og trykk **Deploy**.
+
+### Slik bruker du det
+1. Åpne `/lag`, skriv admin-koden, åpne sekretæren (id) og velg **4. Tilleggstjenester på SMS**.
+2. Kryss av det kunden har kjøpt, lim inn Google-anmeldelseslenken og trykk **Lagre tillegg**.
+3. Trykk **Send test-SMS til meg** for hver type og se at teksten er riktig.
+4. Send kunden lenken til siden `/sms?kunde=..&r=..`. Der legger de inn timer, ser tapte anrop og hva som er sendt.
+   Siden har samme kode som rette-siden (`/rediger`), og rette-siden lenker dit.
+5. Når kunden er fornøyd: kryss av **Ekte utsending** og lagre.
+
+### Tapte anrop
+Telefonsystemet (for eksempel Telnyx når kundens nummer viderekobles til oss) sender
+`POST /tillegg/tapt?kunde=<id>&nokkel=<nøkkel>` med `{"fra":"+4791234567"}`. Adressen står på `/lag`.
+Samme nummer innen 2 timer gir bare én SMS. Fasttelefoner får ikke SMS, men havner i listen.
+
+### Kostnad
+Twilio til norsk mobil: ca. 0,8 kr per SMS (160 tegn). Anmeldelses-SMS-en er to SMS fordi den har to lenker.
+Tekstene unngår tegn som «» og lange streker, siden de gjør SMS-en tre ganger så dyr.
+
 ## Chat på kundens nettside
 
 Samme sekretær kan svare skriftlig i en chat-boble på kundens egen nettside.

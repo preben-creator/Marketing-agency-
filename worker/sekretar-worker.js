@@ -26,6 +26,7 @@
 //   GET  /chat/prov     -> en prøveside som viser chatten på en tenkt nettside (krever demokode)
 //   POST /chat/innstillinger -> Prebens side: slå chatten av/på, farge, hilsen, domener, varsel-e-post (ADMIN_KODE)
 //   POST /chat/innboks  -> timeforespørsler, beskjeder og tall for chatten (ADMIN_KODE)
+//   /sms, /tillegg/*, /s/* -> tilleggstjenester på SMS (påminnelse, tapt anrop, anmeldelse). Se nederst i filen.
 //
 // Innstillinger (Cloudflare: Worker -> Settings -> Variables and Secrets):
 //   XAI_API_KEY  (Secret, påkrevd)  xAI-nøkkelen din
@@ -183,6 +184,10 @@ export default {
       return avtaleRute(request, env, ctx, url);
     }
 
+    if (url.pathname === "/sms" || url.pathname.startsWith("/tillegg/") || url.pathname.startsWith("/s/")) {
+      return tilleggRute(request, env, ctx, url);
+    }
+
     if (url.pathname === "/" || url.pathname === "/index.html") {
       const r = await fetch(env.PAGE_URL || PAGE_URL_DEFAULT, { cf: { cacheTtl: 60 } });
       if (!r.ok) return new Response("Fant ikke demosiden.", { status: 502 });
@@ -197,6 +202,11 @@ export default {
     }
 
     return new Response("Ikke funnet", { status: 404 });
+  },
+
+  // Cron Trigger (Settings -> Triggers -> Cron: */15 * * * *): påminnelser og anmeldelses-SMS.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(tilleggRunde(env).then((r) => console.log("tillegg-runde", JSON.stringify(r))).catch((e) => console.log("tillegg-runde feilet", e && e.stack)));
   },
 };
 
@@ -753,6 +763,458 @@ async function redigerRute(request, env, ctx, url) {
   }
 
   return new Response("Ikke funnet", { status: 404 });
+}
+
+// ======================================================================
+// Tilleggstjenester på SMS (for kundene til Orvelos kunder)
+//   1. Bekreftelse og påminnelse før timen
+//   2. SMS til den som ringte når ingen fikk tatt telefonen (tapt anrop), og en liste over hvem som skal ringes tilbake
+//   3. SMS etter jobben som ber om en Google-anmeldelse (bare når kunden har sagt ja)
+//
+// Ruter:
+//   POST /tillegg/admin       -> Preben: hent/lagre innstillingene for en kunde (krever ADMIN_KODE)
+//   POST /tillegg/admin/test  -> Preben: send en test-SMS av en type til SMS_TEST_NUMMER
+//   GET  /sms?kunde=..&r=..   -> kundens side: timer, tapte anrop og SMS som er sendt (samme rettekode som /rediger)
+//   GET  /tillegg/data        -> dataene til den siden (krever kunde + r)
+//   POST /tillegg/time        -> kunden (eller sekretæren senere) legger inn en time
+//   POST /tillegg/time/avlys  -> fjerner en time (ingen flere SMS for den)
+//   POST /tillegg/tapt        -> tapt anrop: { kunde, nokkel, fra } fra telefonsystemet (egen nøkkel per kunde)
+//   POST /tillegg/tapt/ferdig -> kunden har ringt tilbake
+//   POST /tillegg/lenke       -> kunden lagrer sin Google-anmeldelseslenke
+//   GET/POST /s/<kode>        -> mottakeren sier nei takk til flere SMS (bekreftes med en knapp)
+//   scheduled (Cron Trigger, hvert 15. minutt) -> sender påminnelser, anmeldelses-SMS og SMS som ventet til morgenen
+//
+// SIKKERHET: ingenting sendes før SMS_PA = "ja". Og så lenge en kunde ikke er satt til «live» av Preben,
+// går alle SMS-ene til SMS_TEST_NUMMER (Prebens mobil) i stedet for til ekte folk.
+// Innstillinger: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN (Secret), SMS_PA, SMS_TEST_NUMMER, TWILIO_FROM (reserve), SEKRETAR_URL (valgfri).
+// SMS sendes aldri mellom 21 og 08 (de venter til morgenen).
+
+const SEKRETAR_URL_DEFAULT = "https://orvelo-sekretar.preben-m-hilleren.workers.dev";
+const TILLEGG_STD = {
+  paminnelse: { pa: false, timerFor: 24, bekreftelse: true },
+  tapt: { pa: false, lenke: "" },
+  anmeldelse: { pa: false, lenke: "", timerEtter: 3 },
+  avsender: "",
+  live: false,
+  tekster: { bekreftelse: "", paminnelse: "", tapt: "", anmeldelse: "" },
+};
+const STD_TEKST = {
+  bekreftelse: "Hei {navn}! Du har time hos {firma} {dag} kl. {tid} ({hva}). Må du endre? Ring {telefon}.",
+  paminnelse: "Hei {navn}! Påminnelse: du har time hos {firma} {dag} kl. {tid}. Kan du ikke komme? Ring {telefon}, så kan noen andre få timen.",
+  tapt: "Hei! Du ringte {firma}, men vi fikk ikke tatt telefonen. Vi ringer deg tilbake så snart vi kan.{bestill}",
+  anmeldelse: "Hei {navn}! Takk for at du valgte {firma}. Vil du gi oss en anmeldelse på Google? Det tar ett minutt: {lenke} Vil du ikke ha slike SMS: {stopp}",
+};
+const SMS_TYPER = Object.keys(STD_TEKST);
+
+const tilTall = (v, min, maks, std) => { const n = Number(v); return Number.isFinite(n) ? Math.min(maks, Math.max(min, Math.round(n))) : std; };
+const httpsLenke = (v) => { const s = tekst(v, 300); return /^https:\/\/[^\s]+$/.test(s) ? s : ""; };
+
+function rensTillegg(t = {}, profil = {}) {
+  const p = t.paminnelse || {}, ta = t.tapt || {}, a = t.anmeldelse || {}, tk = t.tekster || {};
+  const avsender = tekst(t.avsender, 20).replace(/[^A-Za-z0-9 ]/g, "").trim().slice(0, 11)
+    || (profil.kortnavn || profil.navn || "").normalize("NFD").replace(/[^A-Za-z0-9 ]/g, "").trim().slice(0, 11);
+  return {
+    paminnelse: { pa: !!p.pa, timerFor: tilTall(p.timerFor, 2, 72, 24), bekreftelse: p.bekreftelse !== false },
+    tapt: { pa: !!ta.pa, lenke: httpsLenke(ta.lenke) },
+    anmeldelse: { pa: !!a.pa, lenke: httpsLenke(a.lenke), timerEtter: tilTall(a.timerEtter, 1, 72, 3) },
+    avsender: /[A-Za-z]/.test(avsender) ? avsender : "",
+    live: !!t.live,
+    tekster: Object.fromEntries(SMS_TYPER.map((k) => {
+      let v = tekst(tk[k], 320);
+      if (k === "anmeldelse" && v && !v.includes("{stopp}")) v += " Ikke flere slike SMS: {stopp}"; // mottakeren skal alltid kunne si nei
+      return [k, v];
+    })),
+  };
+}
+
+async function hentTillegg(env, id, profil) {
+  const t = await env.KUNDER.get("tillegg:" + id, "json");
+  return rensTillegg(t || TILLEGG_STD, profil || {});
+}
+
+// Norsk mobilnummer -> +47XXXXXXXX, ellers "" (fasttelefon kan ikke få SMS).
+function mobilnr(v) {
+  let s = String(v || "").replace(/[\s().-]/g, "");
+  if (s.startsWith("0047")) s = "+" + s.slice(2);
+  if (/^[49]\d{7}$/.test(s)) s = "+47" + s;
+  return /^\+47[49]\d{7}$/.test(s) ? s : "";
+}
+const skjult = (m) => (m ? m.slice(0, 3) + " xxxxx" + m.slice(-3) : "");
+
+// SMS-tegnsettet (GSM-7) har æøå, men ikke «», ’ og lange streker. Uten dem koster en SMS en tredjedel.
+function gsm(s) {
+  return String(s).replace(/[«»“”„]/g, '"').replace(/[‘’`´]/g, "'").replace(/[–—]/g, "-").replace(/…/g, "...")
+    .replace(/[^\n\r A-Za-z0-9@£$¥èéùìòÇØøÅåÆæßÉÄÖÑÜ§¿äöñüà!"#%&'()*+,\-./:;<=>?_]/g, "").replace(/ {2,}/g, " ").trim();
+}
+
+function fyllInn(mal, v) {
+  return gsm(mal.replace(/\{(\w+)\}/g, (_, k) => (v[k] ?? "")));
+}
+
+function osloDeler(ms) {
+  const f = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short", hourCycle: "h23" });
+  const x = Object.fromEntries(f.formatToParts(new Date(ms)).map((p) => [p.type, p.value]));
+  return { dato: `${x.year}-${x.month}-${x.day}`, tid: `${x.hour}:${x.minute}`, time: Number(x.hour), mnd: `${x.year}-${x.month}` };
+}
+// "2026-11-12" + "14:30" (norsk tid) -> millisekunder
+function osloTilMs(dato, kl) {
+  const gjett = Date.parse(`${dato}T${kl}:00Z`);
+  for (const off of [1, 2]) {
+    const ms = gjett - off * 3600e3;
+    const d = osloDeler(ms);
+    if (d.dato === dato && d.tid === kl) return ms;
+  }
+  return NaN;
+}
+const UKEDAG = ["søndag", "mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag"];
+const MANED = ["januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember"];
+function dagTekst(ms, naa = Date.now()) {
+  const d = osloDeler(ms), i = osloDeler(naa), im = osloDeler(naa + 864e5);
+  if (d.dato === i.dato) return "i dag";
+  if (d.dato === im.dato) return "i morgen";
+  const dt = new Date(d.dato + "T12:00:00Z");
+  return `${UKEDAG[dt.getUTCDay()]} ${dt.getUTCDate()}. ${MANED[dt.getUTCMonth()]}`;
+}
+// SMS sendes bare mellom 08 og 21 norsk tid.
+const stille = (ms = Date.now()) => { const h = osloDeler(ms).time; return h < 8 || h >= 21; };
+
+async function twilioSms(env, til, fra, body) {
+  const auth = btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`);
+  const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Messages.json`, {
+    method: "POST",
+    headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ To: til, From: fra, Body: body }),
+  });
+  const t = await r.text();
+  let feil = "";
+  if (!r.ok) { try { const d = JSON.parse(t); feil = `Twilio ${d.code || r.status}: ${d.message || ""}`; } catch { feil = "HTTP " + r.status; } }
+  return { ok: r.ok, feil };
+}
+
+async function smsLogg(env, id, rad) {
+  const l = (await env.KUNDER.get("smslogg:" + id, "json")) || { mnd: {}, siste: [] };
+  if (rad.status === "sendt" || rad.status === "test") { const m = osloDeler(Date.now()).mnd; l.mnd[m] = (l.mnd[m] || 0) + 1; }
+  l.siste.unshift({ tid: new Date().toISOString(), ...rad });
+  l.siste = l.siste.slice(0, 100);
+  await env.KUNDER.put("smslogg:" + id, JSON.stringify(l));
+  return l;
+}
+
+const sendtIDag = new Map();
+// Sender (eller later som den sender) én SMS for kunden id. Returnerer { status, feil }.
+async function sendTilleggSms(env, id, cfg, type, mottaker, body, { test = false } = {}) {
+  const ekte = cfg.live && !test;
+  let til = mottaker, tekstUt = body;
+  if (!ekte) {
+    til = mobilnr(env.SMS_TEST_NUMMER);
+    tekstUt = `[TEST ${type}, ekte mottaker ${skjult(mottaker) || "ingen"}] ` + body;
+  }
+  const rad = { type, til: skjult(mottaker), tekst: body };
+  if (env.SMS_PA !== "ja") return smsLogg(env, id, { ...rad, status: "av", feil: "SMS er ikke slått på (SMS_PA)." }).then(() => ({ status: "av" }));
+  if (!til) return smsLogg(env, id, { ...rad, status: "feil", feil: "Mangler SMS_TEST_NUMMER." }).then(() => ({ status: "feil" }));
+  if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN) return smsLogg(env, id, { ...rad, status: "feil", feil: "Mangler Twilio-nøkler." }).then(() => ({ status: "feil" }));
+  const dag = osloDeler(Date.now()).dato, n = (sendtIDag.get(id + dag) || 0) + 1;
+  if (n > tilTall(env.SMS_MAKS_DAG, 1, 5000, 200)) return smsLogg(env, id, { ...rad, status: "feil", feil: "Maks antall SMS i dag er nådd." }).then(() => ({ status: "feil" }));
+  sendtIDag.set(id + dag, n); if (sendtIDag.size > 2000) sendtIDag.clear();
+
+  let r = cfg.avsender ? await twilioSms(env, til, cfg.avsender, tekstUt) : { ok: false };
+  if (!r.ok && env.TWILIO_FROM) r = await twilioSms(env, til, env.TWILIO_FROM, tekstUt);
+  const status = r.ok ? (ekte ? "sendt" : "test") : "feil";
+  await smsLogg(env, id, { ...rad, status, feil: r.feil || "" });
+  if (ekte && r.ok) await rapportHendelse(env, id, { kanal: "sms", tema: SMS_TEMA[type] || type, kategori: "sms-" + type });
+  return { status, feil: r.feil };
+}
+
+async function hashMobil(id, mobil) { return (await sha256(id + "|" + mobil)).slice(0, 20); }
+async function harSagtStopp(env, id, mobil) { return !!(await env.KUNDER.get("stopp:" + id + ":" + (await hashMobil(id, mobil)))); }
+async function stoppLenke(env, id, mobil) {
+  const k = tilfeldig(7);
+  await env.KUNDER.put("kort:" + k, JSON.stringify({ id, h: await hashMobil(id, mobil) }), { expirationTtl: 400 * 864e2 });
+  return `${env.SEKRETAR_URL || SEKRETAR_URL_DEFAULT}/s/${k}`;
+}
+
+function smsTekst(type, cfg, profil, v) {
+  const mal = cfg.tekster[type] || STD_TEKST[type];
+  return fyllInn(mal, {
+    firma: profil.kortnavn || profil.navn || "oss",
+    telefon: profil.telefon || "oss",
+    bestill: cfg.tapt.lenke ? ` Du kan også bestille her: ${cfg.tapt.lenke}` : "",
+    ...v,
+  });
+}
+
+function timeVerdier(t, naa) {
+  const d = osloDeler(t.s);
+  return { navn: (t.navn || "").split(" ")[0], dag: dagTekst(t.s, naa), tid: d.tid, hva: t.hva || "time" };
+}
+
+// Én runde: går gjennom kundene som har tillegg slått på. Kalles av Cron hvert 15. minutt.
+export async function tilleggRunde(env, naa = Date.now()) {
+  if (!env.KUNDER) return { kunder: 0 };
+  const aktive = (await env.KUNDER.get("tillegg-aktive", "json")) || [];
+  const ut = { kunder: aktive.length, sendt: 0 };
+  for (const id of aktive) {
+    const profil = await env.KUNDER.get("kunde:" + id, "json");
+    if (!profil) continue;
+    const cfg = await hentTillegg(env, id, profil);
+    let endret = false;
+
+    const timer = (await env.KUNDER.get("timer:" + id, "json")) || [];
+    const beholdt = [];
+    for (const t of timer) {
+      if (naa > t.s + 7 * 864e5) { endret = true; continue; } // slettes en uke etter timen
+      beholdt.push(t);
+      if (t.x || stille(naa)) continue;
+      if (cfg.paminnelse.pa && !t.p && naa >= t.s - cfg.paminnelse.timerFor * 3600e3 && naa < t.s - 3600e3) {
+        await sendTilleggSms(env, id, cfg, "paminnelse", t.mobil, smsTekst("paminnelse", cfg, profil, timeVerdier(t, naa)));
+        t.p = naa; endret = true; ut.sendt++;
+      }
+      const ferdig = t.s + (t.v || 60) * 60e3;
+      if (cfg.anmeldelse.pa && cfg.anmeldelse.lenke && t.ok && !t.a && naa >= ferdig + cfg.anmeldelse.timerEtter * 3600e3 && naa < ferdig + 3 * 864e5) {
+        t.a = naa; endret = true;
+        if (await harSagtStopp(env, id, t.mobil)) continue;
+        await sendTilleggSms(env, id, cfg, "anmeldelse", t.mobil, smsTekst("anmeldelse", cfg, profil, {
+          ...timeVerdier(t, naa), lenke: cfg.anmeldelse.lenke, stopp: await stoppLenke(env, id, t.mobil),
+        }));
+        ut.sendt++;
+      }
+    }
+    if (endret) await env.KUNDER.put("timer:" + id, JSON.stringify(beholdt));
+
+    // Tapte anrop som kom om kvelden/natten: send når det blir morgen (hvis det er under 14 timer siden).
+    if (cfg.tapt.pa && !stille(naa)) {
+      const tapt = (await env.KUNDER.get("tapt:" + id, "json")) || [];
+      let tEndret = false;
+      for (const a of tapt) {
+        if (!a.venter) continue;
+        a.venter = false; tEndret = true;
+        if (naa - a.t < 14 * 3600e3) { await sendTilleggSms(env, id, cfg, "tapt", a.fra, smsTekst("tapt", cfg, profil, {})); a.sms = naa; ut.sendt++; }
+      }
+      if (tEndret) await env.KUNDER.put("tapt:" + id, JSON.stringify(tapt));
+    }
+  }
+  return ut;
+}
+
+async function oppdaterAktive(env, id, cfg) {
+  const aktive = new Set((await env.KUNDER.get("tillegg-aktive", "json")) || []);
+  const pa = cfg.paminnelse.pa || cfg.tapt.pa || cfg.anmeldelse.pa;
+  if (pa === aktive.has(id)) return;
+  if (pa) aktive.add(id); else aktive.delete(id);
+  await env.KUNDER.put("tillegg-aktive", JSON.stringify([...aktive]));
+}
+
+// Legger inn en time og sender bekreftelse med en gang (hvis slått på).
+async function leggInnTime(env, id, profil, cfg, inn, kilde) {
+  const mobil = mobilnr(inn.mobil);
+  if (!mobil) throw new Error("Skriv et norsk mobilnummer (8 siffer som begynner på 4 eller 9).");
+  const dato = datoStr(inn.dato), kl = KL.test(String(inn.klokkeslett || "")) ? String(inn.klokkeslett).padStart(5, "0") : "";
+  const s = osloTilMs(dato, kl);
+  if (!dato || !kl || !Number.isFinite(s)) throw new Error("Velg dato og klokkeslett.");
+  const naa = Date.now();
+  if (s < naa - 864e5 || s > naa + 400 * 864e5) throw new Error("Datoen må være fra i går og innen ett år.");
+  const t = {
+    id: tilfeldig(8), s, v: tilTall(inn.varighet, 15, 600, 60), navn: tekst(inn.navn, 60), mobil, hva: tekst(inn.hva, 80),
+    ok: !!inn.ok, kilde, laget: naa, p: 0, a: 0,
+  };
+  const timer = (await env.KUNDER.get("timer:" + id, "json")) || [];
+  if (timer.length >= 2000) throw new Error("For mange timer lagret.");
+  let bekreftet = null;
+  if (s > naa) {
+    if (cfg.paminnelse.pa && cfg.paminnelse.bekreftelse && !stille(naa)) {
+      bekreftet = await sendTilleggSms(env, id, cfg, "bekreftelse", mobil, smsTekst("bekreftelse", cfg, profil, timeVerdier(t, naa)));
+    }
+    // Er timen så snart at påminnelsen ville kommet nesten samtidig, holder bekreftelsen.
+    if (bekreftet && s - naa < cfg.paminnelse.timerFor * 3600e3) t.p = naa;
+  }
+  timer.push(t);
+  timer.sort((a, b) => a.s - b.s);
+  await env.KUNDER.put("timer:" + id, JSON.stringify(timer));
+  return { time: t, bekreftet };
+}
+
+async function registrerTaptAnrop(env, id, profil, cfg, fraInn) {
+  const fra = mobilnr(fraInn);
+  const naa = Date.now();
+  const tapt = (await env.KUNDER.get("tapt:" + id, "json")) || [];
+  const fraRaa = tekst(String(fraInn || ""), 20);
+  const tidligere = tapt.find((a) => (a.fra || a.nr) === (fra || fraRaa) && !a.ferdig && naa - a.t < 2 * 3600e3);
+  if (tidligere) {
+    tidligere.antall = (tidligere.antall || 1) + 1; tidligere.sist = naa;
+  } else {
+    const a = { id: tilfeldig(8), t: naa, fra, nr: fra ? "" : fraRaa, antall: 1, sms: 0, venter: false, ferdig: 0 };
+    if (cfg.tapt.pa && fra) {
+      if (stille(naa)) a.venter = true;
+      else { await sendTilleggSms(env, id, cfg, "tapt", fra, smsTekst("tapt", cfg, profil, {})); a.sms = naa; }
+    }
+    tapt.unshift(a);
+  }
+  if (!tidligere) await rapportHendelse(env, id, { kanal: "telefon", tema: "Tapt anrop", kategori: "tapt", tapt: 1 });
+  const beholdt = tapt.filter((a) => naa - a.t < 14 * 864e5).slice(0, 300);
+  await env.KUNDER.put("tapt:" + id, JSON.stringify(beholdt));
+  return { ok: true, sms: !tidligere && cfg.tapt.pa && !!fra };
+}
+
+const STOPP_SIDE = (navn, ferdig) => `<!doctype html><html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Ingen flere SMS</title>
+<style>body{margin:0;font:17px/1.5 system-ui,sans-serif;background:#f6f7f5;color:#1d2420}main{max-width:520px;margin:12vh auto;padding:24px 20px;background:#fff;border-radius:16px;box-shadow:0 2px 14px rgba(0,0,0,.06)}button{font:inherit;font-weight:600;padding:12px 18px;border:0;border-radius:10px;background:#1f7a5c;color:#fff;cursor:pointer}</style></head>
+<body><main>${ferdig
+  ? `<h1>Ferdig</h1><p>Du får ikke flere slike SMS fra ${esc(navn)}.</p>`
+  : `<h1>Ingen flere SMS?</h1><p>Trykk på knappen, så får du ikke flere SMS fra ${esc(navn)} om anmeldelser.</p><form method="post"><button>Ja, stopp SMS-ene</button></form>`}
+<p style="color:#667;font-size:14px;margin-top:24px">Sendt på vegne av ${esc(navn)} av Orvelo.</p></main></body></html>`;
+function esc(s) { return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+async function tilleggRute(request, env, ctx, url) {
+  const p = url.pathname;
+  const get = request.method === "GET";
+  if (!env.KUNDER) return json({ feil: "KV-lageret KUNDER er ikke koblet til workeren." }, 500);
+
+  if (p.startsWith("/s/")) {
+    const k = p.slice(3).replace(/[^a-z0-9]/g, "").slice(0, 12);
+    const rec = k && (await env.KUNDER.get("kort:" + k, "json"));
+    const profil = rec && (await env.KUNDER.get("kunde:" + rec.id, "json"));
+    if (!profil) return new Response("Lenken er utløpt.", { status: 404 });
+    const navn = profil.kortnavn || profil.navn;
+    if (request.method === "POST") {
+      await env.KUNDER.put("stopp:" + rec.id + ":" + rec.h, new Date().toISOString());
+      await smsLogg(env, rec.id, { type: "stopp", til: "", tekst: "En mottaker sa nei takk til flere SMS.", status: "stopp" });
+      return new Response(STOPP_SIDE(navn, true), { headers: HTML_HODER });
+    }
+    return new Response(STOPP_SIDE(navn, false), { headers: HTML_HODER });
+  }
+
+  if (get && p === "/sms") {
+    try { return new Response(await hentFraGitHub("snakk/sms.html", env), { headers: HTML_HODER }); }
+    catch (e) { return new Response(e.message, { status: 502 }); }
+  }
+
+  // Kunden: samme rettekode som /rediger
+  const kunde = async (id, r) => {
+    if (!id || !r) return null;
+    const kode = await env.KUNDER.get("rediger:" + id);
+    if (!kode || kode !== r) return null;
+    return env.KUNDER.get("kunde:" + id, "json");
+  };
+  const kundeData = async (id, profil) => {
+    const cfg = await hentTillegg(env, id, profil);
+    const naa = Date.now();
+    const timer = ((await env.KUNDER.get("timer:" + id, "json")) || []).filter((t) => t.s > naa - 3 * 864e5)
+      .map((t) => ({ id: t.id, dato: osloDeler(t.s).dato, tid: osloDeler(t.s).tid, v: t.v, navn: t.navn, mobil: t.mobil, hva: t.hva, ok: t.ok, x: !!t.x, p: t.p, a: t.a, kommer: t.s > naa }));
+    const tapt = ((await env.KUNDER.get("tapt:" + id, "json")) || []).map((a) => ({ ...a, nr: a.fra || a.nr, dato: osloDeler(a.t).dato, tid: osloDeler(a.t).tid }));
+    const logg = (await env.KUNDER.get("smslogg:" + id, "json")) || { mnd: {}, siste: [] };
+    const { tekster, ...vis } = cfg;
+    return { navn: profil.kortnavn || profil.navn, tillegg: vis, timer, tapt, sms: { mnd: logg.mnd, siste: logg.siste.slice(0, 30) }, test: !cfg.live };
+  };
+
+  if (get && p === "/tillegg/data") {
+    const id = rensId(url.searchParams.get("kunde"));
+    const profil = await kunde(id, url.searchParams.get("r"));
+    if (!profil) return json({ feil: "Fant ikke kunden. Sjekk at du har hele lenken." }, 404);
+    return json(await kundeData(id, profil), 200);
+  }
+
+  if (request.method !== "POST") return new Response("Ikke funnet", { status: 404 });
+  let body = {};
+  try { body = await request.json(); } catch {}
+
+  // Tapt anrop fra telefonsystemet (ikke fra en nettleser): egen nøkkel per kunde.
+  if (p === "/tillegg/tapt") {
+    const id = rensId(body.kunde || url.searchParams.get("kunde"));
+    const nokkel = String(body.nokkel || url.searchParams.get("nokkel") || "");
+    const riktig = id && (await env.KUNDER.get("hook:" + id));
+    if (!riktig || !likKode(riktig, nokkel)) return json({ feil: "Feil nøkkel." }, 401);
+    const profil = await env.KUNDER.get("kunde:" + id, "json");
+    if (!profil) return json({ feil: "Fant ikke kunden." }, 404);
+    const cfg = await hentTillegg(env, id, profil);
+    return json(await registrerTaptAnrop(env, id, profil, cfg, body.fra || url.searchParams.get("fra")), 200);
+  }
+
+  const origin = request.headers.get("Origin");
+  if (origin && origin !== url.origin) return json({ feil: "Ikke tillatt" }, 403);
+
+  if (p === "/tillegg/admin" || p === "/tillegg/admin/test" || p === "/tillegg/admin/runde") {
+    if (!env.ADMIN_KODE || body.kode !== env.ADMIN_KODE) return json({ feil: "Feil admin-kode." }, 401);
+    if (p === "/tillegg/admin/runde") return json(await tilleggRunde(env), 200);
+    const id = rensId(body.id);
+    const profil = id && (await env.KUNDER.get("kunde:" + id, "json"));
+    if (!profil) return json({ feil: "Fant ingen sekretær med id «" + id + "»." }, 404);
+    if (p === "/tillegg/admin/test") {
+      const cfg = await hentTillegg(env, id, profil);
+      const type = SMS_TYPER.includes(body.type) ? body.type : "paminnelse";
+      const naa = Date.now();
+      const imorgen = osloDeler(naa + 864e5).dato;
+      const eks = { id: "test", s: osloTilMs(imorgen, "14:00"), v: 60, navn: "Kari Nordmann", mobil: "", hva: (profil.tjenester?.[0]?.[1]?.[0]?.[0]) || "time" };
+      const t = smsTekst(type, cfg, profil, { ...timeVerdier(eks, naa), lenke: cfg.anmeldelse.lenke || "https://g.page/r/eksempel/review", stopp: `${env.SEKRETAR_URL || SEKRETAR_URL_DEFAULT}/s/eksempl` });
+      const r = await sendTilleggSms(env, id, cfg, type, "", t, { test: true });
+      return json({ tekst: t, tegn: t.length, sms: Math.ceil(t.length / (t.length > 160 ? 153 : 160)), ...r }, 200);
+    }
+    let cfg = await hentTillegg(env, id, profil);
+    if (body.tillegg) {
+      cfg = rensTillegg(body.tillegg, profil);
+      await env.KUNDER.put("tillegg:" + id, JSON.stringify(cfg));
+      await oppdaterAktive(env, id, cfg);
+    }
+    let hook = await env.KUNDER.get("hook:" + id);
+    if (!hook) { hook = tilfeldig(16); await env.KUNDER.put("hook:" + id, hook); }
+    let r = await env.KUNDER.get("rediger:" + id);
+    if (!r) { r = tilfeldig(10); await env.KUNDER.put("rediger:" + id, r); }
+    const data = await kundeData(id, profil);
+    return json({
+      id, tillegg: cfg, standardTekster: STD_TEKST, smsPa: env.SMS_PA === "ja", testNummer: skjult(mobilnr(env.SMS_TEST_NUMMER)),
+      kundeLenke: `${url.origin}/sms?kunde=${id}&r=${r}`,
+      taptWebhook: `${url.origin}/tillegg/tapt?kunde=${id}&nokkel=${hook}`,
+      timer: data.timer.length, tapt: data.tapt.length, sms: data.sms,
+    }, 200);
+  }
+
+  const id = rensId(body.kunde);
+  const profil = await kunde(id, body.r);
+  if (!profil) return json({ feil: "Fant ikke kunden. Sjekk at du har hele lenken." }, 404);
+  const cfg = await hentTillegg(env, id, profil);
+
+  try {
+    if (p === "/tillegg/time") {
+      if (!cfg.paminnelse.pa && !cfg.anmeldelse.pa) return json({ feil: "Påminnelser og anmeldelser er ikke slått på for dere ennå." }, 400);
+      const r = await leggInnTime(env, id, profil, cfg, body.time || {}, "kunde");
+      return json({ ok: true, bekreftet: r.bekreftet && r.bekreftet.status, data: await kundeData(id, profil) }, 200);
+    }
+    if (p === "/tillegg/time/avlys") {
+      const timer = (await env.KUNDER.get("timer:" + id, "json")) || [];
+      const t = timer.find((x) => x.id === body.tid);
+      if (t) { t.x = Date.now(); await env.KUNDER.put("timer:" + id, JSON.stringify(timer)); }
+      return json({ ok: true, data: await kundeData(id, profil) }, 200);
+    }
+    if (p === "/tillegg/tapt/ferdig") {
+      const tapt = (await env.KUNDER.get("tapt:" + id, "json")) || [];
+      const a = tapt.find((x) => x.id === body.tid);
+      if (a) {
+        a.ferdig = a.ferdig ? 0 : Date.now(); await env.KUNDER.put("tapt:" + id, JSON.stringify(tapt));
+        if (a.ferdig) await rapportHendelse(env, id, { kanal: "telefon", tema: "Ringt tilbake", kategori: "tilbakeringt", tilbakeringt: 1 });
+      }
+      return json({ ok: true, data: await kundeData(id, profil) }, 200);
+    }
+    if (p === "/tillegg/lenke") {
+      const lenke = httpsLenke(body.lenke);
+      if (body.lenke && !lenke) return json({ feil: "Lenken må begynne med https://" }, 400);
+      const ny = rensTillegg({ ...cfg, anmeldelse: { ...cfg.anmeldelse, lenke } }, profil);
+      await env.KUNDER.put("tillegg:" + id, JSON.stringify(ny));
+      return json({ ok: true, data: await kundeData(id, profil) }, 200);
+    }
+  } catch (e) {
+    return json({ feil: e.message || "Noe gikk galt." }, 400);
+  }
+  return new Response("Ikke funnet", { status: 404 });
+}
+
+const SMS_TEMA = { bekreftelse: "Bekreftelse på SMS", paminnelse: "Påminnelse på SMS", tapt: "SMS etter tapt anrop", anmeldelse: "Spurt om anmeldelse" };
+// Ukesrapporten (egen PR) har loggHendelse(). Finnes den ikke ennå, hopper vi bare over.
+async function rapportHendelse(env, id, h) {
+  try { if (typeof loggHendelse === "function") await loggHendelse(env, id, h); } catch (e) { console.log("rapport-logg feilet", e && e.message); }
+}
+
+function likKode(a, b) {
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
+  let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return d === 0;
 }
 
 // ======================================================================
