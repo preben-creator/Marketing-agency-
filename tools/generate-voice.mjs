@@ -11,7 +11,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 const KEY = process.env.XAI_API_KEY;
 if (!KEY) { console.error("Mangler XAI_API_KEY i miljøet."); process.exit(1); }
 
-const AI_VOICE = process.env.AI_VOICE || "ara";     // sekretæren
+const AI_VOICE = process.env.AI_VOICE || "liora";   // sekretæren (Preben valgte Liora 2026-11-09)
 const CUST_VOICE = process.env.CUST_VOICE || "leo"; // kunden (mann)
 const CUST_VOICE_F = process.env.CUST_VOICE_F || "eve"; // kunden (kvinne)
 const FEMALE = /^(Kari|Anne|Hilde|Maria|Ingrid|Sofie|Nina|Silje|Kristin|Ida|Camilla|Hanne)\b/;
