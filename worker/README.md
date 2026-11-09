@@ -124,6 +124,7 @@ Samme nummer innen 2 timer gir bare én SMS. Fasttelefoner får ikke SMS, men ha
 ### Kostnad
 Twilio til norsk mobil: ca. 0,8 kr per SMS (160 tegn). Anmeldelses-SMS-en er to SMS fordi den har to lenker.
 Tekstene unngår tegn som «» og lange streker, siden de gjør SMS-en tre ganger så dyr.
+
 ## Svar på e-post og Facebook (egen worker `orvelo-innboks`)
 
 Se [INNBOKS.md](INNBOKS.md). Bruker samme KV-lager og rettekode som `/rediger`.
