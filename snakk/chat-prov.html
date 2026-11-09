@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chat på nettsiden · prøveside</title><meta name="robots" content="noindex">
+<!-- Serveres av workeren på /chat/prov?kunde=<id>&k=<demokode>. Viser hvordan chat-boblen ser ut på en tenkt nettside.
+     Chatten kjører i prøvemodus her: ingenting lagres eller sendes til firmaet. -->
+<style>
+*{box-sizing:border-box}body{margin:0;font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#22222e;background:#fbfaf7}
+.banner{background:#14141f;color:#eeedf7;font-size:14px;padding:10px 16px;text-align:center}
+.banner b{color:#9ff0c9}
+header{display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid #ebe8e1;background:#fff}
+header strong{font-size:20px}nav{display:flex;gap:18px;color:#6b6b7b;font-size:15px}
+@media(max-width:620px){nav{display:none}}
+.hero{max-width:900px;margin:0 auto;padding:56px 24px 30px}
+.hero h1{font-size:clamp(28px,5vw,44px);line-height:1.15;margin:0 0 12px}
+.hero p{color:#5b5b6b;max-width:560px;margin:0 0 22px}
+.cta{display:inline-block;background:#22222e;color:#fff;border-radius:10px;padding:12px 18px;font-weight:600;text-decoration:none}
+.kort{max-width:900px;margin:0 auto;padding:10px 24px 120px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.kort div{background:#fff;border:1px solid #ebe8e1;border-radius:14px;padding:18px;min-height:110px}
+.kort span{display:block;height:10px;border-radius:5px;background:#eeece6;margin-top:10px}
+.kort span+span{width:70%}
+</style></head><body>
+<div class="banner">Slik kan chatten se ut på nettsiden til <b id="navn1">firmaet</b>. Prøv å spørre om priser eller be om en time. <span id="prov">Ingenting sendes herfra.</span></div>
+<header><strong id="navn2">Firmaet</strong><nav><span>Tjenester</span><span>Priser</span><span>Om oss</span><span>Kontakt</span></nav></header>
+<section class="hero"><h1 id="tittel">Velkommen</h1><p>Dette er en tenkt nettside. Chat-boblen nede i hjørnet er den ekte KI-sekretæren, med deres egne tjenester, priser og åpningstider.</p><a class="cta" href="#">Kontakt oss</a></section>
+<section class="kort"><div><b>Tjenester</b><span></span><span></span></div><div><b>Priser</b><span></span><span></span></div><div><b>Åpningstider</b><span></span><span></span></div></section>
+<script>
+(function(){
+  var q=new URLSearchParams(location.search), kunde=(q.get("kunde")||"").replace(/[^a-z0-9-]/g,""), k=q.get("k")||"";
+  if(!kunde){document.querySelector(".banner").textContent="Lenken mangler ?kunde=<id>.";return;}
+  fetch("/chat/oppsett?kunde="+kunde+"&k="+encodeURIComponent(k)).then(function(r){return r.json();}).then(function(c){
+    if(c.feil){document.querySelector(".banner").textContent="Lenken virker ikke: "+c.feil;return;}
+    document.getElementById("navn1").textContent=c.navn;document.getElementById("navn2").textContent=c.navn;
+    document.getElementById("tittel").textContent="Velkommen til "+(c.kortnavn||c.navn);document.title=c.navn+" · chat";
+    if(!c.prov)document.getElementById("prov").textContent="";
+  });
+  var s=document.createElement("script");s.src="/chat.js";s.async=true;
+  s.setAttribute("data-kunde",kunde);if(k)s.setAttribute("data-k",k);
+  if(q.get("apen")!=="0")s.setAttribute("data-apen","1");
+  document.body.appendChild(s);
+})();
+</script>
+</body></html>

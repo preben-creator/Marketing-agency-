@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ukesrapporter · Orvelo</title><meta name="robots" content="noindex">
+<!-- Serveres av workeren orvelo-sekretar på /rapport (hentes fra GitHub). Krever ADMIN_KODE. -->
+<style>
+:root{--bg:#0f0e17;--card:#1a1928;--ink:#eeedf7;--muted:#a3a0bd;--line:#2e2c44;--acc:#8f78ff;--acc2:#2fd0ee;--ok:#5fd59a;--warn:#ffb547;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:28px 16px 60px}
+h1{font-size:28px;margin:0 0 4px}h1 span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-size:18px;margin:0 0 10px}
+p.lead{color:var(--muted);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+label.cb{flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink)}
+input,select{font:inherit;text-transform:none;letter-spacing:0;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 11px;width:100%}
+input[type=checkbox]{width:auto}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:620px){.g{grid-template-columns:1fr}}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
+button{font:inherit;font-weight:600;border-radius:9px;padding:9px 14px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.p{background:var(--acc);border-color:var(--acc);color:#0f0e17}
+button:disabled{opacity:.5;cursor:wait}
+.msg{font-size:14px}.err{color:var(--warn)}.ok{color:var(--ok)}
+.status{font-size:14px;color:var(--muted)}.status b{color:var(--ink)}
+iframe{width:100%;height:1400px;border:0;border-radius:14px;background:#eef6f1}
+.subj{font-weight:700;margin:0 0 10px}
+</style></head><body><div class="wrap">
+<h1>Ukesrapport <span>til kundene</span></h1>
+<p class="lead">Hver mandag morgen lages en rapport for forrige uke: samtaler, hva kundene ville, bookinger, beskjeder og minutter brukt. Her kan du se den, sende en prøve til deg selv og slå på utsending for hver kunde.</p>
+
+<div class="card">
+  <div class="g">
+    <label>Admin-kode<input id="kode" type="password" autocomplete="current-password"></label>
+    <label>Kunde<select id="kunde"><option value="">Skriv admin-koden først</option></select></label>
+  </div>
+  <div class="row"><button class="p" id="hent">Hent kunder</button><span class="msg" id="msg"></span></div>
+  <p class="status" id="status" style="margin:12px 0 0"></p>
+</div>
+
+<div class="card">
+  <h2>Se rapporten</h2>
+  <div class="row" style="margin-top:0">
+    <button id="visForrige">Forrige uke</button>
+    <button id="visDenne">Denne uka så langt</button>
+    <button id="eksempel">Eksempel med oppdiktede tall</button>
+    <button id="sendMeg">Send forrige uke til meg</button>
+    <span class="msg" id="msg2"></span>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Utsending til kunden</h2>
+  <div class="g">
+    <label>Kundens e-post for rapporten<input id="epost" type="email" placeholder="post@firma.no"></label>
+    <label>Pakke<select id="pakke"><option value="">Ikke valgt</option><option value="starter">Starter (50 min)</option><option value="pro">Pro (200 min)</option><option value="komplett">Komplett (500 min)</option></select></label>
+  </div>
+  <div class="row"><label class="cb"><input type="checkbox" id="aktiv"> Send rapporten til kunden hver mandag</label></div>
+  <div class="row"><button class="p" id="lagre">Lagre</button><span class="msg" id="msg3"></span></div>
+  <p class="status" style="margin:12px 0 0">Ingenting sendes til kunder før både denne boksen er krysset av og <b>RAPPORT_SEND = ja</b> er satt i Cloudflare. Du får alltid en kopi.</p>
+</div>
+
+<div class="card" id="vis" hidden>
+  <p class="subj" id="emne"></p>
+  <iframe id="ramme" title="Rapporten"></iframe>
+</div>
+</div>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+let KUNDER=[];
+try{$("kode").value=localStorage.getItem("orvelo-admin")||"";}catch{}
+async function api(body){
+  const r=await fetch("/rapport/api",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({kode:$("kode").value,...body})});
+  const d=await r.json().catch(()=>({feil:"Uventet svar"}));
+  if(!r.ok||d.feil) throw new Error(d.feil||("Feil "+r.status));
+  return d;
+}
+function visStatus(s){
+  if(!s) return;
+  $("status").innerHTML=`E-posttjeneste (Resend): <b>${s.resend?"klar":"ikke satt opp"}</b> · Automatisk utsending: <b>${s.automatisk?"PÅ":"AV, bare du får oversikt"}</b> · Avsender: <b>${s.fra.replace(/</g,"&lt;")}</b>`;
+}
+function fyll(){
+  const k=KUNDER.find(x=>x.id===$("kunde").value);const r=(k&&k.rapport)||{};
+  $("epost").value=r.epost||"";$("pakke").value=r.pakke||"";$("aktiv").checked=!!r.aktiv;
+}
+async function hent(){
+  const m=$("msg");m.className="msg";m.textContent="Henter …";
+  try{try{localStorage.setItem("orvelo-admin",$("kode").value);}catch{}
+    const d=await api({handling:"kunder"});KUNDER=d.kunder;visStatus(d.status);
+    const valgt=new URLSearchParams(location.search).get("kunde")||$("kunde").value;
+    $("kunde").innerHTML=KUNDER.map(k=>`<option value="${k.id}">${k.navn.replace(/</g,"&lt;")}${k.rapport&&k.rapport.aktiv?" · sendes":""}</option>`).join("")||'<option value="">Ingen sekretærer ennå</option>';
+    if(valgt&&KUNDER.some(k=>k.id===valgt)) $("kunde").value=valgt;
+    fyll();m.className="msg ok";m.textContent=KUNDER.length+" sekretærer.";
+  }catch(e){m.className="msg err";m.textContent=e.message;}
+}
+async function vis(handling,periode){
+  const m=$("msg2");m.className="msg";m.textContent="Lager rapport …";
+  try{const d=await api({handling,periode,kunde:$("kunde").value});visStatus(d.status);
+    $("emne").textContent="Emne: "+d.emne;$("ramme").srcdoc=d.html;$("vis").hidden=false;m.textContent="";
+    $("vis").scrollIntoView({behavior:"smooth"});
+  }catch(e){m.className="msg err";m.textContent=e.message;}
+}
+$("hent").onclick=hent;
+$("kunde").onchange=fyll;
+$("visForrige").onclick=()=>vis("vis","forrige");
+$("visDenne").onclick=()=>vis("vis","denne");
+$("eksempel").onclick=()=>vis("eksempel","forrige");
+$("sendMeg").onclick=async()=>{
+  const m=$("msg2");m.className="msg";m.textContent="Sender …";
+  try{const d=await api({handling:"send_meg",kunde:$("kunde").value});m.className="msg ok";m.textContent="Sendt til "+d.sendtTil+".";}
+  catch(e){m.className="msg err";m.textContent=e.message;}
+};
+$("lagre").onclick=async()=>{
+  const m=$("msg3");m.className="msg";m.textContent="Lagrer …";
+  try{const d=await api({handling:"lagre",kunde:$("kunde").value,epost:$("epost").value,pakke:$("pakke").value,aktiv:$("aktiv").checked});
+    const k=KUNDER.find(x=>x.id===$("kunde").value);if(k)k.rapport=d.rapport;
+    m.className="msg ok";m.textContent=d.rapport.aktiv?"Lagret. Rapporten sendes hver mandag når utsending er slått på i Cloudflare.":"Lagret. Rapporten sendes ikke til kunden.";
+  }catch(e){m.className="msg err";m.textContent=e.message;}
+};
+if($("kode").value) hent();
+</script>
+</body></html>
