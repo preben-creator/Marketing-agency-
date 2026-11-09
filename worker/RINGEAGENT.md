@@ -1,7 +1,7 @@
 # Orvelo ringeagent («ring meg»)
 
 `ringeagent-worker.js` er en egen Cloudflare Worker. Den gir en «ring meg»-side der en bedrift legger inn mobilnummeret sitt.
-Nummeret bekreftes med en SMS-kode, og deretter ringer Ara (Grok-stemmen) opp via Twilio. Hun forteller om KI-sekretæren
+Nummeret bekreftes med en SMS-kode (Twilio), og deretter ringer Ara (Grok-stemmen) opp fra et norsk nummer via Telnyx. Hun forteller om KI-sekretæren
 og sender bookinglenken (Google Avtaleplan) på SMS. Etter samtalen får Preben et sammendrag på e-post.
 
 Hvorfor SMS-kode og avkrysning: markedsføringsloven § 15 krever forhåndssamtykke for automatiske oppringinger til
@@ -43,11 +43,26 @@ Da må du oppgradere til **Workers Paid** (5 dollar i måneden).
 Sammendrag og samtykker sendes via FormSubmit til `hilleren.bedrift@gmail.com`. Første gang kommer en
 aktiverings-e-post fra FormSubmit, som du må trykke **Activate** i.
 
-## Norsk nummer (før ekte kunder)
+## Norsk nummer via Telnyx (samtalene)
 
-Kunder tar sjelden telefonen når et amerikansk +1-nummer ringer. Kjøp derfor et norsk nummer i Twilio
-(**Phone Numbers → Buy a number → Norway**, ca. 3,90 dollar i måneden). Twilio krever en «Regulatory Bundle» med navn,
-norsk adresse og legitimasjon før du får nummeret. Godkjenning tar vanligvis 1–3 virkedager.
-Når nummeret er klart, bytter du `TWILIO_FROM` i Cloudflare til det nye nummeret. Det trengs ingen kodeendring.
+Twilio har ikke norske nummer på lager, og norske operatører stopper anrop fra utlandet som viser et norsk mobilnummer.
+Derfor går selve samtalene via Telnyx, som har norske lokalnummer. SMS-ene går fortsatt via Twilio fra avsendernavnet «Orvelo».
+
+1. Lag konto på telnyx.com, fyll ut firmaopplysninger og fyll på litt saldo.
+2. **Voice → Programmable Voice → Create Voice App** (Voice API Application):
+   - Navn: `orvelo-ring`
+   - Webhook URL: `https://orvelo-ring.<ditt-navn>.workers.dev/telnyx`
+   - Lagre og kopier **App ID** (det er `TELNYX_CONNECTION_ID`).
+3. **Voice → Outbound Voice Profiles → Add new profile**: tillat Norge, og koble profilen til `orvelo-ring`-appen.
+4. **Numbers → Search & Buy → Norway**, kjøp et lokalnummer (last opp registerutskriften fra Brønnøysund hvis de spør).
+   Under nummerets innstillinger velger du `orvelo-ring` som Voice-tilkobling.
+5. **Account Settings → API Keys → Create API Key**.
+6. Cloudflare, `orvelo-ring` → Settings → Variables and Secrets:
+   - Secret `TELNYX_API_KEY` = nøkkelen fra steg 5
+   - Text `TELNYX_CONNECTION_ID` = App ID fra steg 2
+   - Text `TELNYX_FROM` = det norske nummeret, f.eks. `+4755123456`
+   - Lim inn nyeste `worker/ringeagent-worker.js` og trykk **Deploy**.
+
+Når alle tre `TELNYX_*` er satt, ringer workeren via Telnyx. Fjerner du dem, går den tilbake til Twilio (`TWILIO_FROM`).
 
 SMS-ene kommer fra avsendernavnet «Orvelo» (kan endres med `SMS_AVSENDER`).
