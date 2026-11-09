@@ -221,6 +221,13 @@ h1,h2,h3{text-transform:uppercase;letter-spacing:.01em;font-weight:800}
 .eyebrow{color:var(--accent-2)}
 .phone{border-radius:30px;box-shadow:0 30px 70px -30px rgba(255,107,26,.35)}
 .screen{border-radius:22px}
+
+.hero{position:relative;isolation:isolate}
+.figur{position:absolute;z-index:-1;bottom:-6px;width:210px;height:auto;pointer-events:none;animation:sveve 6s ease-in-out infinite}
+.figur--h{right:0}
+.figur--v{left:0;width:160px;transform:scaleX(-1);opacity:.55;animation-delay:-3s}
+@keyframes sveve{50%{translate:0 -8px}}
+@media (max-width:1000px){.figur--v{display:none}.figur--h{position:static;display:block;margin:0 auto 14px;width:120px}}
 </style>
 </head>
 <body>
@@ -237,6 +244,8 @@ h1,h2,h3{text-transform:uppercase;letter-spacing:.01em;font-weight:800}
   </header>
 
   <section class="hero">
+    <img class="figur figur--h" src="figur.svg" alt="" width="210" height="245">
+    <img class="figur figur--v" src="figur.svg" alt="" width="160" height="187">
     <div class="eyebrow">For håndverkere og servicebedrifter</div>
     <h1>Din egen KI-sekretær. <span class="grad">Svarer kundene døgnet rundt.</span></h1>
     <p>Orvelo lager en KI-sekretær for firmaet ditt. Den kjenner tjenestene, prisene og åpningstidene dine, snakker og skriver norsk, og svarer kundene døgnet rundt via en lenke på nettsiden din. Når kunden vil ha en avtale, foreslår den ledige tider.</p>

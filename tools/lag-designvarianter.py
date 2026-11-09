@@ -9,6 +9,8 @@ som forsiden. Bare farger, skrift og form byttes. Kjør fra repo-roten:
 import re
 from pathlib import Path
 
+from designfigurer import FIGURER, CSS as FIGUR_CSS
+
 ROOT = Path(__file__).resolve().parent.parent
 SRC = (ROOT / "index.html").read_text(encoding="utf-8")
 LOGO = (ROOT / "assets" / "orvelo-logo.svg").read_text(encoding="utf-8")
@@ -164,7 +166,12 @@ def lag(v, nr):
     if v["fonts"]:
         html = re.sub(r'<link href="https://fonts.googleapis.com/css2\?[^"]*" rel="stylesheet">',
                       f'<link href="https://fonts.googleapis.com/css2?{v["fonts"]}&display=swap" rel="stylesheet">', html)
-    html = html.replace("</style>", FELLES_TEMA + v["css"] + "</style>", 1)
+    figur = v["slug"] in FIGURER
+    html = html.replace("</style>", FELLES_TEMA + v["css"] + (FIGUR_CSS if figur else "") + "</style>", 1)
+    if figur:
+        html = html.replace('<section class="hero">', '<section class="hero">\n    '
+                            '<img class="figur figur--h" src="figur.svg" alt="" width="210" height="245">\n    '
+                            '<img class="figur figur--v" src="figur.svg" alt="" width="160" height="187">', 1)
     etikett = v["navn"] if nr == 0 else f'Forslag {nr}: {v["navn"]}'
     bar = (f'<div class="forslag" role="note">{etikett}'
            f'<a href="../index.html">Sammenlign alle</a></div>\n</body>')
@@ -173,6 +180,8 @@ def lag(v, nr):
     d.mkdir(parents=True, exist_ok=True)
     (d / "index.html").write_text(html, encoding="utf-8")
     (d / "logo.svg").write_text(logo(*v["logo"]), encoding="utf-8")
+    if figur:
+        (d / "figur.svg").write_text(FIGURER[v["slug"]](), encoding="utf-8")
 
 
 def oversikt():

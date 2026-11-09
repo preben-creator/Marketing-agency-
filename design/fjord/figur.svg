@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 280" role="img" aria-label="Liora, KI-sekretær">
+<ellipse cx="120" cy="270" rx="72" ry="8" fill="#0f2531" opacity=".12"/>
+<path d="M68,214 Q40,190 46,158" fill="none" stroke="#0d5c75" stroke-width="14" stroke-linecap="round"/>
+<circle cx="46" cy="152" r="11" fill="#ffffff" stroke="#0f2531" stroke-width="3"/>
+<path d="M60,270 C60,204 88,186 120,186 C152,186 180,204 180,270 Z" fill="#0d5c75"/>
+<path d="M104,188 L120,212 L136,188 Z" fill="#ffffff"/>
+<circle cx="120" cy="240" r="11" fill="none" stroke="#ffffff" stroke-width="4"/>
+<path d="M172,214 Q186,240 178,262" fill="none" stroke="#0d5c75" stroke-width="14" stroke-linecap="round"/>
+<circle cx="120" cy="120" r="62" fill="#ffffff" stroke="#0f2531" stroke-width="4"/>
+<rect x="78" y="96" width="84" height="54" rx="27" fill="#0f2531"/>
+<path d="M97,128 Q105,116 113,128 M127,128 Q135,116 143,128" fill="none" stroke="#5fd4c9" stroke-width="5" stroke-linecap="round"/>
+<path d="M111,139 Q120,146 129,139" fill="none" stroke="#5fd4c9" stroke-width="4" stroke-linecap="round"/>
+<path d="M52,122 A68,68 0 0 1 188,122" fill="none" stroke="#0d5c75" stroke-width="8" stroke-linecap="round"/>
+<rect x="44" y="106" width="18" height="34" rx="9" fill="#0d5c75"/>
+<rect x="178" y="106" width="18" height="34" rx="9" fill="#0d5c75"/>
+<path d="M53,138 Q54,168 90,168" fill="none" stroke="#0d5c75" stroke-width="5" stroke-linecap="round"/>
+<circle cx="95" cy="168" r="7" fill="#14998f"/>
+<rect x="166" y="14" width="66" height="42" rx="15" fill="#14998f"/>
+<path d="M180,54 L174,72 L196,55 Z" fill="#14998f"/>
+<path d="M184,35 V35 M195,27 V43 M206,31 V39 M217,25 V45" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+</svg>

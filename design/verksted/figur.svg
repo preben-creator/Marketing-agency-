@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 280" role="img" aria-label="KI-sekretær med hjelm">
+<ellipse cx="120" cy="272" rx="74" ry="7" fill="#000" opacity=".35"/>
+<path d="M64,206 L48,252" stroke="#ff6b1a" stroke-width="16" stroke-linecap="round"/>
+<path d="M176,206 L204,170" stroke="#ff6b1a" stroke-width="16" stroke-linecap="round"/>
+<rect x="192" y="124" width="28" height="48" rx="5" fill="#161513" stroke="#f3efe6" stroke-width="3"/>
+<path d="M198,148 h4 l3,-8 l4,16 l3,-8 h4" fill="none" stroke="#ffc23d" stroke-width="2.5" stroke-linejoin="round"/>
+<rect x="104" y="172" width="32" height="18" fill="#3e3a33"/>
+<rect x="60" y="186" width="120" height="84" rx="8" fill="#ff6b1a" stroke="#161513" stroke-width="5"/>
+<rect x="86" y="204" width="68" height="38" rx="4" fill="#161513"/>
+<path d="M94,223 h10 l5,-11 l7,22 l6,-15 l5,8 h19" fill="none" stroke="#ffc23d" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M60,256 H180" stroke="#161513" stroke-width="5"/>
+<rect x="66" y="84" width="108" height="92" rx="14" fill="#f3efe6" stroke="#161513" stroke-width="5"/>
+<rect x="80" y="110" width="80" height="40" rx="6" fill="#161513"/>
+<rect x="96" y="122" width="14" height="14" rx="3" fill="#ffc23d"/>
+<rect x="130" y="122" width="14" height="14" rx="3" fill="#ffc23d"/>
+<path d="M106,162 H134" stroke="#161513" stroke-width="5" stroke-linecap="round"/>
+<path d="M62,92 Q62,40 120,38 Q178,40 178,92 Z" fill="#ffc23d" stroke="#161513" stroke-width="5" stroke-linejoin="round"/>
+<rect x="112" y="40" width="16" height="50" rx="3" fill="#e0a520"/>
+<rect x="50" y="86" width="140" height="13" rx="6" fill="#ffc23d" stroke="#161513" stroke-width="5"/>
+<rect x="52" y="114" width="16" height="36" rx="4" fill="#161513"/>
+<rect x="172" y="114" width="16" height="36" rx="4" fill="#161513"/>
+<path d="M60,148 Q62,178 96,178" fill="none" stroke="#161513" stroke-width="5"/>
+<rect x="94" y="172" width="12" height="10" rx="2" fill="#ff6b1a" stroke="#161513" stroke-width="3"/>
+</svg>
