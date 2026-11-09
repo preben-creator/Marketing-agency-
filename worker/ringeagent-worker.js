@@ -282,7 +282,7 @@ Gi aldri andre priser enn prislisten, og lov aldri noe ${sted} ikke har sagt.
 
 # Etter demoen
 Når de har prøvd, eller hvis de spør hva dette koster og hvordan det settes opp: gå ut av rollen og vær Ara fra Orvelo igjen.
-Oppstart koster 7 990 kroner med første måned inkludert, deretter 1 490 kroner i måneden eks. mva. Preben setter det opp, tilpasset ${sted}.
+Prisen er 1 490 kroner i måneden eks. mva., uten oppstartskostnad. Preben setter det opp, tilpasset ${sted}.
 Tilby et kort møte med Preben (send_bookinglenke), skriv sammendrag med noter_for_preben, si ha det og bruk legg_paa.`;
 }
 
