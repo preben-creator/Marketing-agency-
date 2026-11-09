@@ -54,6 +54,8 @@ function tooMany(ip) {
 
 const ALLOWED_ORIGINS = [
   "https://preben-creator.github.io",
+  "https://orvelo.no",
+  "https://www.orvelo.no",
   "http://localhost:8787",
   "http://127.0.0.1:8787",
 ];
@@ -189,7 +191,7 @@ export default {
 // Lag en egen sekretær for en bedrift (brukes av /lag)
 // ======================================================================
 
-const UA = "Mozilla/5.0 (compatible; OrveloDemo/1.0; +https://preben-creator.github.io/Marketing-agency-/)";
+const UA = "Mozilla/5.0 (compatible; OrveloDemo/1.0; +https://orvelo.no/)";
 const NYTTIGE_SIDER = /pris|tjenest|behandling|kontakt|om-oss|om_oss|\/om\b|apning|åpning|service|produkt|meny|booking|bestill|fagomr|tilbud/i;
 
 function htmlTilTekst(html) {
