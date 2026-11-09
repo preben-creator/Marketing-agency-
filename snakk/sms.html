@@ -38,7 +38,7 @@ button:disabled{opacity:.5;cursor:wait}
 </style></head><body><div class="wrap">
 <div class="brand">Orvelo · KI-sekretær</div>
 <h1>Timer og SMS <span id="navn"></span></h1>
-<p class="lead">Her ser dere timene som får SMS, hvem som har ringt uten å komme gjennom, og hvilke SMS som er sendt.</p>
+<p class="lead">Her ser dere timene (også de sekretæren har booket), hvem som har ringt uten å komme gjennom, og hvilke SMS som er sendt.</p>
 <div id="laster" class="card">Henter …</div>
 
 <div id="innhold" hidden>
@@ -66,6 +66,14 @@ button:disabled{opacity:.5;cursor:wait}
       <label class="c" id="okRad"><input type="checkbox" id="tOk"> <span>Kunden har sagt ja til at vi sender en SMS etterpå og spør om en anmeldelse på Google.</span></label>
       <div class="row"><button class="p" id="leggInn">Legg inn</button><span class="msg" id="msgTime" role="status" aria-live="polite"></span></div>
     </form>
+  </section>
+
+  <section class="card" id="kalKort" hidden>
+    <h2>Timene i deres egen kalender</h2>
+    <p class="hint">Sekretæren booker timer rett inn her, og kunden får SMS med bekreftelse. Vil dere se timene i Google Kalender, Outlook eller på iPhone? Legg til denne lenken som en kalender én gang, så kommer nye timer inn av seg selv. Google oppdaterer slike kalendere noen ganger i døgnet, så listen under er alltid ferskest.</p>
+    <div class="row" style="margin-top:0"><input id="kalLenke" readonly style="flex:1;min-width:220px"><button type="button" id="kopierKal">Kopier</button></div>
+    <div class="row"><a class="btn" id="kalGoogle" target="_blank" rel="noopener">Legg til i Google Kalender</a><a class="btn" id="kalApple">iPhone / Mac / Outlook</a></div>
+    <p class="hint" style="margin:10px 0 0">Del ikke lenken med andre: den viser navn og mobilnummer til kundene deres.</p>
   </section>
 
   <section class="card" id="timerKort" hidden>
@@ -112,21 +120,25 @@ async function post(sti,body){const r=await fetch(sti,{method:"POST",headers:{"C
 
 function vis(d){
   $("laster").hidden=true;$("innhold").hidden=false;$("navn").textContent="· "+d.navn;$("testBoks").hidden=!d.test;
-  const t=d.tillegg;
+  const t=d.tillegg;const kal=!!(t.kalender&&t.kalender.pa);
   $("chips").innerHTML=[
+    [kal,"Sekretæren booker timer selv, og kunden får SMS med bekreftelse og kalenderlenke"],
     [t.paminnelse.pa,`Bekreftelse og påminnelse ${t.paminnelse.timerFor} timer før timen`],
     [t.tapt.pa,"SMS til de som ringer uten å komme gjennom"],
     [t.anmeldelse.pa,`Be om Google-anmeldelse ${t.anmeldelse.timerEtter} timer etter timen`]
   ].map(([pa,tx])=>`<span class="chip ${pa?"on":"off"}">${pa?"✓":"○"} ${esc(tx)}</span>`).join("")+
-  ((t.paminnelse.pa||t.tapt.pa||t.anmeldelse.pa)?"":`<p class="hint" style="margin:8px 0 0">Ingenting er slått på ennå. Snakk med Preben om hvilke tjenester som passer dere.</p>`);
-  const timerPa=t.paminnelse.pa||t.anmeldelse.pa;
+  ((kal||t.paminnelse.pa||t.tapt.pa||t.anmeldelse.pa)?"":`<p class="hint" style="margin:8px 0 0">Ingenting er slått på ennå. Snakk med Preben om hvilke tjenester som passer dere.</p>`);
+  const timerPa=kal||t.paminnelse.pa||t.anmeldelse.pa;
+  $("kalKort").hidden=!d.kalender;
+  if(d.kalender){$("kalLenke").value=d.kalender;const w=d.kalender.replace(/^https:/,"webcal:");
+    $("kalGoogle").href="https://calendar.google.com/calendar/render?cid="+encodeURIComponent(w);$("kalApple").href=w;}
   $("nyTimeKort").hidden=!timerPa;$("timerKort").hidden=!timerPa;$("okRad").hidden=!t.anmeldelse.pa;
   $("taptKort").hidden=!t.tapt.pa&&!d.tapt.length;$("lenkeKort").hidden=!t.anmeldelse.pa;
   if(document.activeElement!==$("gLenke"))$("gLenke").value=t.anmeldelse.lenke||"";
   if(t.anmeldelse.pa&&!t.anmeldelse.lenke){$("msgLenke").className="msg err";$("msgLenke").textContent="Legg inn lenken, ellers sendes ingen anmeldelses-SMS.";}
 
   $("timer").innerHTML=d.timer.length?d.timer.map(x=>{
-    const st=[x.p?"påminnelse sendt":"",x.a?"anmeldelse spurt":"",x.ok&&t.anmeldelse.pa&&!x.a?"får anmeldelses-SMS":""].filter(Boolean).join(" · ");
+    const st=[x.kilde==="chat"?"booket i chatten":x.kilde==="telefon"?"booket på telefon":"",x.bv?"bekreftelse sendes kl. 08":"",x.xk==="kunde"?"kunden avbestilte selv":"",x.p?"påminnelse sendt":"",x.a?"anmeldelse spurt":"",x.ok&&t.anmeldelse.pa&&!x.a?"får anmeldelses-SMS":""].filter(Boolean).join(" · ");
     return `<div class="rad ${x.x?"avlyst":""}"><div class="naar"><b>${esc(dagTekst(x.dato))} ${esc(x.tid)}</b></div>
       <div>${esc(x.navn||"(uten navn)")} · ${esc(pent(x.mobil))}<small>${esc(x.hva||"")}${st?" · "+esc(st):""}${x.x?" · avlyst":""}</small></div>
       <div>${x.x||!x.kommer?"":`<button class="liten" data-avlys="${esc(x.id)}">Avlys</button>`}</div></div>`;}).join(""):`<div class="tom">Ingen timer lagt inn.</div>`;
@@ -149,7 +161,7 @@ async function last(){
 $("nyTime").addEventListener("submit",async e=>{e.preventDefault();const b=$("leggInn");b.disabled=true;$("msgTime").className="msg";$("msgTime").textContent="Lagrer …";
   try{const d=await post("/tillegg/time",{time:{navn:$("tNavn").value,mobil:$("tMobil").value,hva:$("tHva").value,dato:$("tDato").value,klokkeslett:$("tTid").value,varighet:+$("tVar").value,ok:$("tOk").checked}});
     vis(d.data);$("msgTime").className="msg ok";
-    $("msgTime").textContent=d.bekreftet==="sendt"?"Lagt inn, og bekreftelsen er sendt.":d.bekreftet==="test"?"Lagt inn. Bekreftelsen gikk til Orvelo (testmodus).":"Lagt inn. Bekreftelse sendes ikke mellom 21 og 08, men påminnelsen kommer som vanlig.";
+    $("msgTime").textContent=d.bekreftet==="sendt"?"Lagt inn, og bekreftelsen er sendt.":d.bekreftet==="test"?"Lagt inn. Bekreftelsen gikk til Orvelo (testmodus).":d.bekreftet==="venter"?"Lagt inn. Bekreftelsen sendes kl. 08 (vi sender ikke SMS om natten).":"Lagt inn.";
     $("tNavn").value="";$("tMobil").value="";$("tHva").value="";$("tOk").checked=false;}
   catch(err){$("msgTime").className="msg err";$("msgTime").textContent=err.message;}finally{b.disabled=false;}});
 document.addEventListener("click",async e=>{
@@ -158,6 +170,7 @@ document.addEventListener("click",async e=>{
     if(f){f.disabled=true;vis((await post("/tillegg/tapt/ferdig",{tid:f.dataset.ferdig})).data);}}
   catch(err){alert(err.message);}
 });
+$("kopierKal").addEventListener("click",async()=>{try{await navigator.clipboard.writeText($("kalLenke").value);$("kopierKal").textContent="Kopiert!";}catch{$("kalLenke").select();}});
 $("lagreLenke").addEventListener("click",async()=>{$("msgLenke").className="msg";$("msgLenke").textContent="Lagrer …";
   try{const d=await post("/tillegg/lenke",{lenke:$("gLenke").value.trim()});vis(d.data);$("msgLenke").className="msg ok";$("msgLenke").textContent="Lagret.";}
   catch(err){$("msgLenke").className="msg err";$("msgLenke").textContent=err.message;}});

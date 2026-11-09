@@ -86,12 +86,13 @@ details summary{cursor:pointer;color:var(--muted);font-weight:600;margin-top:6px
     <div class="row"><button type="button" id="flett">Flett inn og lagre</button><span class="msg" id="msg5"></span></div>
   </details>
   <details id="tilleggBoks">
-    <summary>4. Tilleggstjenester på SMS (påminnelse, tapt anrop, anmeldelse)</summary>
+    <summary>4. Tilleggstjenester på SMS (booking med kalender, påminnelse, tapt anrop, anmeldelse)</summary>
     <p class="lead" style="margin:10px 0 6px">Slå på det kunden har kjøpt. Så lenge «Ekte utsending» er av, går alle SMS-ene til testnummeret ditt i stedet for til kundens kunder.</p>
     <div id="tStatus" class="msg"></div>
     <div class="g" style="margin-top:10px">
       <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="tPam" style="width:auto"> Bekreftelse + påminnelse før timen</label>
       <label>Timer før<input id="tPamT" type="number" min="2" max="72" value="24"></label>
+      <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="tKal" style="width:auto"> Booking med kalender: sekretæren booker timen selv, kunden får SMS-bekreftelse</label>
       <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="tTapt" style="width:auto"> SMS ved tapt anrop</label>
       <label>Bestillingslenke i SMS (valgfri)<input id="tTaptL" placeholder="https://..."></label>
       <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="tAnm" style="width:auto"> Be om Google-anmeldelse</label>
@@ -223,7 +224,7 @@ async function lastChat(){if(!id||chatId===id)return;chatId=id;$("msg6").classNa
 async function lastInnboks(){try{const d=await post("/chat/innboks",{kode:$("kode").value,id});
   const sum=d.dager.reduce((a,x)=>({s:a.s+x.samtaler,m:a.m+x.meldinger,t:a.t+x.timer,b:a.b+x.beskjeder}),{s:0,m:0,t:0,b:0});
   $("chatInnboks").innerHTML=`<h2 style="margin-top:6px">Fra chatten siste 14 dager</h2><p class="msg">${sum.s} samtaler · ${sum.m} meldinger · ${sum.t} timeforespørsler · ${sum.b} beskjeder</p>`+
-    (d.innboks.length?d.innboks.slice(0,30).map(x=>`<div class="link" style="margin-top:6px;font-family:inherit">${x.type==="time"?"📅 <b>"+e2(x.hva)+"</b>, "+e2(x.dato)+" kl. "+e2(x.klokkeslett):"✉️ <b>Beskjed:</b> "+e2(x.beskjed)}<br><span style="color:var(--muted)">${e2(x.navn)} ${e2(x.mobil)} ${e2(x.adresse||"")} · mottatt ${e2(new Date(x.tid).toLocaleString("nb-NO"))}</span></div>`).join(""):'<p class="lead">Ingen henvendelser ennå.</p>');}
+    (d.innboks.length?d.innboks.slice(0,30).map(x=>`<div class="link" style="margin-top:6px;font-family:inherit">${x.type==="time"?"📅 <b>"+e2(x.hva)+"</b>, "+e2(x.dato)+" kl. "+e2(x.klokkeslett)+(x.status==="booket"?" · booket i kalenderen":" · forespørsel"):"✉️ <b>Beskjed:</b> "+e2(x.beskjed)}<br><span style="color:var(--muted)">${e2(x.navn)} ${e2(x.mobil)} ${e2(x.adresse||"")} · mottatt ${e2(new Date(x.tid).toLocaleString("nb-NO"))}</span></div>`).join(""):'<p class="lead">Ingen henvendelser ennå.</p>');}
   catch(err){$("chatInnboks").innerHTML="";}}
 $("chatDetaljer").addEventListener("toggle",()=>{if($("chatDetaljer").open)lastChat();});
 $("chatLagre").addEventListener("click",async()=>{$("msg6").className="msg";$("msg6").textContent="Lagrer …";
@@ -237,13 +238,14 @@ if(q.get("auto")==="1"&&$("firma").value){if($("kode").value)lag();else{$("msg")
 // ===== Tilleggstjenester på SMS =====
 let tData=null;const TT=["bekreftelse","paminnelse","tapt","anmeldelse"];
 function tVis(d){tData=d;const t=d.tillegg;
-  $("tPam").checked=t.paminnelse.pa;$("tPamT").value=t.paminnelse.timerFor;$("tTapt").checked=t.tapt.pa;$("tTaptL").value=t.tapt.lenke;
+  $("tPam").checked=t.paminnelse.pa;$("tPamT").value=t.paminnelse.timerFor;$("tTapt").checked=t.tapt.pa;$("tTaptL").value=t.tapt.lenke;$("tKal").checked=!!(t.kalender&&t.kalender.pa);
   $("tAnm").checked=t.anmeldelse.pa;$("tAnmT").value=t.anmeldelse.timerEtter;$("tAnmL").value=t.anmeldelse.lenke;$("tAvs").value=t.avsender;$("tLive").checked=t.live;
   $("tTekster").innerHTML=TT.map(k=>`<label style="margin-top:8px">${k}<input data-tk="${k}" placeholder="${d.standardTekster[k].replace(/"/g,"&quot;")}"></label>`).join("");
   TT.forEach(k=>{document.querySelector(`[data-tk="${k}"]`).value=t.tekster[k]||"";});
   const m=new Date().toISOString().slice(0,7);
   $("tStatus").className="msg "+(d.smsPa?"ok":"err");
   $("tStatus").textContent=(d.smsPa?`SMS er slått på i workeren. Testnummer: ${d.testNummer||"mangler (SMS_TEST_NUMMER)"}.`:"SMS er AV i workeren (SMS_PA er ikke «ja»), så ingenting sendes, bare logges.")+` Timer: ${d.timer}. Tapte anrop: ${d.tapt}. SMS i ${m}: ${(d.sms.mnd||{})[m]||0}.`;
+  if(d.kalender)$("tStatus").textContent+=` Kalender-feed for bedriften: ${d.kalender}`;
   $("tKunde").textContent=d.kundeLenke;$("tApneK").href=d.kundeLenke;$("tHook").textContent=d.taptWebhook;$("tLenker").hidden=false;}
 async function tHent(){if(!id)return;try{tVis(await post("/tillegg/admin",{kode:$("kode").value,id}));}catch(err){$("msg6").className="msg err";$("msg6").textContent=err.message;}}
 $("tilleggBoks").addEventListener("toggle",()=>{if($("tilleggBoks").open)tHent();});
@@ -252,7 +254,7 @@ $("tLagre").addEventListener("click",async()=>{
   const tekster={};TT.forEach(k=>tekster[k]=document.querySelector(`[data-tk="${k}"]`).value.trim());
   if($("tAnm").checked&&tekster.anmeldelse&&!tekster.anmeldelse.includes("{stopp}")){$("msg6").className="msg err";$("msg6").textContent="Anmeldelses-teksten må ha med {stopp}.";return;}
   $("msg6").className="msg";$("msg6").textContent="Lagrer …";
-  try{tVis(await post("/tillegg/admin",{kode:$("kode").value,id,tillegg:{paminnelse:{pa:$("tPam").checked,timerFor:+$("tPamT").value,bekreftelse:true},tapt:{pa:$("tTapt").checked,lenke:$("tTaptL").value.trim()},
+  try{tVis(await post("/tillegg/admin",{kode:$("kode").value,id,tillegg:{paminnelse:{pa:$("tPam").checked,timerFor:+$("tPamT").value,bekreftelse:true},tapt:{pa:$("tTapt").checked,lenke:$("tTaptL").value.trim()},kalender:{pa:$("tKal").checked},
     anmeldelse:{pa:$("tAnm").checked,lenke:$("tAnmL").value.trim(),timerEtter:+$("tAnmT").value},avsender:$("tAvs").value.trim(),live:$("tLive").checked,tekster}}));
     $("msg6").className="msg ok";$("msg6").textContent="Lagret.";}
   catch(err){$("msg6").className="msg err";$("msg6").textContent=err.message;}});
