@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Timer og SMS · Orvelo</title><meta name="robots" content="noindex">
+<!-- Serveres av workeren orvelo-sekretar på /sms?kunde=<id>&r=<rettekode> (hentes fra GitHub).
+     Kunden legger inn timer (gir bekreftelse, påminnelse og anmeldelses-SMS), ser tapte anrop og hva som er sendt.
+     Samme rettekode som /rediger. Preben slår tjenestene på under «Tilleggstjenester» på /lag. -->
+<style>
+:root{--bg:#0f0e17;--card:#1a1928;--ink:#eeedf7;--muted:#a3a0bd;--line:#2e2c44;--acc:#8f78ff;--acc2:#2fd0ee;--ok:#5fd59a;--warn:#ffb547;--field:#13121e;color-scheme:dark}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:24px 16px 80px}
+.brand{font-weight:800;letter-spacing:.02em;color:var(--muted);font-size:13px;text-transform:uppercase}
+h1{font-size:clamp(24px,5vw,32px);line-height:1.2;margin:6px 0 6px}h1 span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-size:19px;margin:0 0 4px}
+p.lead{color:var(--muted);margin:0 0 18px}
+p.hint{color:var(--muted);margin:0 0 14px;font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}
+.test{border-color:var(--warn);color:var(--warn)}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--muted)}
+label.c{display:flex;gap:10px;align-items:flex-start;font-size:15px;margin-top:12px}label.c input{width:22px;height:22px;flex:none;margin-top:1px}
+input,select{font:inherit;font-size:16px;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%;min-width:0}
+input:focus,select:focus{outline:2px solid var(--acc);outline-offset:1px;border-color:transparent}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:12px}.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:620px){.g,.g3{grid-template-columns:1fr}}
+button,a.btn{font:inherit;font-weight:600;border-radius:10px;padding:10px 15px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;min-height:44px}
+button.p{background:var(--acc);border-color:var(--acc);color:#0f0e17}
+button.liten{min-height:36px;padding:6px 11px;font-size:14px}
+button:disabled{opacity:.5;cursor:wait}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:14px}.chip.on{border-color:var(--ok);color:var(--ok)}.chip.off{color:var(--muted)}
+.liste{display:flex;flex-direction:column}
+.rad{display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.rad:first-child{border-top:0}.rad small{color:var(--muted);display:block}.rad.avlyst{opacity:.5;text-decoration:line-through}
+@media(max-width:560px){.rad{grid-template-columns:1fr auto}.rad .naar{grid-column:1/-1}}
+.tom{color:var(--muted);font-size:15px;padding:6px 0}
+.msg{font-size:14px}.err{color:var(--warn)}.ok{color:var(--ok)}
+.tall{font-size:28px;font-weight:700}
+</style></head><body><div class="wrap">
+<div class="brand">Orvelo · KI-sekretær</div>
+<h1>Timer og SMS <span id="navn"></span></h1>
+<p class="lead">Her ser dere timene som får SMS, hvem som har ringt uten å komme gjennom, og hvilke SMS som er sendt.</p>
+<div id="laster" class="card">Henter …</div>
+
+<div id="innhold" hidden>
+  <div class="card test" id="testBoks" hidden><b>Testmodus.</b> SMS-ene går foreløpig til Orvelo, ikke til kundene deres. Preben slår på ekte utsending når dere har sett at alt ser riktig ut.</div>
+
+  <section class="card">
+    <h2>Dette er slått på</h2>
+    <div class="chips" id="chips"></div>
+  </section>
+
+  <section class="card" id="nyTimeKort" hidden>
+    <h2>Legg inn en time</h2>
+    <p class="hint">Kunden får en bekreftelse med en gang (mellom 08 og 21), en påminnelse før timen, og en SMS etterpå om anmeldelse hvis de har sagt ja til det.</p>
+    <form id="nyTime">
+      <div class="g">
+        <label class="f">Navn<input id="tNavn" autocomplete="off" placeholder="Kari Nordmann"></label>
+        <label class="f">Mobil<input id="tMobil" inputmode="tel" required placeholder="987 65 432"></label>
+      </div>
+      <label class="f" style="margin-top:12px">Hva gjelder det<input id="tHva" placeholder="f.eks. Herreklipp eller Befaring bad"></label>
+      <div class="g3" style="margin-top:12px">
+        <label class="f">Dato<input id="tDato" type="date" required></label>
+        <label class="f">Klokkeslett<input id="tTid" type="time" required step="300"></label>
+        <label class="f">Varighet<select id="tVar"></select></label>
+      </div>
+      <label class="c" id="okRad"><input type="checkbox" id="tOk"> <span>Kunden har sagt ja til at vi sender en SMS etterpå og spør om en anmeldelse på Google.</span></label>
+      <div class="row"><button class="p" id="leggInn">Legg inn</button><span class="msg" id="msgTime" role="status" aria-live="polite"></span></div>
+    </form>
+  </section>
+
+  <section class="card" id="timerKort" hidden>
+    <h2>Timer</h2>
+    <div class="liste" id="timer"></div>
+  </section>
+
+  <section class="card" id="taptKort" hidden>
+    <h2>Tapte anrop: ring tilbake</h2>
+    <p class="hint">De som ringte uten å komme gjennom. De har fått en SMS om at dere ringer tilbake. Trykk «Ringt» når det er gjort.</p>
+    <div class="liste" id="tapt"></div>
+  </section>
+
+  <section class="card" id="lenkeKort" hidden>
+    <h2>Lenken til Google-anmeldelser</h2>
+    <p class="hint">Finn den i Google Bedriftsprofil: åpne profilen, trykk «Be om anmeldelser» og kopier lenken (den ser ut som https://g.page/r/…/review).</p>
+    <div class="row" style="margin-top:0"><input id="gLenke" placeholder="https://g.page/r/.../review" style="flex:1;min-width:220px"><button type="button" id="lagreLenke">Lagre</button></div>
+    <span class="msg" id="msgLenke" role="status" aria-live="polite"></span>
+  </section>
+
+  <section class="card">
+    <h2>SMS denne måneden</h2>
+    <div class="tall" id="antall">0</div>
+    <details style="margin-top:8px"><summary style="cursor:pointer;color:var(--muted)">Siste SMS</summary><div class="liste" id="logg"></div></details>
+  </section>
+
+  <p class="hint">Personvern: mobilnummer og navn slettes en uke etter timen, og tapte anrop etter 14 dager. Spørsmål? Ta kontakt på hilleren.bedrift@gmail.com.</p>
+</div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const q=new URLSearchParams(location.search);const KUNDE=q.get("kunde")||"",R=q.get("r")||"";
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const DAG=["søn","man","tir","ons","tor","fre","lør"];
+const dagTekst=d=>{const x=new Date(d+"T12:00:00Z");return DAG[x.getUTCDay()]+" "+x.getUTCDate()+"."+(x.getUTCMonth()+1)+".";};
+const pent=n=>n?n.replace(/^\+47(\d{3})(\d{2})(\d{3})$/,"$1 $2 $3"):"ukjent nummer";
+const TYPE={bekreftelse:"Bekreftelse",paminnelse:"Påminnelse",tapt:"Tapt anrop",anmeldelse:"Anmeldelse",stopp:"Sa nei takk"};
+const STATUS={sendt:"sendt",test:"sendt til Orvelo (test)",av:"ikke sendt (SMS er av)",feil:"feilet",stopp:""};
+for(let m=15;m<=480;m+=15){const o=document.createElement("option");o.value=m;o.textContent=m<60?m+" min":(Math.floor(m/60)+" t"+(m%60?" "+m%60+" min":""));if(m===60)o.selected=true;$("tVar").append(o);}
+$("tDato").value=new Date(Date.now()+864e5).toISOString().slice(0,10);
+
+async function post(sti,body){const r=await fetch(sti,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({kunde:KUNDE,r:R,...body})});
+  const d=await r.json().catch(()=>({feil:"Uventet svar ("+r.status+")"}));if(!r.ok)throw new Error(d.feil||r.status);return d;}
+
+function vis(d){
+  $("laster").hidden=true;$("innhold").hidden=false;$("navn").textContent="· "+d.navn;$("testBoks").hidden=!d.test;
+  const t=d.tillegg;
+  $("chips").innerHTML=[
+    [t.paminnelse.pa,`Bekreftelse og påminnelse ${t.paminnelse.timerFor} timer før timen`],
+    [t.tapt.pa,"SMS til de som ringer uten å komme gjennom"],
+    [t.anmeldelse.pa,`Be om Google-anmeldelse ${t.anmeldelse.timerEtter} timer etter timen`]
+  ].map(([pa,tx])=>`<span class="chip ${pa?"on":"off"}">${pa?"✓":"○"} ${esc(tx)}</span>`).join("")+
+  ((t.paminnelse.pa||t.tapt.pa||t.anmeldelse.pa)?"":`<p class="hint" style="margin:8px 0 0">Ingenting er slått på ennå. Snakk med Preben om hvilke tjenester som passer dere.</p>`);
+  const timerPa=t.paminnelse.pa||t.anmeldelse.pa;
+  $("nyTimeKort").hidden=!timerPa;$("timerKort").hidden=!timerPa;$("okRad").hidden=!t.anmeldelse.pa;
+  $("taptKort").hidden=!t.tapt.pa&&!d.tapt.length;$("lenkeKort").hidden=!t.anmeldelse.pa;
+  if(document.activeElement!==$("gLenke"))$("gLenke").value=t.anmeldelse.lenke||"";
+  if(t.anmeldelse.pa&&!t.anmeldelse.lenke){$("msgLenke").className="msg err";$("msgLenke").textContent="Legg inn lenken, ellers sendes ingen anmeldelses-SMS.";}
+
+  $("timer").innerHTML=d.timer.length?d.timer.map(x=>{
+    const st=[x.p?"påminnelse sendt":"",x.a?"anmeldelse spurt":"",x.ok&&t.anmeldelse.pa&&!x.a?"får anmeldelses-SMS":""].filter(Boolean).join(" · ");
+    return `<div class="rad ${x.x?"avlyst":""}"><div class="naar"><b>${esc(dagTekst(x.dato))} ${esc(x.tid)}</b></div>
+      <div>${esc(x.navn||"(uten navn)")} · ${esc(pent(x.mobil))}<small>${esc(x.hva||"")}${st?" · "+esc(st):""}${x.x?" · avlyst":""}</small></div>
+      <div>${x.x||!x.kommer?"":`<button class="liten" data-avlys="${esc(x.id)}">Avlys</button>`}</div></div>`;}).join(""):`<div class="tom">Ingen timer lagt inn.</div>`;
+
+  $("tapt").innerHTML=d.tapt.length?d.tapt.map(a=>`<div class="rad" style="${a.ferdig?"opacity:.55":""}"><div class="naar"><b>${esc(dagTekst(a.dato))} ${esc(a.tid)}</b></div>
+      <div><a href="tel:${esc(a.nr)}" style="color:var(--acc2)">${esc(pent(a.nr))}</a>${a.antall>1?" · ringte "+a.antall+" ganger":""}
+      <small>${a.sms?"har fått SMS":a.venter?"får SMS kl. 08":"ingen SMS"}${a.ferdig?" · ringt tilbake":""}</small></div>
+      <div><button class="liten" data-ferdig="${esc(a.id)}">${a.ferdig?"Angre":"Ringt ✓"}</button></div></div>`).join(""):`<div class="tom">Ingen tapte anrop de siste 14 dagene.</div>`;
+
+  const mnd=new Date().toISOString().slice(0,7);$("antall").textContent=(d.sms.mnd[mnd]||0)+" SMS";
+  $("logg").innerHTML=d.sms.siste.length?d.sms.siste.map(s=>`<div class="rad"><div class="naar"><small>${esc(new Date(s.tid).toLocaleString("nb-NO",{day:"numeric",month:"numeric",hour:"2-digit",minute:"2-digit"}))}</small></div>
+    <div>${esc(TYPE[s.type]||s.type)} ${s.til?"til "+esc(s.til):""}<small>${esc(s.tekst)}</small></div><div><small>${esc(STATUS[s.status]??s.status)}</small></div></div>`).join(""):`<div class="tom">Ingen SMS ennå.</div>`;
+}
+
+async function last(){
+  if(!KUNDE||!R){$("laster").innerHTML='<span class="err">Lenken er ikke hel. Spør Preben om en ny.</span>';return;}
+  try{const r=await fetch(`/tillegg/data?kunde=${encodeURIComponent(KUNDE)}&r=${encodeURIComponent(R)}`);const d=await r.json();if(!r.ok)throw new Error(d.feil);vis(d);}
+  catch(e){$("laster").innerHTML='<span class="err">'+esc(e.message||"Fikk ikke hentet data.")+'</span>';}
+}
+$("nyTime").addEventListener("submit",async e=>{e.preventDefault();const b=$("leggInn");b.disabled=true;$("msgTime").className="msg";$("msgTime").textContent="Lagrer …";
+  try{const d=await post("/tillegg/time",{time:{navn:$("tNavn").value,mobil:$("tMobil").value,hva:$("tHva").value,dato:$("tDato").value,klokkeslett:$("tTid").value,varighet:+$("tVar").value,ok:$("tOk").checked}});
+    vis(d.data);$("msgTime").className="msg ok";
+    $("msgTime").textContent=d.bekreftet==="sendt"?"Lagt inn, og bekreftelsen er sendt.":d.bekreftet==="test"?"Lagt inn. Bekreftelsen gikk til Orvelo (testmodus).":"Lagt inn. Bekreftelse sendes ikke mellom 21 og 08, men påminnelsen kommer som vanlig.";
+    $("tNavn").value="";$("tMobil").value="";$("tHva").value="";$("tOk").checked=false;}
+  catch(err){$("msgTime").className="msg err";$("msgTime").textContent=err.message;}finally{b.disabled=false;}});
+document.addEventListener("click",async e=>{
+  const a=e.target.closest("[data-avlys]"),f=e.target.closest("[data-ferdig]");
+  try{if(a){a.disabled=true;vis((await post("/tillegg/time/avlys",{tid:a.dataset.avlys})).data);}
+    if(f){f.disabled=true;vis((await post("/tillegg/tapt/ferdig",{tid:f.dataset.ferdig})).data);}}
+  catch(err){alert(err.message);}
+});
+$("lagreLenke").addEventListener("click",async()=>{$("msgLenke").className="msg";$("msgLenke").textContent="Lagrer …";
+  try{const d=await post("/tillegg/lenke",{lenke:$("gLenke").value.trim()});vis(d.data);$("msgLenke").className="msg ok";$("msgLenke").textContent="Lagret.";}
+  catch(err){$("msgLenke").className="msg err";$("msgLenke").textContent=err.message;}});
+last();
+</script></body></html>

@@ -79,6 +79,7 @@ ul.endr{margin:8px 0 0;padding-left:20px;color:var(--muted);font-size:14px}
     <label class="f" style="margin-top:12px">Dette bør sekretæren vite
       <textarea id="ekstra" rows="5" placeholder="f.eks. Vi tar ikke drop-in på mandager. Balayage på langt hår tar ofte 3–4 timer. Spør om hårlengde før du gir pris."></textarea></label>
   </section>
+  <p class="hint"><a id="smsLenke" style="color:var(--acc2)" href="#">Timer, tapte anrop og SMS →</a></p>
   <p class="hint">Firmanavn og bransje endres av Preben. Ta kontakt på hilleren.bedrift@gmail.com hvis noe der er feil.</p>
 </div>
 </div>
@@ -166,4 +167,5 @@ $("lagTekst").onclick=()=>{$("apentTekst").value=lagApentTekst();merkEndret();};
 document.addEventListener("input",e=>{if(e.target.closest("#skjema"))merkEndret();});
 document.addEventListener("change",e=>{if(e.target.closest("#skjema"))merkEndret();});
 last();
+$("smsLenke").href="/sms?kunde="+encodeURIComponent(KUNDE)+"&r="+encodeURIComponent(R);
 </script></body></html>
