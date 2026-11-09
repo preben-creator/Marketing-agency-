@@ -83,3 +83,7 @@ ansatte, kontaktinfo og «dette bør sekretæren vite». Firmanavn, bransje og t
 
 Rettekoden ligger i KV under `rediger:<id>` og er en annen enn `DEMO_KODE`, så de som bare har demolenken kan ikke endre noe.
 Siden hentes fra `snakk/rediger.html` på GitHub. Ingen nye innstillinger trengs, men den nye workerkoden må limes inn i Cloudflare én gang.
+
+## Svar på e-post og Facebook (egen worker `orvelo-innboks`)
+
+Se [INNBOKS.md](INNBOKS.md). Bruker samme KV-lager og rettekode som `/rediger`.
