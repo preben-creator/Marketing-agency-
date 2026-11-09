@@ -3,15 +3,19 @@
 // Flyt:
 //   1. Kunden åpner «ring meg»-siden (GET /), skriver inn mobilnummer og krysser av for samtykke.
 //   2. POST /kode  -> vi sender en SMS-kode for å bekrefte at nummeret er kundens eget (dobbelt samtykke).
-//   3. POST /ring  -> riktig kode? Da ringer Twilio kunden, og samtalen kobles til Grok (KI-agenten).
-//   4. GET  /media -> WebSocket mellom Twilio (telefonlyd) og xAI realtime (Grok-stemmen).
+//   3. POST /ring  -> riktig kode? Da ringer Telnyx (norsk nummer) eller Twilio kunden, og samtalen kobles til Grok.
+//   4. GET  /media -> WebSocket mellom telefonlyden (Telnyx/Twilio) og xAI realtime (Grok-stemmen).
+//   SMS (kode og bookinglenke) sendes alltid via Twilio, fra avsendernavnet «Orvelo».
 //   Under samtalen kan agenten sende bookinglenken på SMS og sende Preben et sammendrag på e-post.
 //
 // Innstillinger (Cloudflare: Worker -> Settings -> Variables and Secrets):
 //   XAI_API_KEY          (Secret, påkrevd)  xAI-nøkkelen
 //   TWILIO_ACCOUNT_SID   (Secret, påkrevd)  fra Twilio-forsiden
 //   TWILIO_AUTH_TOKEN    (Secret, påkrevd)  fra Twilio-forsiden
-//   TWILIO_FROM          (Text,   påkrevd)  Twilio-nummeret, f.eks. +4712345678
+//   TWILIO_FROM          (Text,   valgfri)  Twilio-nummeret samtalen ringer fra (brukes bare uten Telnyx)
+//   TELNYX_API_KEY       (Secret, valgfri)  satt = samtalene går via Telnyx i stedet for Twilio
+//   TELNYX_CONNECTION_ID (Text,   valgfri)  ID-en til «Voice API Application» i Telnyx
+//   TELNYX_FROM          (Text,   valgfri)  det norske Telnyx-nummeret, f.eks. +4755123456
 //   BOOKING_URL          (Text,   valgfri)  Google Avtaleplan-lenken
 //   VARSEL_EPOST         (Text,   valgfri)  hvor sammendrag sendes (via FormSubmit)
 //   STEMME               (Text,   valgfri)  Grok-stemme, standard «ara»
@@ -21,7 +25,7 @@
 const BOOKING_URL_DEFAULT = "https://calendar.app.google/24niGvpRRwPqNqr28";
 const VARSEL_EPOST_DEFAULT = "hilleren.bedrift@gmail.com";
 const MODEL = "grok-voice-latest";
-const MAKS_SEK = 480; // Twilio legger på etter 8 minutter uansett
+const MAKS_SEK = 480; // operatøren legger på etter 8 minutter uansett
 const KODE_GYLDIG_MS = 10 * 60 * 1000;
 
 // ---------- små hjelpere ----------
@@ -91,6 +95,27 @@ function twilioFeil(r) {
 }
 
 // SMS sendes med avsendernavnet «Orvelo» (Norge godtar alfanumerisk avsender).
+const brukTelnyx = (env) => !!(env.TELNYX_API_KEY && env.TELNYX_CONNECTION_ID && env.TELNYX_FROM);
+
+async function telnyx(env, sti, body) {
+  const r = await fetch(`https://api.telnyx.com/v2/${sti}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env.TELNYX_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const tekst = await r.text();
+  if (!r.ok) console.log("Telnyx svarte", r.status, tekst.slice(0, 400));
+  return { ok: r.ok, status: r.status, tekst };
+}
+
+function telnyxFeil(r) {
+  try {
+    const e = (JSON.parse(r.tekst).errors || [])[0] || {};
+    return `Telnyx ${e.code || r.status}: ${e.detail || e.title || ""}`.trim();
+  } catch {}
+  return `HTTP ${r.status}`;
+}
+
 // Hvis Twilio avviser det, prøver vi på nytt fra Twilio-nummeret.
 async function sendSms(env, til, tekst) {
   const navn = env.SMS_AVSENDER === undefined ? "Orvelo" : env.SMS_AVSENDER;
@@ -171,9 +196,11 @@ const VERKTOY = [
   },
 ];
 
-async function koblSamtale(env, twilioWs) {
+// tlfWs = WebSocket fra Telnyx eller Twilio. urlParam = parameterne fra stream-URL-en (Telnyx).
+async function koblSamtale(env, tlfWs, urlParam) {
   let streamSid = null;
   let callSid = null;
+  let erTelnyx = false;
   let kunde = {};
   let xai = null;
   let lenkeSendt = false;
@@ -187,13 +214,18 @@ async function koblSamtale(env, twilioWs) {
   const startet = Date.now();
   const ventende = []; // lyd fra kunden før Grok er klar
 
-  const tilTwilio = (obj) => { try { twilioWs.send(JSON.stringify(obj)); } catch {} };
+  const tilTlf = (obj) => { try { tlfWs.send(JSON.stringify(obj)); } catch {} };
+  const sendLyd = (payload) => erTelnyx
+    ? tilTlf({ event: "media", media: { payload } })
+    : streamSid && tilTlf({ event: "media", streamSid, media: { payload } });
+  const stoppLyd = () => erTelnyx ? tilTlf({ event: "clear" }) : streamSid && tilTlf({ event: "clear", streamSid });
   const tilXai = (obj) => { if (xai && xai.readyState === 1) xai.send(JSON.stringify(obj)); };
 
   async function leggPaa(etterMs) {
     await new Promise((r) => setTimeout(r, etterMs));
-    if (callSid) await twilio(env, `Calls/${callSid}.json`, { Status: "completed" });
-    try { twilioWs.close(1000, "ferdig"); } catch {}
+    if (callSid && erTelnyx) await telnyx(env, `calls/${encodeURIComponent(callSid)}/actions/hangup`, {});
+    else if (callSid) await twilio(env, `Calls/${callSid}.json`, { Status: "completed" });
+    try { tlfWs.close(1000, "ferdig"); } catch {}
     try { xai && xai.close(1000, "ferdig"); } catch {}
   }
 
@@ -255,7 +287,7 @@ async function koblSamtale(env, twilioWs) {
       try { e = JSON.parse(m.data); } catch { return; }
       const t = e.type;
       if (t === "response.output_audio.delta" || t === "response.audio.delta") {
-        if (streamSid) tilTwilio({ event: "media", streamSid, media: { payload: e.delta } });
+        sendLyd(e.delta);
         return;
       }
       if (t === "response.output_audio_transcript.done" || t === "response.audio_transcript.done") {
@@ -267,7 +299,7 @@ async function koblSamtale(env, twilioWs) {
         return;
       }
       if (t === "input_audio_buffer.speech_started") {
-        if (streamSid) tilTwilio({ event: "clear", streamSid });
+        stoppLyd();
         return;
       }
       if (t === "response.function_call_arguments.done") {
@@ -280,26 +312,28 @@ async function koblSamtale(env, twilioWs) {
       }
       if (t === "error") console.log("xAI-feil", JSON.stringify(e).slice(0, 300));
     });
-    xai.addEventListener("close", () => { try { twilioWs.close(1000, "grok lukket"); } catch {} });
+    xai.addEventListener("close", () => { try { tlfWs.close(1000, "grok lukket"); } catch {} });
   }
 
-  twilioWs.addEventListener("message", async (m) => {
+  tlfWs.addEventListener("message", async (m) => {
     let e;
     try { e = JSON.parse(m.data); } catch { return; }
     if (e.event === "media") {
+      if (e.media.track && e.media.track !== "inbound") return;
       if (xai && xai.readyState === 1) tilXai({ type: "input_audio_buffer.append", audio: e.media.payload });
       else if (ventende.length < 250) ventende.push(e.media.payload);
       return;
     }
     if (e.event === "start") {
-      streamSid = e.start.streamSid;
-      callSid = e.start.callSid;
-      const p = e.start.customParameters || {};
+      erTelnyx = !!e.start.call_control_id;
+      streamSid = e.start.streamSid || e.stream_id || null;
+      callSid = e.start.callSid || e.start.call_control_id || null;
+      const p = erTelnyx ? urlParam : (e.start.customParameters || {});
       // Sjekk at samtalen faktisk ble startet av /ring (signert), ellers legg på.
       const forventet = await hmac(env.TWILIO_AUTH_TOKEN, `samtale|${p.til}|${p.ts}`);
       if (!likt(p.sig, forventet) || Date.now() - Number(p.ts) > 15 * 60 * 1000) {
         console.log("Ugyldig samtale-signatur");
-        try { twilioWs.close(1008, "ugyldig"); } catch {}
+        try { tlfWs.close(1008, "ugyldig"); } catch {}
         return;
       }
       kunde = { til: p.til, navn: p.navn || "", firma: p.firma || "" };
@@ -311,7 +345,7 @@ async function koblSamtale(env, twilioWs) {
       await sendRapport();
     }
   });
-  twilioWs.addEventListener("close", async () => {
+  tlfWs.addEventListener("close", async () => {
     try { xai && xai.close(1000, "lagt på"); } catch {}
     await sendRapport();
   });
@@ -375,14 +409,21 @@ async function ringEndepunkt(request, env, url) {
   const naa = String(Date.now());
   const samtaleSig = await hmac(env.TWILIO_AUTH_TOKEN, `samtale|${til}|${naa}`);
   const wss = `wss://${url.host}/media`;
-  const twiml =
-    `<Response><Connect><Stream url="${xmlEsc(wss)}">` +
-    `<Parameter name="til" value="${xmlEsc(til)}"/><Parameter name="ts" value="${naa}"/>` +
-    `<Parameter name="sig" value="${samtaleSig}"/><Parameter name="navn" value="${xmlEsc(navn)}"/>` +
-    `<Parameter name="firma" value="${xmlEsc(firma)}"/></Stream></Connect></Response>`;
 
-  const r = await twilio(env, "Calls.json", { To: til, From: env.TWILIO_FROM, Twiml: twiml, TimeLimit: String(MAKS_SEK) });
-  if (!r.ok) return json({ feil: `Fikk ikke ringt (${twilioFeil(r)}).` }, 502);
+  if (brukTelnyx(env)) {
+    // Telnyx sender ikke egne parametere i stream-starten, så de ligger i URL-en (signert som før).
+    const q = new URLSearchParams({ til, ts: naa, sig: samtaleSig, navn, firma });
+    const r = await telnyx(env, "calls", {
+      connection_id: env.TELNYX_CONNECTION_ID, to: til, from: env.TELNYX_FROM,
+      stream_url: `${wss}?${q}`, stream_track: "inbound_track",
+      stream_bidirectional_mode: "rtp", stream_bidirectional_codec: "PCMU",
+      time_limit_secs: MAKS_SEK,
+    });
+    if (!r.ok) return json({ feil: `Fikk ikke ringt (${telnyxFeil(r)}).` }, 502);
+  } else {
+    const r = await ringTwilio(env, til, wss, naa, samtaleSig, navn, firma);
+    if (!r.ok) return json({ feil: `Fikk ikke ringt (${twilioFeil(r)}).` }, 502);
+  }
 
   // Samtykkelogg: Preben får en e-post per samtykke (tidspunkt, nummer, tekst de krysset av for).
   await varsle(env, `Samtykke: ${firma || til} ba om å bli ringt`, {
@@ -392,17 +433,31 @@ async function ringEndepunkt(request, env, url) {
   return json({ ok: true });
 }
 
+function ringTwilio(env, til, wss, naa, samtaleSig, navn, firma) {
+  const twiml =
+    `<Response><Connect><Stream url="${xmlEsc(wss)}">` +
+    `<Parameter name="til" value="${xmlEsc(til)}"/><Parameter name="ts" value="${naa}"/>` +
+    `<Parameter name="sig" value="${samtaleSig}"/><Parameter name="navn" value="${xmlEsc(navn)}"/>` +
+    `<Parameter name="firma" value="${xmlEsc(firma)}"/></Stream></Connect></Response>`;
+
+  return twilio(env, "Calls.json", { To: til, From: env.TWILIO_FROM, Twiml: twiml, TimeLimit: String(MAKS_SEK) });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    const mangler = ["XAI_API_KEY", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM"].filter((k) => !env[k]);
+    const mangler = ["XAI_API_KEY", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN"].filter((k) => !env[k]);
+    if (!brukTelnyx(env) && !env.TWILIO_FROM) mangler.push("TWILIO_FROM eller TELNYX_*");
+
+    // Telnyx sender hendelser (samtale besvart, lagt på osv.) hit. Vi trenger dem ikke, men svarer OK.
+    if (url.pathname === "/telnyx" && request.method === "POST") return new Response("ok");
 
     if (url.pathname === "/media") {
       if (request.headers.get("Upgrade") !== "websocket") return new Response("Forventer WebSocket", { status: 426 });
       if (mangler.length) return new Response("Ikke satt opp", { status: 500 });
       const [klient, server] = Object.values(new WebSocketPair());
       server.accept();
-      koblSamtale(env, server);
+      koblSamtale(env, server, Object.fromEntries(url.searchParams));
       return new Response(null, { status: 101, webSocket: klient });
     }
 
