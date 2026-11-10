@@ -151,7 +151,7 @@ function tegn(){
   if(valgt)h+=`<div class="boks"><b>Valgt: Alternativ ${esc(valgt.kode)} (${esc(valgt.navn)}).</b> ${Number(P.oppstart)>0?`Oppstart ${kr(P.oppstart)}, deretter `:""}${kr(valgt.mnd)} per måned${Number(valgt.prosent)>0?` pluss ${esc(valgt.prosent)} % av verdien på timer bestilt via sekretæren`:""}.</div>`;
   if(A.regneeksempel)h+=`<p class="liten"><b>Regneeksempel:</b> ${esc(A.regneeksempel)}</p>`;
   h+=`<h2>Hovedpunkter</h2><ul>
-    <li><b>Bindingstid:</b> ${Number(A.bindingMnd||12)===1?"1 måned":esc(A.bindingMnd)+" måneder"} fra oppstartsdato. Avtalen fornyes deretter automatisk med nye ${Number(A.bindingMnd||12)===1?"1 måned":esc(A.bindingMnd||12)+" måneder"}, med mindre den sies opp skriftlig senest 2 måneder før perioden går ut. Dere får en påminnelse senest 3 måneder før.</li>
+    <li><b>Bindingstid:</b> ${Number(A.bindingMnd||12)===1?"1 måned":esc(A.bindingMnd)+" måneder"} fra oppstartsdato, eller fra dagen etter en gratis prøveperiode hvis den står i tilbudet. Avtalen fornyes deretter automatisk med nye ${Number(A.bindingMnd||12)===1?"1 måned":esc(A.bindingMnd||12)+" måneder"}, med mindre den sies opp skriftlig senest 2 måneder før perioden går ut. Dere får en påminnelse senest 3 måneder før.</li>
     <li><b>Fakturering:</b> ${Number(P.oppstart)>0?"oppstart faktureres ved oppstart, ":""}månedsprisen forskuddsvis hver måned${alt.some(a=>Number(a.prosent)>0)?", og en eventuell andel av bookinger etterskuddsvis for måneden før":""}. Betalingsfrist 14 dager.</li>
     <li><b>Mva:</b> prisene er uten mva. Mva kommer i tillegg hvis Orvelo er eller blir mva-registrert.</li>
     ${A.merknad?`<li><b>Merknad:</b> ${esc(A.merknad)}</li>`:""}

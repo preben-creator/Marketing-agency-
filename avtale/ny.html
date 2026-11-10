@@ -52,11 +52,11 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
     <label>Tilbudsdato<input id="dato" type="date"></label>
   </div>
   <div class="alt"><div class="top"><input type="checkbox" id="brukA" checked> Alternativ A</div>
-    <div class="g3"><label>Navn<input id="navnA" value="Starter"></label><label>Per måned (kr)<input id="mndA" type="number" value="790"></label><label>% av bookinger<input id="prosA" type="number" value="0"></label><label>Inkludert / passer når<input id="passA" value="50 samtaleminutter med stemme per måned"></label></div></div>
+    <div class="g3"><label>Navn<input id="navnA" value="Starter"></label><label>Per måned (kr)<input id="mndA" type="number" value="790"></label><label>% av bookinger<input id="prosA" type="number" value="0"></label><label>Inkludert / passer når<input id="passA" value="Sekretæren i chat og med stemme på nettsiden. 50 minutter med stemme per måned"></label></div></div>
   <div class="alt"><div class="top"><input type="checkbox" id="brukB" checked> Alternativ B</div>
-    <div class="g3"><label>Navn<input id="navnB" value="Pro"></label><label>Per måned (kr)<input id="mndB" type="number" value="1490"></label><label>% av bookinger<input id="prosB" type="number" value="0"></label><label>Inkludert / passer når<input id="passB" value="200 samtaleminutter med stemme per måned"></label></div></div>
+    <div class="g3"><label>Navn<input id="navnB" value="Pro"></label><label>Per måned (kr)<input id="mndB" type="number" value="1490"></label><label>% av bookinger<input id="prosB" type="number" value="0"></label><label>Inkludert / passer når<input id="passB" value="Alt i Starter, pluss booking i kalenderen og SMS til kundene (200 SMS). 200 minutter"></label></div></div>
   <div class="alt"><div class="top"><input type="checkbox" id="brukC" checked> Alternativ C</div>
-    <div class="g3"><label>Navn<input id="navnC" value="Komplett"></label><label>Per måned (kr)<input id="mndC" type="number" value="2990"></label><label>% av bookinger<input id="prosC" type="number" value="0"></label><label>Inkludert / passer når<input id="passC" value="500 samtaleminutter med stemme per måned"></label></div></div>
+    <div class="g3"><label>Navn<input id="navnC" value="Komplett"></label><label>Per måned (kr)<input id="mndC" type="number" value="2990"></label><label>% av bookinger<input id="prosC" type="number" value="0"></label><label>Inkludert / passer når<input id="passC" value="Alt i Pro med 500 SMS, pluss 9 KI-agenter for kontorarbeidet. 500 minutter"></label></div></div>
 
   <h2 style="margin-top:22px">Tekst</h2>
   <div style="display:grid;gap:12px">
@@ -64,7 +64,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
     <label>Innledning<textarea id="innledning"></textarea></label>
     <label>Dette får dere (én per linje, «Tittel: tekst»)<textarea id="tjenester" style="min-height:150px"></textarea></label>
     <label>Regneeksempel (valgfritt)<textarea id="regneeksempel" style="min-height:60px"></textarea></label>
-    <label>Merknad (valgfritt, kommer under hovedpunkter)<input id="merknad" value="Chat er ubegrenset i alle pakker. Går dere over minuttene i pakken, koster ekstra minutter 5 kr per minutt."></label>
+    <label>Merknad (valgfritt, kommer under hovedpunkter)<input id="merknad" value="De første 14 dagene fra oppstartsdato er en gratis prøveperiode. Sier dere fra på e-post før den er over, koster det ingenting. Chat er ubegrenset i alle pakker. Ekstra minutter med stemme koster 5 kr per minutt og ekstra SMS 1 kr per stykk."></label>
   </div>
 
   <details style="margin-top:16px"><summary style="cursor:pointer;color:var(--muted);font-weight:600">Leverandør (Orvelo)</summary>
@@ -119,10 +119,12 @@ $("innledning").value="Takk for en hyggelig prat! Her er tilbudet på en KI-sekr
 $("tjenester").value=[
  "Egen KI-sekretær: laget for firmaet deres ut fra nettsiden, med tjenestene, prisene og åpningstidene deres. Hun snakker og skriver norsk og svarer kundene døgnet rundt.",
  "Svar og forslag til time: sekretæren svarer på spørsmål om tjenester, priser og åpningstider, og foreslår ledige tider til kundene.",
- "Lenke dere kan dele: kundene når sekretæren via en lenke eller knapp på nettsiden, Google-profilen og sosiale medier.",
+ "Lenke og chat dere kan dele: kundene når sekretæren via en lenke eller knapp på nettsiden, Google-profilen og sosiale medier, og som chat rett på deres egen nettside.",
  "Rett selv: dere får en egen side der dere selv endrer tjenester, priser, varighet og åpningstider. Endringene gjelder med en gang.",
+ "Booking og SMS (Pro og Komplett): timer legges rett i kalenderen deres, og kunden får SMS med bekreftelse og påminnelse dagen før. I tillegg SMS ved tapt anrop og forespørsel om Google-anmeldelse.",
+ "KI-agenter (Komplett): 9 agenter som lager utkast til tilbud, faktura, purring, jobbrapport, innkjøpsliste, dagens rute, salgs- og markedsføringstekster og svar på anmeldelser. Dere sjekker og sender selv.",
  "Oppsett: jeg setter opp alt og går gjennom sekretæren sammen med dere før oppstart. Det tar rundt 15–30 minutter av deres tid.",
- "Svar på deres eget telefonnummer: er under utvikling. Når det er klart, får dere det uten ekstra kostnad i avtaleperioden."
+ "Kommer uten ekstra kostnad (Pro og Komplett): svar på deres eget telefonnummer, innboks for e-post og Facebook, og ukesrapport på e-post. Dere får beskjed når det er klart."
 ].join("\n");
 $("kode").value=localStorage.getItem("orvelo-admin")||"";
 const q=new URLSearchParams(location.search);
