@@ -95,6 +95,8 @@ header img{height:34px;width:auto}
 .pill.hi{background:rgba(255,181,71,.15);color:var(--warn)}
 .pill.kommer{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
 .roi .note{margin:16px 0 0;font-size:.8rem;color:var(--muted)}
+.form .status{margin:0;padding:12px 14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--border);font-weight:600}
+.form .status.feil{border-color:var(--accent-2);color:var(--accent-2)}
 .form .info{grid-column:1/-1;margin:0;font-size:.78rem;color:var(--muted)}
 .form .info a,footer a{color:inherit}
 .pill.ok{background:rgba(47,216,137,.15);color:var(--ok)}
@@ -425,8 +427,8 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       <p><a class="btn" href="https://calendar.app.google/24niGvpRRwPqNqr28" target="_blank" rel="noopener">📅 Book et møte i kalenderen</a></p>
       <p class="muted">Velg en ledig tid selv, så får du bekreftelse på e-post. Eller fyll ut skjemaet, så ringer vi deg.</p>
     </div>
-    <!-- Skjemaet sendes via FormSubmit til e-posten under. Første innsending gir en aktiveringsmail som må bekreftes én gang. -->
-    <form class="form" action="https://formsubmit.co/hilleren.bedrift@gmail.com" method="POST">
+    <!-- Skjemaet sendes til workeren orvelo-sekretar (/kontakt). action= er bare reserve hvis /kontakt ikke finnes ennå. -->
+    <form class="form" id="kontaktForm" action="https://formsubmit.co/hilleren.bedrift@gmail.com" method="POST">
       <input type="hidden" name="_subject" value="Ny henvendelse fra nettsiden (KI-sekretær)">
       <input type="hidden" name="_template" value="table">
       <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off">
@@ -437,7 +439,8 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       <label>Fag<input name="fag" placeholder="F.eks. rørlegger"></label>
       <label class="full">Melding<textarea name="melding" rows="3" placeholder="Hvor mange henvendelser rekker dere ikke å svare på i uka?"></textarea></label>
       <button class="btn full" type="submit">Send, så ringer vi deg</button>
-      <p class="info">Skjemaet sendes til e-posten vår via tjenesten FormSubmit. Vi bruker opplysningene bare til å svare deg. Les mer i <a href="personvern/">personvernerklæringen</a>.</p>
+      <p class="status full" id="kontaktStatus" role="status" aria-live="polite" hidden></p>
+      <p class="info">Skjemaet lagres hos Cloudflare, og vi får beskjed på SMS. Vi bruker opplysningene bare til å svare deg. Les mer i <a href="personvern/">personvernerklæringen</a>.</p>
     </form>
   </section>
 </div>
@@ -1217,6 +1220,33 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
 
   const y=document.getElementById("year"); if(y) y.textContent=new Date().getFullYear();
   select(); reset();
+})();
+</script>
+<script>
+/* Kontaktskjemaet sendes til vår egen Cloudflare-worker. Finnes ikke /kontakt der ennå
+   (404), sendes skjemaet som før, slik at ingen henvendelser går tapt. */
+(function(){
+  const f=document.getElementById("kontaktForm"), st=document.getElementById("kontaktStatus");
+  if(!f||!window.fetch) return;
+  const URL_KONTAKT="https://orvelo-sekretar.preben-m-hilleren.workers.dev/kontakt";
+  let gammel=false;
+  f.addEventListener("submit",async e=>{
+    if(gammel) return;
+    e.preventDefault();
+    const knapp=f.querySelector('button[type="submit"]'), tekst=knapp.textContent;
+    knapp.disabled=true; knapp.textContent="Sender …"; st.hidden=true; st.className="status full";
+    try{
+      const r=await fetch(URL_KONTAKT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(Object.fromEntries(new FormData(f)))});
+      if(r.status===404){ gammel=true; f.submit(); return; }
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(d.feil||"Noe gikk galt.");
+      f.reset();
+      st.textContent="Takk! Vi har fått meldingen din og ringer deg innen én arbeidsdag.";
+    }catch(err){
+      st.classList.add("feil");
+      st.textContent=(err.message&&err.message!=="Failed to fetch"?err.message:"Vi fikk ikke sendt meldingen.")+" Ring oss gjerne på 412 32 557.";
+    }finally{ st.hidden=false; knapp.disabled=false; knapp.textContent=tekst; }
+  });
 })();
 </script>
 </body>

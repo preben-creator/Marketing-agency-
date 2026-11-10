@@ -205,6 +205,10 @@ export default {
       return tilleggRute(request, env, ctx, url);
     }
 
+    if (url.pathname === "/kontakt" || url.pathname === "/kontakt/liste") {
+      return kontaktRute(request, env, url, origin);
+    }
+
     if (url.pathname === "/" || url.pathname === "/index.html") {
       const r = await fetch(env.PAGE_URL || PAGE_URL_DEFAULT, { cf: { cacheTtl: 60 } });
       if (!r.ok) return new Response("Fant ikke demosiden.", { status: 502 });
@@ -532,6 +536,11 @@ function utenHemmelig(rec) {
 
 async function varsle(env, emne, linjer, mottaker) {
   const til = mottaker || env.VARSEL_EPOST || "hilleren.bedrift@gmail.com";
+  // Med Resend sendes varselet direkte, uten å gå via FormSubmit.
+  if (env.RESEND_API_KEY) {
+    try { await sendEpost(env, { til, emne, tekst: linjer.join("\n"), html: `<pre style="font:15px/1.5 system-ui,sans-serif;white-space:pre-wrap">${esc(linjer.join("\n"))}</pre>` }); return; }
+    catch (e) { console.log("Resend-varsel feilet, prøver FormSubmit", e && e.message); }
+  }
   try {
     await fetch("https://formsubmit.co/ajax/" + encodeURIComponent(til), {
       method: "POST",
@@ -539,6 +548,76 @@ async function varsle(env, emne, linjer, mottaker) {
       body: JSON.stringify({ _subject: emne, _template: "box", _captcha: "false", melding: linjer.join("\n") }),
     });
   } catch (e) { console.log("varsel feilet", e && e.message); }
+}
+
+/* ================= Kontaktskjemaet på orvelo.no =================
+   POST /kontakt fra nettsiden. Lagrer henvendelsen i KV i 12 måneder (som
+   personvernerklæringen sier) og varsler Preben på SMS (Twilio) og e-post
+   (Resend) når de er satt opp. Ingen tredjepart som FormSubmit.
+   GET /kontakt/liste?a=<ADMIN_KODE> viser henvendelsene som JSON. */
+const KONTAKT_TTL = 365 * 86400;
+const kontaktTreff = new Map();
+
+async function kontaktRute(request, env, url, origin) {
+  if (url.pathname === "/kontakt/liste") {
+    if (!env.ADMIN_KODE || url.searchParams.get("a") !== env.ADMIN_KODE) return json({ feil: "Feil kode" }, 401);
+    const liste = await env.KUNDER.list({ prefix: "henvendelse:", limit: 200 });
+    const rader = [];
+    for (const k of liste.keys) { const v = await env.KUNDER.get(k.name, "json"); if (v) rader.push(v); }
+    rader.sort((a, b) => b.tid.localeCompare(a.tid));
+    return json({ antall: rader.length, henvendelser: rader }, 200);
+  }
+  if (request.method !== "POST") return json({ feil: "Bruk POST" }, 405, origin);
+  if (origin && origin !== url.origin && !ALLOWED_ORIGINS.includes(origin)) return json({ feil: "Ikke tillatt" }, 403, origin);
+
+  let b = {};
+  try {
+    const type = request.headers.get("Content-Type") || "";
+    b = type.includes("application/json") ? await request.json() : Object.fromEntries(await request.formData());
+  } catch { return json({ feil: "Kunne ikke lese skjemaet." }, 400, origin); }
+
+  // Honningfelle: roboter fyller ut det skjulte feltet. Svar som om alt gikk bra.
+  if (b._honey) return json({ ok: true }, 200, origin);
+
+  const felt = (k, max) => String(b[k] ?? "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, max);
+  const h = {
+    navn: felt("navn", 100), firma: felt("firma", 120), telefon: felt("telefon", 30),
+    epost: felt("epost", 120), fag: felt("fag", 80), melding: String(b.melding ?? "").trim().slice(0, 2000),
+  };
+  if (!h.navn || !h.telefon) return json({ feil: "Skriv inn navn og telefonnummer." }, 400, origin);
+  if (h.epost && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(h.epost)) return json({ feil: "E-postadressen ser ikke riktig ut." }, 400, origin);
+
+  const ip = request.headers.get("CF-Connecting-IP") || "ukjent";
+  const naa = Date.now();
+  const treff = (kontaktTreff.get(ip) || []).filter((t) => naa - t < 3600000);
+  if (treff.length >= 5) return json({ feil: "Mange meldinger på kort tid. Ring oss heller på 412 32 557." }, 429, origin);
+  treff.push(naa); kontaktTreff.set(ip, treff);
+  if (kontaktTreff.size > 5000) kontaktTreff.clear();
+
+  const tid = new Date().toISOString();
+  const rec = { tid, ...h };
+  await env.KUNDER.put(`henvendelse:${tid}:${crypto.randomUUID().slice(0, 8)}`, JSON.stringify(rec), { expirationTtl: KONTAKT_TTL });
+
+  const linjer = [
+    `Navn: ${h.navn}`, `Firma: ${h.firma || "-"}`, `Telefon: ${h.telefon}`, `E-post: ${h.epost || "-"}`,
+    `Fag: ${h.fag || "-"}`, "", h.melding || "(ingen melding)",
+  ];
+  const varsler = [];
+  const mobil = mobilnr(env.VARSEL_MOBIL || "41232557");
+  if (env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_FROM && mobil) {
+    const sms = gsm(`Ny henvendelse fra orvelo.no: ${h.navn}${h.firma ? ", " + h.firma : ""}, tlf ${h.telefon}${h.fag ? ", " + h.fag : ""}. ${h.melding}`).slice(0, 300);
+    varsler.push(twilioSms(env, mobil, env.TWILIO_FROM, sms).then((r) => { if (!r.ok) console.log("kontakt-SMS feilet", r.feil); }));
+  }
+  if (env.RESEND_API_KEY) {
+    varsler.push(sendEpost(env, {
+      til: env.VARSEL_EPOST || "hilleren.bedrift@gmail.com",
+      emne: `Ny henvendelse fra nettsiden: ${h.navn}${h.firma ? " (" + h.firma + ")" : ""}`,
+      tekst: linjer.join("\n"),
+      html: `<pre style="font:15px/1.5 system-ui,sans-serif;white-space:pre-wrap">${esc(linjer.join("\n"))}</pre>`,
+    }).catch((e) => console.log("kontakt-e-post feilet", e && e.message)));
+  }
+  await Promise.all(varsler);
+  return json({ ok: true }, 200, origin);
 }
 
 async function avtaleRute(request, env, ctx, url) {
