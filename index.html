@@ -7,9 +7,7 @@
 <meta name="description" content="Orvelo KI-sekretær for håndverkere og servicebedrifter, fra rørlegger og elektriker til frisør, rengjøring, flytting, dekkskift, hundefrisør, negl og vipper, PT og skadedyrkontroll: en egen digital sekretær for firmaet ditt som snakker og skriver norsk, svarer kundene døgnet rundt og foreslår ledige tider.">
 <link rel="canonical" href="https://orvelo.no/">
 <link rel="icon" href="assets/favicon.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="assets/fonts/fonts.css" rel="stylesheet">
 <style>
 :root{
   --bg:#0a0b10;--bg-alt:#10121a;--surface:#161926;--surface-2:#1d2133;--border:#252a3b;
@@ -95,6 +93,10 @@ header img{height:34px;width:auto}
 @keyframes flash{0%{background:color-mix(in srgb,var(--accent-2) 25%,transparent)}100%{background:transparent}}
 .pill{display:inline-block;font-size:.75rem;font-weight:600;padding:2px 9px;border-radius:999px}
 .pill.hi{background:rgba(255,181,71,.15);color:var(--warn)}
+.pill.kommer{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+.roi .note{margin:16px 0 0;font-size:.8rem;color:var(--muted)}
+.form .info{grid-column:1/-1;margin:0;font-size:.78rem;color:var(--muted)}
+.form .info a,footer a{color:inherit}
 .pill.ok{background:rgba(47,216,137,.15);color:var(--ok)}
 .sms{background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:.88rem;white-space:pre-line}
 .sms .from{font-size:.72rem;color:var(--muted);margin-bottom:4px}
@@ -285,7 +287,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
     </div>
 
     <div class="panel">
-      <div class="eyebrow">Det du får, uten å ta av deg hanskene</div>
+      <div class="eyebrow">Slik kan det se ut</div>
       <h2>Ferdig utfylt jobb på sekunder</h2>
       <div class="cards">
         <div class="card" id="cardJob">
@@ -300,16 +302,16 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
         </div>
         <div class="row2">
           <div class="card" id="cardSms">
-            <h3><span class="ic">💬</span> SMS til deg</h3>
+            <h3><span class="ic">💬</span> SMS til deg <span class="pill kommer">Kommer</span></h3>
             <div class="sms"><div class="from">Orvelo · nå</div><span id="smsText">…</span></div>
           </div>
           <div class="card" id="cardCal">
-            <h3><span class="ic">📅</span> Kalenderen din</h3>
+            <h3><span class="ic">📅</span> Kalenderen din <span class="pill kommer">Kommer</span></h3>
             <div class="cal" id="cal"></div>
           </div>
         </div>
         <div class="card" id="cardCust">
-          <h3><span class="ic">✅</span> Bekreftelse til kunden</h3>
+          <h3><span class="ic">✅</span> Bekreftelse til kunden <span class="pill kommer">Kommer</span></h3>
           <div class="sms"><div class="from" id="custFrom">Hansen Rør AS · nå</div><span id="custSms">…</span></div>
         </div>
       </div>
@@ -349,7 +351,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
         <ul><li>Egen KI-sekretær laget for firmaet ditt</li><li>Svarer kundene døgnet rundt i chat og med stemme</li><li>Foreslår ledige tider</li><li>Lenke og knapp til nettsiden, Google og sosiale medier</li><li>Egen side der du retter tjenester, priser og åpningstider</li><li>Oppsett og gjennomgang før oppstart</li></ul>
         <a class="btn btn--ghost" href="#kontakt">Book en prat</a>
       </article>
-      <article class="plan best"><span class="badge">Mest valgt</span>
+      <article class="plan best"><span class="badge">Anbefalt</span>
         <h3>Pro</h3>
         <p class="for">Jevn strøm av kunder</p>
         <div class="price">1 490 <small>kr/mnd</small></div>
@@ -366,7 +368,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
         <a class="btn btn--ghost" href="#kontakt">Book en prat</a>
       </article>
     </div>
-    <p class="vat">Alle priser er i kroner eksklusive mva. Chat er ubegrenset i alle pakker. Ekstra minutter med stemme koster 5 kr per minutt.</p>
+    <p class="vat">Priser for bedrifter, i kroner uten mva. Orvelo er ikke mva-registrert ennå. Når vi blir det, kommer mva i tillegg. Chat er ubegrenset i alle pakker. Ekstra minutter med stemme koster 5 kr per minutt.</p>
   </section>
 
   <section class="roi" aria-labelledby="roiH">
@@ -384,10 +386,11 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
         <output id="valueOut"></output>
       </div>
       <div>
-        <label>Tapt omsetning per år, om 1 av 3 går til en konkurrent</label>
+        <label>Anslått tapt omsetning per år, om 1 av 3 går til en konkurrent</label>
         <div class="big-num grad" id="lost"></div>
       </div>
     </div>
+    <p class="note">Dette er et regneeksempel ut fra tallene du velger, ikke et løfte om resultat.</p>
   </section>
 
   <section class="sec faq" id="sporsmal" aria-labelledby="faqH">
@@ -434,6 +437,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       <label>Fag<input name="fag" placeholder="F.eks. rørlegger"></label>
       <label class="full">Melding<textarea name="melding" rows="3" placeholder="Hvor mange henvendelser rekker dere ikke å svare på i uka?"></textarea></label>
       <button class="btn full" type="submit">Send, så ringer vi deg</button>
+      <p class="info">Skjemaet sendes til e-posten vår via tjenesten FormSubmit. Vi bruker opplysningene bare til å svare deg. Les mer i <a href="personvern/">personvernerklæringen</a>.</p>
     </form>
   </section>
 </div>
@@ -441,6 +445,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
   <img src="assets/orvelo-logo-vennlig.svg" alt="Orvelo" width="110" height="33">
   <p>© <span id="year">2026</span> Orvelo · KI-sekretær for håndverkere og servicebedrifter</p>
   <p>Orvelo drives av Hilleren Markedsføring (enkeltpersonforetak) · Org.nr. 938 720 673 · Bergen</p>
+  <p><a href="personvern/">Personvern</a></p>
   <p class="fine">Samtalene i demoen er eksempler. Navn og telefonnumre er oppdiktet.</p>
 </footer>
 
