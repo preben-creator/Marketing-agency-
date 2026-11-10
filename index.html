@@ -156,6 +156,11 @@ footer{border-top:1px solid var(--border);padding:20px 0;font-size:.8rem;color:v
 .svc b{display:block;margin-bottom:4px}
 .svc p{margin:0;color:var(--muted);font-size:.88rem}
 .svc .tier{display:inline-block;margin-top:8px;font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--muted)}
+.svc b .pill{vertical-align:2px;margin-left:4px}
+.ag-gruppe{font-family:var(--font-head);font-size:1.1rem;margin:26px 0 10px}
+.svcs--ag{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.svcs--ag3{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+@media (max-width:400px){.svcs--ag,.svcs--ag3{grid-template-columns:1fr}}
 /* Topp, meny, FAQ, kontakt */
 header.top{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:18px;padding:14px 0;background:color-mix(in srgb,var(--bg) 85%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 header.top .brand{margin-right:auto}
@@ -236,6 +241,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       <a href="#demo">Demo</a>
       <a href="#pris">Pris</a>
       <a href="#tjenester">Hva du får</a>
+      <a href="#agenter">KI-agenter</a>
       <a href="#sporsmal">Spørsmål</a>
     </nav>
     <a class="btn btn--small" href="https://calendar.app.google/24niGvpRRwPqNqr28" target="_blank" rel="noopener">Book et møte</a>
@@ -254,7 +260,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
   </section>
 
   <section id="demo" class="demo" aria-label="Demo">
-  <p class="demo-note">Demoen viser hvordan en samtale med sekretæren kan gå. I dag svarer sekretæren via en lenke eller knapp på nettsiden din, i chat og med stemme. Svar på ditt eget telefonnummer, SMS og booking rett i kalenderen er under utvikling.</p>
+  <p class="demo-note">Demoen viser hvordan en samtale med sekretæren kan gå. I dag svarer sekretæren via en lenke eller knapp på nettsiden din, i chat og med stemme. Med Pro kan sekretæren booke rett i kalenderen og sende SMS til kundene. Svar på ditt eget telefonnummer er under utvikling.</p>
   <div class="controls">
     <div class="firm">
       <label for="cat">Fagområde:</label>
@@ -308,12 +314,12 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
             <div class="sms"><div class="from">Orvelo · nå</div><span id="smsText">…</span></div>
           </div>
           <div class="card" id="cardCal">
-            <h3><span class="ic">📅</span> Kalenderen din <span class="pill kommer">Kommer</span></h3>
+            <h3><span class="ic">📅</span> Kalenderen din <span class="pill ok">I Pro</span></h3>
             <div class="cal" id="cal"></div>
           </div>
         </div>
         <div class="card" id="cardCust">
-          <h3><span class="ic">✅</span> Bekreftelse til kunden <span class="pill kommer">Kommer</span></h3>
+          <h3><span class="ic">✅</span> Bekreftelse til kunden <span class="pill ok">I Pro</span></h3>
           <div class="sms"><div class="from" id="custFrom">Hansen Rør AS · nå</div><span id="custSms">…</span></div>
         </div>
       </div>
@@ -337,6 +343,39 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
     </div>
     <p class="bransjer"><b>Passer for blant annet:</b> <a href="?bransje=ror#demo">Rørlegger</a> <a href="?bransje=el#demo">Elektriker</a> <a href="?bransje=snekker#demo">Snekker / tømrer</a> <a href="?bransje=maler#demo">Maler</a> <a href="?bransje=tak#demo">Taktekker</a> <a href="?bransje=flis#demo">Flislegger / murer</a> <a href="?bransje=varme#demo">Varme / ventilasjon</a> <a href="?bransje=bil#demo">Bilverksted</a> <a href="?bransje=frisor#demo">Frisør</a> <a href="?bransje=mat#demo">Bakeri og mat</a> <a href="?bransje=las#demo">Låsesmed</a> <a href="?bransje=rengjoring#demo">Rengjøring / vaskebyrå</a> <a href="?bransje=flytting#demo">Flytting / transport</a> <a href="?bransje=dekk#demo">Dekkhotell / dekkskift</a> <a href="?bransje=dyr#demo">Hundefrisør / dyrepass</a> <a href="?bransje=skjonnhet#demo">Negl, vipper og hudpleie</a> <a href="?bransje=trening#demo">Treningssenter / PT</a> <a href="?bransje=skadedyr#demo">Skadedyrkontroll</a></p>
     <p class="vat">Under utvikling: svar på ditt eget telefonnummer. Når det er klart, får du det uten ekstra kostnad i avtaleperioden.</p>
+  </section>
+
+  <section class="sec" id="agenter" aria-labelledby="agH">
+    <div class="sec-head">
+      <div class="eyebrow">KI-agentene</div>
+      <h2 id="agH">Alt sekretæren og agentene kan gjøre</h2>
+      <p>Her er alle løsningene våre, hvilken pakke de er med i, og om de er klare nå eller kommer snart. Agentene lager utkast. Du sjekker dem og bestemmer hva som sendes.</p>
+    </div>
+    <h3 class="ag-gruppe">Sekretæren som svarer kundene</h3>
+    <div class="svcs svcs--ag">
+      <div class="svc"><div class="i">💬</div><b>Chat- og stemmesekretær <span class="pill ok">Klar</span></b><p>Svarer kundene døgnet rundt i chat og med stemme, på nettsiden din, Google og sosiale medier.</p><span class="tier">Starter, Pro og Komplett</span></div>
+      <div class="svc"><div class="i">📞</div><b>Liora på telefonen <span class="pill kommer">Kommer</span></b><p>Svarer når kundene ringer ditt eget telefonnummer, tar imot beskjeder og booker tid.</p><span class="tier">Pro og Komplett, uten ekstra kostnad</span></div>
+    </div>
+    <h3 class="ag-gruppe">Booking og oppfølging av kundene</h3>
+    <div class="svcs svcs--ag">
+      <div class="svc"><div class="i">📅</div><b>Booking i kalenderen <span class="pill ok">Klar</span></b><p>Sekretæren booker tiden rett i kalenderen din. Kunden får en lenke for å legge timen i sin egen kalender eller avbestille.</p><span class="tier">Pro og Komplett</span></div>
+      <div class="svc"><div class="i">✉️</div><b>SMS til kundene <span class="pill ok">Klar</span></b><p>Bekreftelse, påminnelse dagen før, SMS ved tapt anrop og forespørsel om Google-anmeldelse etter jobben.</p><span class="tier">Pro og Komplett</span></div>
+      <div class="svc"><div class="i">📥</div><b>Innboks for e-post og Facebook <span class="pill kommer">Kommer</span></b><p>Leser meldinger fra e-post og Facebook og lager forslag til svar som du godkjenner.</p><span class="tier">Pro og Komplett, uten ekstra kostnad</span></div>
+      <div class="svc"><div class="i">📊</div><b>Ukesrapport <span class="pill kommer">Kommer</span></b><p>En kort rapport på e-post hver mandag: hvor mange som tok kontakt, hva de lurte på og hva som ble booket.</p><span class="tier">Pro og Komplett, uten ekstra kostnad</span></div>
+    </div>
+    <h3 class="ag-gruppe">9 KI-agenter for kontorarbeidet</h3>
+    <div class="svcs svcs--ag svcs--ag3">
+      <div class="svc"><div class="i">🤝</div><b>Salg <span class="pill ok">Klar</span></b><p>Samler henvendelser fra sekretæren og foreslår hvem du bør følge opp, og hva du kan skrive.</p><span class="tier">Komplett</span></div>
+      <div class="svc"><div class="i">📣</div><b>Markedsføring <span class="pill ok">Klar</span></b><p>Skriver innlegg til Facebook og Instagram og tekster til nettsiden din.</p><span class="tier">Komplett</span></div>
+      <div class="svc"><div class="i">🧾</div><b>Tilbud <span class="pill ok">Klar</span></b><p>Ta et bilde av jobben og skriv tre linjer, så får du et tilbudsutkast med arbeid, materialer og forbehold.</p><span class="tier">Komplett</span></div>
+      <div class="svc"><div class="i">⏰</div><b>Påminnelse om tilbud <span class="pill ok">Klar</span></b><p>Holder oversikt over tilbud du har sendt, og skriver en vennlig påminnelse til kunder som ikke har svart.</p><span class="tier">Komplett</span></div>
+      <div class="svc"><div class="i">💳</div><b>Faktura <span class="pill ok">Klar</span></b><p>Lager et fakturautkast ut fra tilbudet eller det du skriver om jobben. Du legger det inn i regnskapsprogrammet ditt, for eksempel Fiken.</p><span class="tier">Komplett</span></div>
+      <div class="svc"><div class="i">🛒</div><b>Innkjøp <span class="pill ok">Klar</span></b><p>Lager innkjøpsliste til grossisten ut fra tilbudet, med antall og enhet, sortert etter kategori.</p><span class="tier">Komplett</span></div>
+      <div class="svc"><div class="i">📝</div><b>Jobbrapport <span class="pill ok">Klar</span></b><p>Gjør stikkord og bilder om til en ryddig rapport til kunden, klar til å lagre som PDF.</p><span class="tier">Komplett</span></div>
+      <div class="svc"><div class="i">🗺️</div><b>Ruteplan <span class="pill ok">Klar</span></b><p>Setter opp dagens rute ut fra timene i kalenderen, med lenke til Google Maps.</p><span class="tier">Komplett</span></div>
+      <div class="svc"><div class="i">⭐</div><b>Anmeldelser <span class="pill ok">Klar</span></b><p>Skriver forslag til svar på anmeldelser på Google.</p><span class="tier">Komplett</span></div>
+    </div>
+    <p class="vat">«Kommer» betyr at løsningen er under utvikling og ikke kan brukes ennå. Når den er klar, får du den uten ekstra kostnad i pakken som står på kortet.</p>
   </section>
 
   <section class="sec" id="pris" aria-labelledby="prisH">
