@@ -4040,7 +4040,7 @@ async function lagreSalg(env, f) {
 }
 // Prebens egne kunder som aldri skal få salgs-e-post, uansett org.nr eller adresse. Flere navn: Text-variabelen
 // SALG_SPERR_NAVN (komma mellom, f.eks. «deja vu, berg rør»).
-const SALG_ALDRI_NAVN = ["deja vu"];
+const SALG_ALDRI_NAVN = ["deja vu", "dejavu"];
 function salgNavnSperret(env, navn) {
   const n = String(navn || "").toLowerCase().replace(/[^a-z0-9æøå]+/g, " ");
   const liste = [...SALG_ALDRI_NAVN, ...String(env.SALG_SPERR_NAVN || "").split(",")].map((x) => x.toLowerCase().replace(/[^a-z0-9æøå]+/g, " ").trim()).filter(Boolean);

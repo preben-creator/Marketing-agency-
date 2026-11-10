@@ -189,6 +189,7 @@ const salgTokenFra = async (orgnr) => hmac16(await KV.get("salgnokkel"), orgnr);
 const klarFirma = async (orgnr, navn, epost, hjemmeside = "") => KV.put("salg:" + orgnr, JSON.stringify({ orgnr, navn, epost, hjemmeside, fag: "frisor", status: "klar", steg: 0, neste: "",
   eposter: [1, 2, 3, 4].map((n) => ({ emne: "Emne " + n, tekst: "Tekst " + n })), logg: [] }), { metadata: { s: "klar", n: 0 } });
 await klarFirma("900000901", "DEJA VU FRISØR AS", "post@dejavu-test.no");
+await klarFirma("900000905", "DEJAVU HÅRSTUDIO AS", "post@dejavu-test2.no");
 await klarFirma("900000902", "Domene Frisør AS", "post@domenefrisor.no");
 await klarFirma("900000903", "Laget Selv AS", "firmapost@lagetselv.no");
 await klarFirma("900000904", "Tilbud Sendt AS", "post@tilbudsendt.no");
@@ -203,9 +204,10 @@ const avtOk = await KV.get("salgsperre:900000904");
 sjekk(avt.status === 200 && avtOk && await KV.get("salgsperre:e:post@tilbudsendt.no"), "tilbud på /avtale/ny sperrer org.nr og e-post");
 const foerSperre = eposter.length;
 await cron(oslo("2026-11-18", "09:00"));
-const tilSperret = eposter.slice(foerSperre).filter((e) => e.to && ["post@dejavu-test.no", "post@domenefrisor.no", "firmapost@lagetselv.no"].includes(e.to[0]));
+await cron(oslo("2026-11-18", "09:15"));
+const tilSperret = eposter.slice(foerSperre).filter((e) => e.to && ["post@dejavu-test.no", "post@dejavu-test2.no", "post@domenefrisor.no", "firmapost@lagetselv.no"].includes(e.to[0]));
 sjekk(tilSperret.length === 0, "Deja Vu, sperret domene og egen sekretær-kunde får ingen salgs-e-post");
-sjekk((await firma(900000901)).status === "stopp" && (await firma(900000903)).status === "stopp", "de står som stoppet");
+sjekk((await firma(900000901)).status === "stopp" && (await firma(900000905)).status === "stopp" && (await firma(900000903)).status === "stopp", "de står som stoppet");
 
 // Avmeldingslenkene overlever bytte av ADMIN_KODE, og gamle lenker (signert med ADMIN_KODE) virker fortsatt
 sjekk(await KV.get("salgnokkel") && e1.text.includes("t=" + await salgTokenFra("900000100")), "avmeldingslenkene signeres med egen nøkkel (salgnokkel i KV)");
