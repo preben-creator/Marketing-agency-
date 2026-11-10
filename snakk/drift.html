@@ -48,7 +48,7 @@ td.n,th.n{text-align:right;white-space:nowrap}.rod{color:var(--bad)}.gronn{color
   <p class="msg" id="msg" style="margin:8px 0 0"></p>
 </div>
 
-<div class="tabs"><button data-t="kvalitet" class="on">Kvalitet</button><button data-t="kost">Kostnad per kunde</button><button data-t="slett">Sletting</button><button data-t="revisor">Agent-revisor</button><button data-t="leads">Lead-finner</button></div>
+<div class="tabs"><button data-t="kvalitet" class="on">Kvalitet</button><button data-t="kost">Kostnad per kunde</button><button data-t="slett">Sletting</button><button data-t="revisor">Agent-revisor</button><button data-t="leads">Lead-finner</button><button data-t="salg">Salgsmotor</button></div>
 
 <section id="t-kvalitet">
   <div class="card">
@@ -116,6 +116,26 @@ td.n,th.n{text-align:right;white-space:nowrap}.rod{color:var(--bad)}.gronn{color
   <div class="card"><div id="lRes" class="muted">Ingen søk ennå.</div></div>
 </section>
 
+<section id="t-salg" class="skjult">
+  <div class="card">
+    <h2>Salgsmotor</h2>
+    <p class="muted" style="margin:0 0 10px">Finner AS i hele Norge med rolleadresse (post@, firmapost@ …) om natta, lager egen demo og fire e-poster (dag 0, 4, 9 og 14), og sender dem på hverdager 08–16 uten at du trenger å godkjenne. Sperrelisten sjekkes før hver e-post. Du får oversikten på e-post kl. 16. Når et firma svarer: trykk «Svart», så stopper oppfølgingen.</p>
+    <div id="sStatus" class="muted">Ikke hentet ennå.</div>
+    <div class="g" style="margin-top:12px"><label>Nye firmaer per dag<select id="sPerDag"><option>5</option><option>10</option><option>15</option><option>20</option><option>30</option></select></label>
+      <label>Vis<select id="sFilter"><option value="">Alle</option><option value="klar">Klare</option><option value="sendt">I gang</option><option value="svart">Svart</option><option value="mote">Møte</option><option value="ferdig">Ferdig uten svar</option><option value="avmeldt">Avmeldt</option><option value="stopp">Stoppet</option><option value="feil">Feil</option><option value="funnet">Funnet (ikke skrevet)</option></select></label>
+      <div class="row" style="align-self:end;margin:0"><button id="sPause">Pause</button></div></div>
+    <div class="row"><button class="p" id="sHent">Oppdater</button><button id="sFinn">Finn og skriv 2 nå</button><button id="sSend">Send det som er klart nå</button><span class="msg" id="msgS2"></span></div>
+  </div>
+  <div class="card"><div id="sRes" class="muted">–</div></div>
+  <div class="card" id="sFirma" style="display:none"></div>
+  <div class="card">
+    <h2>Sperreliste</h2>
+    <p class="muted" style="margin:0 0 10px">Lim inn e-postadresser eller org.nr som aldri skal få e-post fra motoren (allerede kontaktet for hånd, sagt nei, meldt av). Én per linje.</p>
+    <textarea id="sSperr" rows="4" style="min-height:0;font-family:inherit"></textarea>
+    <div class="row"><button id="sSperrKnapp">Legg på sperrelisten</button><span class="msg" id="msgS3"></span></div>
+  </div>
+</section>
+
 <script>
 const $=(id)=>document.getElementById(id);
 const esc=(s)=>String(s??"").replace(/[&<>"]/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -128,8 +148,8 @@ async function api(body){
   if(!r.ok) throw new Error(d.feil||("Feil "+r.status));
   return d;
 }
-function vis(t){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));["kvalitet","kost","slett","revisor","leads"].forEach(x=>$("t-"+x).classList.toggle("skjult",x!==t));}
-document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{vis(b.dataset.t);if(b.dataset.t==="kost")hentKost();if(b.dataset.t==="slett")oppbevaring();if(b.dataset.t==="revisor")revKunder();if(b.dataset.t==="leads")leadValg();});
+function vis(t){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));["kvalitet","kost","slett","revisor","leads","salg"].forEach(x=>$("t-"+x).classList.toggle("skjult",x!==t));}
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{vis(b.dataset.t);if(b.dataset.t==="kost")hentKost();if(b.dataset.t==="slett")oppbevaring();if(b.dataset.t==="revisor")revKunder();if(b.dataset.t==="leads")leadValg();if(b.dataset.t==="salg")salgHent();});
 $("start").onclick=async()=>{
   try{localStorage.setItem("orvelo-admin",$("kode").value);}catch{}
   $("msg").textContent="";
@@ -246,5 +266,41 @@ $("lRes").addEventListener("click",e=>{const b=e.target.closest(".kop");if(b)nav
 $("lCsv").onclick=()=>{if(!LR)return;const k=["score","navn","orgnr","form","ansatte","kontakt","telefon","rolleepost","epost","hjemmeside","adresse","bransje","kanal","demo"];
   const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';const rows=[[...k,"emne","melding"].join(";"),...LR.rader.map(r=>[...k.map(x=>q(r[x])),q(r.melding&&r.melding.emne),q(r.melding&&r.melding.tekst)].join(";"))];
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+rows.join("\n")],{type:"text/csv"}));a.download=`leads-${LR.bransje}-${LR.kommune}.csv`.replace(/\s+/g,"-").toLowerCase();a.click();};
+// Salgsmotor
+const S_NAVN={funnet:"Funnet",klar:"Klar",sendt:"I gang",ferdig:"Ferdig uten svar",svart:"Svart",mote:"Møte",kunde:"Kunde",avmeldt:"Avmeldt",stopp:"Stoppet",feil:"Feil"};
+let SC=null;
+const sFeil=(id,e)=>$(id).innerHTML='<span class="err">'+esc(e.message)+'</span>';
+async function salgHent(){
+  $("msgS2").textContent="Henter …";
+  try{const d=await api({handling:"salg",status:$("sFilter").value});SC=d.cfg;$("msgS2").textContent="";
+    $("sPerDag").value=String(d.cfg.perDag);$("sPause").textContent=d.cfg.pause?"Slå på igjen":"Pause";$("sPause").className=d.cfg.pause?"p":"";
+    const t=d.telling;
+    $("sStatus").innerHTML=(d.av?'<b class="rod">SALG_AV = ja: motoren er slått av i Cloudflare.</b><br>':"")+(d.cfg.pause?'<b class="rod">På pause: ingenting sendes.</b><br>':'<b class="gronn">Går automatisk.</b><br>')+
+      (d.resend?`Sender fra ${esc(d.fra)}.`:'<span class="rod">Sender ikke ennå: RESEND_API_KEY mangler (venter på orvelo.no). Motoren finner og skriver likevel.</span>')+
+      `<br>I dag: ${d.idag.nye} nye av ${d.cfg.perDag}, ${d.idag.sendt.length} e-poster sendt.`+
+      `<br>${Object.entries(t).filter(([,n])=>n).map(([s,n])=>`${S_NAVN[s]}: <b>${n}</b>`).join(" · ")||"Ingen firmaer ennå."}`;
+    $("sRes").innerHTML=d.rader.length?`<table><tr><th>Firma</th><th>Status</th><th>Neste</th><th></th></tr>${d.rader.map(r=>`<tr><td><b>${esc(r.f)}</b><div class="muted">${esc(r.e)} · ${esc(r.b)} · ${esc(r.orgnr)}</div></td><td>${esc(S_NAVN[r.s]||r.s)}${r.st?` (${r.st}/4)`:""}</td><td>${r.n?esc(new Date(r.n).toLocaleDateString("nb-NO",{weekday:"short",day:"numeric",month:"short"})):"–"}</td><td><button class="sVis" data-o="${esc(r.orgnr)}">Åpne</button></td></tr>`).join("")}</table>`:"Ingen firmaer her.";
+  }catch(e){sFeil("msgS2",e);}
+}
+$("sHent").onclick=salgHent;$("sFilter").onchange=salgHent;
+$("sPerDag").onchange=async()=>{try{await api({handling:"salg-innstilling",perDag:Number($("sPerDag").value)});salgHent();}catch(e){sFeil("msgS2",e);}};
+$("sPause").onclick=async()=>{try{await api({handling:"salg-innstilling",pause:!(SC&&SC.pause)});salgHent();}catch(e){sFeil("msgS2",e);}};
+$("sFinn").onclick=async()=>{const b=$("sFinn");b.disabled=true;$("msgS2").textContent="Søker og skriver (opptil ett minutt) …";
+  try{const d=await api({handling:"salg-kjor",antall:2});$("msgS2").innerHTML='<span class="ok">'+esc(JSON.stringify(d.resultat))+'</span>';setTimeout(salgHent,800);}catch(e){sFeil("msgS2",e);}finally{b.disabled=false;}};
+$("sSend").onclick=async()=>{if(!confirm("Sende e-postene som er klare og forfalt nå (maks 10)?"))return;const b=$("sSend");b.disabled=true;
+  try{const d=await api({handling:"salg-kjor",send:true});$("msgS2").innerHTML='<span class="ok">'+esc(JSON.stringify(d.resultat))+'</span>';setTimeout(salgHent,800);}catch(e){sFeil("msgS2",e);}finally{b.disabled=false;}};
+$("sRes").addEventListener("click",async e=>{const b=e.target.closest(".sVis");if(!b)return;
+  try{const {firma:f}=await api({handling:"salg-firma",orgnr:b.dataset.o});
+    $("sFirma").style.display="";
+    $("sFirma").innerHTML=`<h2>${esc(f.navn)} <span class="tag">${esc(S_NAVN[f.status]||f.status)}</span></h2><p class="muted">${esc(f.epost)} · ${esc(f.bransje)} · ${esc(f.sted||f.kommune||"")} · ${f.ansatte} ansatte · score ${f.score??"–"}${f.hjemmeside?" · "+esc(f.hjemmeside):""}${f.demo?` · <a href="${esc(f.demo)}" target="_blank" rel="noopener" style="color:var(--acc2)">demo</a>`:""}</p>
+      <div class="row">${["svart","mote","kunde","stopp"].map(s=>`<button class="sMerk" data-o="${esc(f.orgnr)}" data-s="${s}">${{svart:"Svart (stopp oppfølging)",mote:"Møte booket",kunde:"Ble kunde",stopp:"Stopp og sperr"}[s]}</button>`).join("")}</div>
+      ${(f.forhand||[]).map((m,i)=>`<div class="sam ${i<f.steg?"v-riktig":""}"><div class="topp">E-post ${i+1} · dag ${[0,4,9,14][i]}${i<f.steg?' · <span class="gronn">sendt</span>':""} <button class="sTest" data-o="${esc(f.orgnr)}" data-i="${i}" style="margin-left:auto;padding:3px 9px;font-size:12px">Send test til meg</button></div><div class="muted">Emne: ${esc(m.emne)}</div><div class="m ai">${esc(m.tekst)}</div></div>`).join("")}
+      <h2 style="margin-top:14px">Logg</h2>${(f.logg||[]).slice().reverse().map(l=>`<div class="muted">${esc(new Date(l.tid).toLocaleString("nb-NO"))}: ${esc(l.hva)}</div>`).join("")}`;
+    $("sFirma").scrollIntoView({behavior:"smooth"});
+  }catch(err){sFeil("msgS2",err);}});
+$("sFirma").addEventListener("click",async e=>{const m=e.target.closest(".sMerk"),t=e.target.closest(".sTest");
+  try{if(m){if(m.dataset.s==="stopp"&&!confirm("Stoppe og sette firmaet på sperrelisten for godt?"))return;await api({handling:"salg-merk",orgnr:m.dataset.o,status:m.dataset.s});m.textContent="Lagret";salgHent();}
+    if(t){await api({handling:"salg-test",orgnr:t.dataset.o,steg:Number(t.dataset.i)});t.textContent="Sendt til deg";}}catch(err){alert(err.message);}});
+$("sSperrKnapp").onclick=async()=>{try{const d=await api({handling:"salg-sperr",liste:$("sSperr").value});$("msgS3").innerHTML=`<span class="ok">${d.lagt} lagt på sperrelisten.</span>`;$("sSperr").value="";}catch(e){sFeil("msgS3",e);}};
 </script>
 </div></body></html>
