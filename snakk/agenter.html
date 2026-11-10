@@ -237,7 +237,7 @@ details{border-top:1px solid var(--line);padding:10px 0}details summary{cursor:p
       <div class="row"><input id="gSok" placeholder="Bedriftens navn og sted, f.eks. Rør og Bad Bergen" style="flex:1;min-width:220px"><button id="gFinn">Finn i Google</button></div>
       <div id="gSteder"></div>
     </div>
-    <div id="gKlar" hidden><div class="row"><button class="p" id="gHent">Hent nye anmeldelser</button><button class="liten" id="gBytt">Bytt bedrift</button><span class="msg" id="gMsg"></span></div><div id="gRes"></div></div>
+    <div id="gKlar" hidden><p class="hint" id="gAuto"></p><div class="row"><button class="p" id="gHent">Hent nye anmeldelser</button><button class="liten" id="gBytt">Bytt bedrift</button><span class="msg" id="gMsg"></span></div><div id="gRes"></div></div>
   </section>
   <section class="card">
     <h2>Svar på en Google-anmeldelse</h2>
@@ -469,12 +469,14 @@ VIS.anmeldelse=r=>`<p class="liten-t">${r.kilde==="google"?'<span class="merk">f
 $("anmForm").addEventListener("submit",async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));const b=e.submitter;b.disabled=true;
   const r=await kjor("anmeldelse",f,"anmMsg");b.disabled=false;if(r)$("anmRes").innerHTML=VIS.anmeldelse(r);});
 
-function visGoogle(){const g=D.google||{};$("gIkke").hidden=!!g.klar;$("gVelg").hidden=!g.klar||!!g.placeId;$("gKlar").hidden=!g.klar||!g.placeId;}
+function visGoogle(){const g=D.google||{};$("gIkke").hidden=!!g.klar;$("gVelg").hidden=!g.klar||!!g.placeId;$("gKlar").hidden=!g.klar||!g.placeId;
+  if(!$("gSok").value&&g.sok)$("gSok").value=g.sok;
+  $("gAuto").innerHTML=g.placeId?(g.auto?`Fant bedriften automatisk: <b>${esc(g.auto.navn)}</b>${g.auto.adresse?", "+esc(g.auto.adresse):""}. Nye anmeldelser sjekkes hver morgen kl. 07, og du får e-post med svarforslag. Feil sted? Trykk «Bytt bedrift».`:"Nye anmeldelser sjekkes hver morgen kl. 07, og du får e-post med svarforslag."):"";}
 $("gFinn").addEventListener("click",async()=>{$("gSteder").innerHTML='<p class="hint">Søker …</p>';
   try{const d=await post("/agenter/anmeldelser/finn",{sok:$("gSok").value});$("gSteder").innerHTML=d.steder.length?d.steder.map(x=>`<div class="lead-k"><b>${esc(x.navn)}</b><p class="liten-t">${esc(x.adresse||"")}${x.rating?` · ${x.rating} ★ (${x.antall})`:""}</p><button class="liten p" data-place="${esc(x.placeId)}">Dette er oss</button></div>`).join(""):'<p class="hint">Fant ingen. Prøv med sted.</p>';}
   catch(err){$("gSteder").innerHTML=`<p class="msg err">${esc(err.message)}</p>`;}});
 $("gSteder").addEventListener("click",async e=>{const id=e.target.dataset.place;if(!id)return;try{const d=await post("/agenter/anmeldelser/sted",{placeId:id});D.google.placeId=d.placeId;visGoogle();$("gHent").click();}catch(err){alert(err.message);}});
-$("gBytt").addEventListener("click",()=>{D.google.placeId="";visGoogle();});
+$("gBytt").addEventListener("click",()=>{D.google.placeId="";D.google.auto=null;visGoogle();});
 $("gHent").addEventListener("click",async()=>{const b=$("gHent");b.disabled=true;$("gMsg").className="msg";$("gMsg").textContent="Henter og skriver svar (opptil ett minutt) …";
   try{const d=await post("/agenter/anmeldelser/hent");$("gMsg").textContent=`${d.sted.navn||""}: ${d.sted.rating||"?"} ★ av ${d.sted.antall} anmeldelser. ${d.nye.length?d.nye.length+" nye med svarforslag.":"Ingen nye siden sist."}`;
     $("gRes").innerHTML=d.nye.map(r=>`<div class="lead-k">${VIS.anmeldelse(r)}</div>`).join("")+(d.sted.url?`<p class="liten-t"><a href="${esc(d.sted.url)}" target="_blank" rel="noopener" style="color:var(--acc2)">Åpne bedriften i Google Maps for å svare</a></p>`:"");
