@@ -185,3 +185,14 @@ Godt å vite:
 ## Svar på e-post og Facebook (egen worker `orvelo-innboks`)
 
 Se [INNBOKS.md](INNBOKS.md). Bruker samme KV-lager og rettekode som `/rediger`.
+
+## Kontaktskjemaet på nettsiden (`/kontakt`)
+
+Skjemaet på orvelo.no sender til `POST /kontakt` på denne workeren i stedet for FormSubmit.
+
+- Henvendelsen lagres i KV (`henvendelse:<tid>:<id>`) og slettes automatisk etter 12 måneder, slik personvernerklæringen sier.
+- Du får SMS om nye henvendelser når `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` og `TWILIO_FROM` er satt. Mottaker er `VARSEL_MOBIL` (Text, standard 412 32 557).
+- Er `RESEND_API_KEY` satt, får du også e-post til `VARSEL_EPOST`. Det samme gjelder de andre varslene fra workeren, som da ikke lenger går via FormSubmit.
+- Alle henvendelser som JSON: `/kontakt/liste?a=<ADMIN_KODE>`.
+
+Nettsiden faller tilbake til FormSubmit bare hvis `/kontakt` svarer 404, altså før denne koden er lastet opp.
