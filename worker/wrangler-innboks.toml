@@ -1,0 +1,11 @@
+# Deploy-oppsett for orvelo-innboks. Se wrangler-sekretar.toml.
+name = "orvelo-innboks"
+main = "innboks-worker.js"
+compatibility_date = "2026-11-09"
+workers_dev = true
+keep_vars = true
+
+kv_namespaces = [{ binding = "KUNDER", id = "694cc63a2de84ee1b952c509b842cebc" }]
+
+[observability]
+enabled = true
