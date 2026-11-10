@@ -103,6 +103,12 @@ export default {
   },
 
   // Cron Triggers (Settings -> Triggers -> Cron): */15 * * * * = påminnelser og anmeldelses-SMS, 0 6 * * 1 = ukesrapport.
+  // Cloudflare Email Routing: svar@orvelo.no -> denne workeren. Svar på salgs-e-postene leses og besvares av svaragenten.
+  async email(message, env, ctx) {
+    try { await salgEpostInn(message, env); }
+    catch (e) { console.log("e-post inn feilet", e && e.stack); }
+  },
+
   async scheduled(event, env, ctx) {
     // Ukesrapporten har sin egen cron (0 6 * * 1). Alle andre cron-er kjører SMS-runden.
     if (event && event.cron === "0 6 * * 1") {
@@ -4014,13 +4020,19 @@ const SALG_STATUS = ["funnet", "klar", "sendt", "ferdig", "svart", "mote", "kund
 function salgUkedag(dato) { return new Date(dato + "T12:00:00Z").getUTCDay(); }
 async function salgCfg(env) {
   const c = (await env.KUNDER.get("salgcfg", "json")) || {};
-  return { pause: !!c.pause, perDag: tilTall(c.perDag ?? env.SALG_PER_DAG, 1, 30, 10), peker: c.peker || { b: 0, side: 0 }, runde: c.runde || 0 };
+  return { pause: !!c.pause, perDag: tilTall(c.perDag ?? env.SALG_PER_DAG, 1, 50, 30), peker: c.peker || { b: 0, side: 0 }, runde: c.runde || 0 };
 }
 async function lagreSalgCfg(env, c) { await env.KUNDER.put("salgcfg", JSON.stringify(c)); }
 async function lagreSalg(env, f) {
   f.endret = new Date().toISOString();
+  if (f.epost && !f.indeksert) {
+    await env.KUNDER.put("salgepost:" + f.epost, f.orgnr, { expirationTtl: SALG_TTL });
+    const dom = f.epost.split("@")[1];
+    if (dom && !VANLIGE_DOMENER.test(dom)) await env.KUNDER.put("salgdomene:" + dom, f.orgnr, { expirationTtl: SALG_TTL });
+    f.indeksert = true;
+  }
   await env.KUNDER.put("salg:" + f.orgnr, JSON.stringify(f), { expirationTtl: SALG_TTL,
-    metadata: { s: f.status, n: f.neste ? Date.parse(f.neste) : 0, f: String(f.navn || "").slice(0, 60), e: String(f.epost || "").slice(0, 80), st: f.steg || 0, b: f.fag || "" } });
+    metadata: { s: f.status, n: f.neste ? Date.parse(f.neste) : 0, f: String(f.navn || "").slice(0, 60), e: String(f.epost || "").slice(0, 80), st: f.steg || 0, b: f.fag || "", tp: f.trengerPreben ? 1 : 0 } });
 }
 async function salgSperret(env, orgnr, epost) {
   const [a, b] = await Promise.all([env.KUNDER.get("salgsperre:" + orgnr), epost ? env.KUNDER.get("salgsperre:e:" + String(epost).toLowerCase()) : null]);
@@ -4179,7 +4191,7 @@ async function salgRunde(env, naa = Date.now(), tving = {}) {
         await lagreSalgCfg(env, cfg);
       }
       if (env.XAI_API_KEY) {
-        const kandidater = (await salgListe(env, ["funnet"])).slice(0, tving.antall || 2);
+        const kandidater = (await salgListe(env, ["funnet"])).slice(0, tving.antall || 3);
         ut.skrevet = 0;
         for (const k of kandidater) {
           const f = await env.KUNDER.get(k.name, "json");
@@ -4199,7 +4211,7 @@ async function salgRunde(env, naa = Date.now(), tving = {}) {
       const forfalt = (await salgListe(env, ["sendt"])).filter((k) => k.metadata.n && k.metadata.n <= naa);
       const nye = cfg.pause ? [] : (await salgListe(env, ["klar"])).sort((a, b) => String(a.name).localeCompare(b.name));
       const plass = Math.max(0, cfg.perDag - dag.nye);
-      const kø = [...forfalt, ...nye.slice(0, plass)].slice(0, tving.send ? 10 : 3);
+      const kø = [...forfalt, ...nye.slice(0, plass)].slice(0, tving.send ? 10 : 4);
       ut.sendt = 0;
       for (const k of kø) {
         const f = await env.KUNDER.get(k.name, "json");
@@ -4244,10 +4256,11 @@ async function salgDagsrapport(env, dato) {
   await varsle(env, `Salgsmotoren ${dato}: ${d.sendt.length} e-poster sendt`, [
     cfg.pause ? "Salgsmotoren står på PAUSE. Ingen nye firmaer får e-post før du slår den på igjen på /drift." : `Nye firmaer i dag: ${d.nye} av maks ${cfg.perDag}.`,
     "", d.sendt.length ? "Sendt i dag:\n" + d.sendt.map((x) => "- " + x).join("\n") : "Ingenting sendt i dag.",
+    (d.svar || []).length ? "\nSvar i dag:\n" + d.svar.map((x) => "- " + x).join("\n") : "",
     d.avmeldt.length ? "\nMeldte seg av: " + d.avmeldt.join(", ") : "",
     d.feil.length ? "\nFeil:\n" + d.feil.map((x) => "- " + x).join("\n") : "",
     "", `Totalt: ${t.klar} klare, ${t.sendt} i gang, ${t.ferdig} ferdige uten svar, ${t.svart} svart, ${t.mote} møter, ${t.kunde} kunder, ${t.avmeldt} avmeldt.`,
-    "Svar fra firmaene kommer til innboksen din. Når noen svarer, trykk «Svart» (eller «Stopp») på firmaet i fanen Salg, så stopper oppfølgingen.",
+    "Svaragenten svarer på svar som kommer til svaradressen. Svar som havner i Gmail kan du lime inn i fanen Salgsmotor, så tar agenten dem.",
     "", `Pause, tall og alle e-postene: ${env.SEKRETAR_URL || SEKRETAR_URL_DEFAULT}/drift`,
   ].filter((x) => x !== ""));
   d.rapportert = new Date().toISOString();
@@ -4276,7 +4289,7 @@ async function salgDrift(env, b) {
   if (h === "salg-innstilling") {
     const cfg = await salgCfg(env);
     if (typeof b.pause === "boolean") cfg.pause = b.pause;
-    if (b.perDag !== undefined) cfg.perDag = tilTall(b.perDag, 1, 30, cfg.perDag);
+    if (b.perDag !== undefined) cfg.perDag = tilTall(b.perDag, 1, 50, cfg.perDag);
     await lagreSalgCfg(env, cfg);
     return { cfg };
   }
@@ -4308,6 +4321,13 @@ async function salgDrift(env, b) {
     if (b.send && !env.RESEND_API_KEY) throw Object.assign(new Error("RESEND_API_KEY mangler, så ingenting kan sendes ennå."), { status: 400 });
     return { resultat: await salgRunde(env, Date.now(), b.send ? { send: true } : { finn: true, antall: tilTall(b.antall, 1, 3, 2) }) };
   }
+  if (h === "salg-svar") {
+    // Lim inn et svar fra Gmail (til e-post kommer rett til workeren via svar@orvelo.no)
+    const fra = epostAdr(b.fra);
+    if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(fra) || !tekst(b.tekst)) throw Object.assign(new Error("Skriv avsenderens e-post og teksten i svaret."), { status: 400 });
+    if (!env.XAI_API_KEY) throw Object.assign(new Error("XAI_API_KEY mangler."), { status: 500 });
+    return { resultat: await salgSvar(env, { fra, emne: tekst(b.emne, 200), tekst: String(b.tekst).slice(0, 8000), messageId: "" }) };
+  }
   if (h === "salg-test") {
     // Sender e-post nr. steg til Preben selv, for å se hvordan den ser ut i innboksen
     const f = await env.KUNDER.get("salg:" + String(b.orgnr || "").replace(/\D/g, ""), "json");
@@ -4317,4 +4337,177 @@ async function salgDrift(env, b) {
     return { ok: true };
   }
   throw Object.assign(new Error("Ukjent salg-handling."), { status: 400 });
+}
+
+// ======================================================================
+// Svaragenten: leser svar på salgs-e-postene, sorterer dem og svarer selv (Prebens valg 10.11.2026).
+//   avmeld / nei      -> sperreliste, kort bekreftelse, aldri mer e-post
+//   autosvar (ferie)   -> ingenting, sekvensen fortsetter
+//   interessert / spørsmål / annet -> oppfølgingen stopper, agenten svarer ut fra faste fakta om Orvelo
+//                         (priser, prøveperiode, demo, booking). Vet den ikke svaret, sier den at Preben svarer.
+// Maks SALG_MAKS_SVAR (standard 3) automatiske svar per firma, deretter tar Preben over. Preben får kopi av alt.
+// Svar kommer inn via Cloudflare Email Routing (svar@orvelo.no -> workeren, email()) eller limes inn på /drift.
+// SALG_AUTOSVAR = "nei" slår av svarene (sortering og sperreliste virker fortsatt).
+// ======================================================================
+const VANLIGE_DOMENER = /^(gmail\.com|hotmail\.com|hotmail\.no|outlook\.com|live\.no|live\.com|yahoo\.com|yahoo\.no|online\.no|icloud\.com|me\.com|msn\.com)$/i;
+const SALG_FAKTA = `- Orvelo leverer en KI-sekretær som svarer kundene på bedriftens nettside med chat og stemme døgnet rundt, ut fra bedriftens egne opplysninger (tjenester, priser, åpningstider). Den foreslår ledige timer og tar imot beskjeder.
+- Pakker (alle priser eks. mva, per måned): Starter 790 kr (sekretær på nettsiden, 50 taleminutter). Pro 1 490 kr (+ booking i kalender og SMS-bekreftelse og påminnelse, 200 minutter og 200 SMS). Komplett 2 990 kr (+ 10 KI-agenter for tilbud, faktura, anmeldelser m.m., 500 minutter og 500 SMS). Ekstra minutt 5 kr, ekstra SMS 1 kr. Chat er ubegrenset.
+- 14 dager gratis prøve. Etter prøveperioden er avtalen 12 måneder, og den fornyes automatisk hvis den ikke sies opp senest 2 måneder før.
+- Ingen oppstartspris. Oppsett: vi lager sekretæren fra nettsiden deres, dere retter selv, og den legges inn på nettsiden med én kodelinje (eller som lenke).
+- Svar på telefon er under utvikling og ikke klart ennå. Lov det aldri.
+- Data: samtaler lagres i 30 dager. Språkmodellen er fra xAI (USA), med databehandleravtale og nullagring hos dem.
+- Avsender: Preben Hilleren, Orvelo (Hilleren Markedsføring, org.nr 938 720 673), Bergen, tlf 412 32 557.`;
+
+function mimeDekod(tekstInn, enc, charset) {
+  let bytes;
+  if (/base64/i.test(enc)) { try { bytes = Uint8Array.from(atob(tekstInn.replace(/\s+/g, "")), (c) => c.charCodeAt(0)); } catch { return tekstInn; } }
+  else if (/quoted-printable/i.test(enc)) {
+    const t = tekstInn.replace(/=\r?\n/g, "");
+    const ut = [];
+    for (let i = 0; i < t.length; i++) {
+      if (t[i] === "=" && /^[0-9A-F]{2}$/i.test(t.slice(i + 1, i + 3))) { ut.push(parseInt(t.slice(i + 1, i + 3), 16)); i += 2; }
+      else ut.push(t.charCodeAt(i) & 255);
+    }
+    bytes = new Uint8Array(ut);
+  } else return tekstInn;
+  try { return new TextDecoder(/latin|8859|1252/i.test(charset || "") ? "windows-1252" : "utf-8").decode(bytes); } catch { return new TextDecoder().decode(bytes); }
+}
+function mimeHoder(blokk) {
+  const h = {};
+  for (const linje of blokk.replace(/\r?\n[ \t]+/g, " ").split(/\r?\n/)) {
+    const i = linje.indexOf(":");
+    if (i > 0) h[linje.slice(0, i).trim().toLowerCase()] = linje.slice(i + 1).trim();
+  }
+  return h;
+}
+function ordDekod(v) { // =?utf-8?B?...?= og =?utf-8?Q?...?= i emnefeltet
+  return String(v || "").replace(/=\?([^?]+)\?([bq])\?([^?]*)\?=/gi, (_, cs, e, t) => mimeDekod(e.toLowerCase() === "b" ? t : t.replace(/_/g, " "), e.toLowerCase() === "b" ? "base64" : "quoted-printable", cs));
+}
+// Finner ren tekst i en rå e-post (tar text/plain, ellers text/html uten tagger)
+function lesRaaEpost(raa) {
+  const skille = raa.search(/\r?\n\r?\n/);
+  const hoder = mimeHoder(skille > 0 ? raa.slice(0, skille) : raa);
+  const kropp = skille > 0 ? raa.slice(skille).replace(/^\r?\n\r?\n/, "") : "";
+  const del = (h, k) => {
+    const ct = h["content-type"] || "text/plain";
+    const grense = (ct.match(/boundary="?([^";]+)"?/i) || [])[1];
+    if (/multipart/i.test(ct) && grense) {
+      const deler = k.split("--" + grense).slice(1).filter((x) => !x.startsWith("--"));
+      const tolket = deler.map((d) => { const s2 = d.replace(/^\r?\n/, "").search(/\r?\n\r?\n/); const dd = d.replace(/^\r?\n/, ""); return { h: mimeHoder(dd.slice(0, s2)), k: dd.slice(s2).replace(/^\r?\n\r?\n/, "") }; });
+      for (const t of tolket) { const r = del(t.h, t.k); if (r && r.type === "plain") return r; }
+      for (const t of tolket) { const r = del(t.h, t.k); if (r) return r; }
+      return null;
+    }
+    const cs = (ct.match(/charset="?([^";]+)"?/i) || [])[1];
+    const tekstUt = mimeDekod(k, h["content-transfer-encoding"] || "", cs);
+    if (/text\/plain/i.test(ct)) return { type: "plain", tekst: tekstUt };
+    if (/text\/html/i.test(ct)) return { type: "html", tekst: htmlTilTekst(tekstUt) };
+    return null;
+  };
+  const r = del(hoder, kropp);
+  return { hoder, emne: ordDekod(hoder.subject), tekst: r ? r.tekst : "" };
+}
+// Fjerner sitert tekst («Den ... skrev:», linjer med >, vår egen fot)
+function utenSitat(t) {
+  const linjer = String(t || "").replace(/\r/g, "").split("\n");
+  const ut = [];
+  for (const l of linjer) {
+    if (/^\s*>/.test(l)) continue;
+    if (/^(Den|On|Fra:|From:|-----\s*Original|Sendt fra|Sent from).{0,200}(skrev|wrote|Original|:)/i.test(l.trim()) && ut.join("").trim()) break;
+    if (/^--\s*$/.test(l) && ut.join("").trim()) break;
+    ut.push(l);
+  }
+  return ut.join("\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, 4000);
+}
+const epostAdr = (v) => (String(v || "").match(/<([^>]+)>/) || [, String(v || "")])[1].trim().toLowerCase();
+
+async function salgEpostInn(message, env) {
+  const raa = await new Response(message.raw).text();
+  const e = lesRaaEpost(raa.slice(0, 400000));
+  return salgSvar(env, { fra: epostAdr(message.from || e.hoder.from), emne: e.emne, tekst: e.tekst, messageId: e.hoder["message-id"] || "",
+    auto: /auto-(replied|generated)/i.test(e.hoder["auto-submitted"] || "") || /^(bulk|auto_reply|junk)$/i.test(e.hoder.precedence || "") || !!e.hoder["x-autoreply"] });
+}
+
+async function salgSvar(env, inn) {
+  const fra = epostAdr(inn.fra);
+  const rent = utenSitat(inn.tekst);
+  const egen = epostAdr(env.SALG_FRA || "preben@orvelo.no").split("@")[1];
+  if (!fra || fra.endsWith("@" + egen) || /^(mailer-daemon|postmaster|no-?reply|noreply|bounce)/i.test(fra)) return { hva: "ignorert", grunn: "avsender" };
+  const orgnr = (await env.KUNDER.get("salgepost:" + fra)) || (await env.KUNDER.get("salgdomene:" + fra.split("@")[1]));
+  const f = orgnr && (await env.KUNDER.get("salg:" + orgnr, "json"));
+  if (!f) {
+    await varsle(env, "Svar fra ukjent avsender: " + tekst(inn.emne, 80), [`Fra: ${fra}`, `Emne: ${inn.emne}`, "", rent || "(tom)", "", "Fant ikke firmaet i salgsmotoren, så agenten har ikke svart."]);
+    return { hva: "ukjent" };
+  }
+  const naa = new Date().toISOString();
+  f.samtale = [...(f.samtale || []), { tid: naa, fra: "kunde", epost: fra, emne: tekst(inn.emne, 120), tekst: rent.slice(0, 2000) }].slice(-12);
+  const tidligere = (f.samtale || []).map((m) => `${m.fra === "kunde" ? "KUNDEN" : "ORVELO"}: ${m.tekst}`).join("\n\n");
+  const sendtTekst = f.eposter.slice(0, Math.max(1, f.steg)).map((x, i) => `E-post ${i + 1} fra Orvelo: ${x.tekst}`).join("\n\n");
+  let k = { kategori: inn.auto ? "autosvar" : "", svar: "", trenger_preben: false, oppsummering: "" };
+  if (!inn.auto) {
+    k = await grokJson(env, `Du er salgsassistenten til Preben i Orvelo og svarer på e-post fra ${f.navn} (${f.bransje}), som har fått salgs-e-post fra oss.
+
+# Fakta om Orvelo (det eneste du kan bruke)
+${SALG_FAKTA}
+- Demo laget til dem: ${f.demo}
+- Book en prat på 15 minutter med Preben: ${SALG_BOOK}
+
+# Oppgave
+1. kategori: "interessert" (vil vite mer, prøve, møtes), "sporsmal" (spør om noe), "nei" (ikke interessert), "avmeld" (vil ikke ha flere e-poster), "autosvar" (fravær/automatisk), "annet".
+2. svar: e-posten vi sender tilbake. Norsk bokmål, du-form, vennlig og kort (maks 120 ord). Begynn med «Hei,». Ingen signatur.
+   - interessert: takk, foreslå en prat via bookinglenken, eller tilby å sette opp 14 dagers gratis prøve (da trenger vi adressen til nettsiden og hvem som skal få beskjedene). Spør om én ting om gangen.
+   - sporsmal: svar bare med fakta over, og avslutt med neste steg (gratis prøve eller bookinglenken). Bare hvis et av spørsmålene ikke kan besvares med fakta over, skriv at Preben svarer på akkurat det innen én arbeidsdag, og sett trenger_preben = true. Er alt besvart, ikke nevn Preben.
+   - Rabatt eller egen pris: si verken ja eller nei, skriv at Preben tar det med dem, og sett trenger_preben = true.
+   - nei: én setning takk, og at vi ikke skriver mer.
+   - avmeld: én setning om at adressen er fjernet.
+   - autosvar: tomt svar.
+   - Lov aldri noe som ikke står i fakta. Ber de om pristilbud, avtale, møte på et bestemt tidspunkt, at noen ringer dem, eller er de misfornøyde: svar kort og høflig, og sett trenger_preben = true.
+3. oppsummering: én setning til Preben om hva kunden vil.
+
+Svar bare med JSON: {"kategori":"","svar":"","trenger_preben":false,"oppsummering":""}`,
+      `Våre e-poster:\n${sendtTekst}\n\nSamtalen så langt:\n${tidligere}`, 0.3);
+  }
+  const kat = ["interessert", "sporsmal", "nei", "avmeld", "autosvar", "annet"].includes(k.kategori) ? k.kategori : "annet";
+  const antallSvar = (f.samtale || []).filter((m) => m.fra === "agent").length;
+  const maks = tilTall(env.SALG_MAKS_SVAR, 0, 10, 3);
+  const dato = osloDeler(Date.now()).dato;
+  const dag = await salgDagTall(env, dato);
+  dag.svar = [...(dag.svar || []), `${f.navn}: ${kat}${k.oppsummering ? " (" + tekst(k.oppsummering, 120) + ")" : ""}`];
+  if (kat === "autosvar") {
+    f.logg.push({ tid: naa, hva: "Autosvar mottatt, sekvensen fortsetter" });
+    await lagreSalg(env, f); await lagreSalgDag(env, dato, dag);
+    return { hva: "autosvar" };
+  }
+  if (kat === "nei" || kat === "avmeld") {
+    await sperrSalg(env, { orgnr: f.orgnr, epost: f.epost, grunn: kat });
+    if (fra !== f.epost) await sperrSalg(env, { epost: fra, grunn: kat });
+    f.status = kat === "avmeld" ? "avmeldt" : "stopp";
+  } else if (!["mote", "kunde"].includes(f.status)) f.status = "svart";
+  f.neste = "";
+  let sendt = false;
+  const svarTekst = tekst(k.svar, 1500);
+  const kanSvare = env.SALG_AUTOSVAR !== "nei" && env.RESEND_API_KEY && svarTekst && antallSvar < maks;
+  if (kanSvare) {
+    const emne = /^(re|sv):/i.test(inn.emne || "") ? tekst(inn.emne, 120) : "Sv: " + tekst(inn.emne || f.eposter[0].emne, 110);
+    const tekstUt = `${svarTekst}\n\nHilsen\nPreben Hilleren\nOrvelo · 412 32 557\n\n--\nDette svaret er skrevet av Orvelos KI-assistent. Preben leser med og tar over når det trengs.`;
+    try {
+      await sendEpost(env, { til: fra, emne, tekst: tekstUt, html: `<div style="font:15px/1.55 Arial,sans-serif;color:#1d1b2b;max-width:600px">${esc(tekstUt).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>').replace(/\n/g, "<br>")}</div>`,
+        fra: env.SALG_FRA || "Preben i Orvelo <preben@orvelo.no>", svarTil: env.SALG_SVAR_TIL || env.VARSEL_EPOST || "hilleren.bedrift@gmail.com",
+        bcc: env.VARSEL_EPOST || "hilleren.bedrift@gmail.com", hoder: inn.messageId ? { "In-Reply-To": inn.messageId, References: inn.messageId } : undefined });
+      sendt = true;
+      f.samtale.push({ tid: new Date().toISOString(), fra: "agent", tekst: svarTekst });
+    } catch (e) { f.logg.push({ tid: new Date().toISOString(), hva: "Svaret kunne ikke sendes: " + tekst(e.message, 120) }); }
+  }
+  f.logg.push({ tid: naa, hva: `Svar mottatt (${kat})${sendt ? ", agenten svarte" : ""}${k.trenger_preben || (!sendt && kat !== "nei" && kat !== "avmeld") ? ", trenger Preben" : ""}` });
+  f.trengerPreben = !!(k.trenger_preben || (!sendt && !["nei", "avmeld"].includes(kat)));
+  await lagreSalg(env, f);
+  await lagreSalgDag(env, dato, dag);
+  if (!["nei", "avmeld"].includes(kat) || !sendt) {
+    await varsle(env, `${f.trengerPreben ? "TRENGER DEG: " : ""}${f.navn} svarte (${kat})`, [
+      k.oppsummering || "", "", `Fra: ${fra}`, `Emne: ${inn.emne}`, "", rent || "(tom)", "",
+      sendt ? "Agenten svarte:\n" + svarTekst : antallSvar >= maks ? `Agenten har alt svart ${maks} ganger, så nå er det din tur.` : "Agenten svarte ikke. Svar selv fra innboksen.",
+      "", `Firmaet i salgsmotoren: ${env.SEKRETAR_URL || SEKRETAR_URL_DEFAULT}/drift`,
+    ].filter((x, i, a) => !(x === "" && a[i - 1] === "")));
+  }
+  return { hva: kat, sendt, trengerPreben: f.trengerPreben };
 }
