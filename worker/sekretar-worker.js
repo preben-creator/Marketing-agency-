@@ -4091,6 +4091,8 @@ async function driftRute(request, env, ctx, url) {
 // ======================================================================
 const SALG_DAGER = [0, 4, 9, 14];
 const SALG_TTL = 120 * 86400;
+// Prebens egen e-post (10.11.2026): svar fra firmaene går hit. SALG_SVAR_TIL overstyrer.
+const SALG_SVARADRESSE = "orvelo@epost.no";
 const SALG_BOOK = "https://calendar.app.google/24niGvpRRwPqNqr28";
 const SALG_STATUS = ["funnet", "klar", "sendt", "ferdig", "svart", "mote", "kunde", "avmeldt", "stopp", "feil"];
 
@@ -4328,7 +4330,7 @@ async function salgSend(env, f, til) {
   const fra = salgFra(env);
   if (!fra) throw new Error(salgFraFeil(env));
   return sendEpost(env, { til: til || f.epost, emne: m.emne, tekst: m.tekst, html: m.html,
-    fra, svarTil: env.SALG_SVAR_TIL || env.VARSEL_EPOST || "hilleren.bedrift@gmail.com",
+    fra, svarTil: env.SALG_SVAR_TIL || SALG_SVARADRESSE,
     hoder: { "List-Unsubscribe": `<${m.avmeld}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } });
 }
 
@@ -4728,6 +4730,6 @@ async function salgSendSvar(env, u, godkjent) {
   const tekstUt = `${u.tekst}\n\nHilsen\nPreben Hilleren\nOrvelo · 412 32 557\n\n--\n${godkjent ? "Dette svaret er skrevet med hjelp av Orvelos KI-assistent og lest av Preben." : "Dette svaret er skrevet av Orvelos KI-assistent. Preben leser med og tar over når det trengs."}`;
   return sendEpost(env, { til: u.til, emne: u.emne, tekst: tekstUt,
     html: `<div style="font:15px/1.55 Arial,sans-serif;color:#1d1b2b;max-width:600px">${esc(tekstUt).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>').replace(/\n/g, "<br>")}</div>`,
-    fra, svarTil: env.SALG_SVAR_TIL || env.VARSEL_EPOST || "hilleren.bedrift@gmail.com",
+    fra, svarTil: env.SALG_SVAR_TIL || SALG_SVARADRESSE,
     bcc: env.VARSEL_EPOST || "hilleren.bedrift@gmail.com", hoder: u.messageId ? { "In-Reply-To": u.messageId, References: u.messageId } : undefined });
 }

@@ -104,7 +104,7 @@ sjekk((await KV.get("salgcfg", "json")).start === "2026-11-10", "første sendeda
 sjekk(!tilFirma.some((e) => ["post@frisor1.no", "post@frisor2.no"].includes(e.to[0])), "sperrede adresser fikk ingenting");
 sjekk((await firma(900000101)).status === "stopp", "sperret firma står som stoppet");
 const e1 = tilFirma.find((e) => e.to[0] === "post@frisor0.no");
-sjekk(e1 && e1.from === "Preben i Orvelo <preben@orvelo-post.no>" && e1.reply_to === "hilleren.bedrift@gmail.com", "sendt fra SALG_FRA, svar går til Prebens innboks");
+sjekk(e1 && e1.from === "Preben i Orvelo <preben@orvelo-post.no>" && e1.reply_to === "orvelo@epost.no", "sendt fra salgsdomenet, svar går til orvelo@epost.no");
 sjekk(e1 && /\/avmeld\?o=900000100&t=[0-9a-f]{16}/.test(e1.text) && e1.headers["List-Unsubscribe"].includes("/avmeld?o=900000100") && e1.headers["List-Unsubscribe-Post"], "avmeldingslenke i teksten og i List-Unsubscribe");
 sjekk(e1 && e1.text.includes("aksjeselskap") && e1.text.includes("938 720 673") && e1.html.includes("<a href="), "avsender med org.nr, klikkbare lenker i HTML");
 sjekk((await firma(900000100)).status === "sendt" && (await firma(900000100)).steg === 1, "firma står som i gang, steg 1");
