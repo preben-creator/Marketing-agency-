@@ -210,6 +210,8 @@ async function hovedFetch(request, env, ctx) {
         profil.id = id;
         profil.oppdatert = new Date().toISOString();
         await env.KUNDER.put("kunde:" + id, JSON.stringify(profil));
+        // Preben jobber med dette firmaet selv, så salgsmotoren skal ikke sende det e-post i tillegg.
+        await salgSperrKunde(env, { epost: profil.epost, nettside: profil.nettside || body.nettside });
         const lenke = await demoLenke(url, env, id);
         return json({ id, lenke, profil }, 200);
       } catch (e) {
@@ -727,6 +729,7 @@ async function avtaleRute(request, env, ctx, url) {
     const rec = { id, nr, token, opprettet, ...a, vilkar, vilkarVersjon: versjon, signatur: null };
     const lenke = `${url.origin}/avtale?id=${id}&t=${token}`;
     await env.KUNDER.put("avtale:" + id, JSON.stringify(rec), { metadata: { nr, firma: a.kunde.firma, opprettet, lenke, signert: null } });
+    await salgSperrKunde(env, { orgnr: a.kunde.orgnr, epost: a.kunde.epost });
     return json({ id, nr, lenke }, 200);
   }
 
@@ -759,6 +762,7 @@ async function avtaleRute(request, env, ctx, url) {
     await env.KUNDER.put("avtale:" + id, JSON.stringify(rec), {
       metadata: { nr: rec.nr, firma, opprettet: rec.opprettet, lenke: `${url.origin}/avtale?id=${id}&t=${rec.token}`, signert: tid, valgt },
     });
+    await salgSperrKunde(env, { orgnr, epost });
     const v = alt.find((x) => x.kode === valgt);
     const varsel = varsle(env, `Signert: tilbud ${rec.nr} fra ${firma}`, [
       `${navn} (${rolle}) har signert tilbud ${rec.nr} for ${firma}, org.nr. ${orgnrFin}.`,
@@ -4034,19 +4038,72 @@ async function lagreSalg(env, f) {
   await env.KUNDER.put("salg:" + f.orgnr, JSON.stringify(f), { expirationTtl: SALG_TTL,
     metadata: { s: f.status, n: f.neste ? Date.parse(f.neste) : 0, f: String(f.navn || "").slice(0, 60), e: String(f.epost || "").slice(0, 80), st: f.steg || 0, b: f.fag || "", tp: f.trengerPreben ? 1 : 0 } });
 }
-async function salgSperret(env, orgnr, epost) {
-  const [a, b] = await Promise.all([env.KUNDER.get("salgsperre:" + orgnr), epost ? env.KUNDER.get("salgsperre:e:" + String(epost).toLowerCase()) : null]);
-  return !!(a || b);
+// Prebens egne kunder som aldri skal få salgs-e-post, uansett org.nr eller adresse. Flere navn: Text-variabelen
+// SALG_SPERR_NAVN (komma mellom, f.eks. «deja vu, berg rør»).
+const SALG_ALDRI_NAVN = ["deja vu"];
+function salgNavnSperret(env, navn) {
+  const n = String(navn || "").toLowerCase().replace(/[^a-z0-9æøå]+/g, " ");
+  const liste = [...SALG_ALDRI_NAVN, ...String(env.SALG_SPERR_NAVN || "").split(",")].map((x) => x.toLowerCase().replace(/[^a-z0-9æøå]+/g, " ").trim()).filter(Boolean);
+  return liste.some((x) => (" " + n + " ").includes(" " + x + " "));
 }
-async function sperrSalg(env, { orgnr, epost, grunn }) {
+// Domenet i en e-postadresse eller nettadresse (uten www.). Vanlige gratisdomener (gmail.com …) gir "".
+function salgDomene(x) {
+  let d = String(x || "").trim().toLowerCase();
+  if (!d) return "";
+  d = d.includes("@") && !d.includes("/") ? d.split("@").pop() : d.replace(/^[a-z]+:\/\//, "").split(/[/?#]/)[0];
+  d = d.replace(/^www\./, "").replace(/:\d+$/, "");
+  return /^[a-z0-9æøå.-]+\.[a-z]{2,}$/.test(d) && !VANLIGE_DOMENER.test(d) ? d : "";
+}
+// Sperret hvis org.nr, e-post, domenet (e-post eller nettside) eller navnet er sperret. Kunder og firmaer Preben
+// har laget sekretær eller tilbud til, sperres av seg selv (se salgSperrKunde).
+async function salgSperret(env, orgnr, epost, f = {}) {
+  if (salgNavnSperret(env, f.navn)) return true;
+  const dom = [...new Set([salgDomene(epost), salgDomene(f.hjemmeside)].filter(Boolean))];
+  const r = await Promise.all([
+    orgnr ? env.KUNDER.get("salgsperre:" + orgnr) : null,
+    epost ? env.KUNDER.get("salgsperre:e:" + String(epost).toLowerCase()) : null,
+    ...dom.map((d) => env.KUNDER.get("salgsperre:d:" + d)),
+  ]);
+  return r.some(Boolean);
+}
+async function sperrSalg(env, { orgnr, epost, domene, grunn }) {
   const v = JSON.stringify({ grunn: grunn || "avmeld", tid: new Date().toISOString() });
   if (orgnr) await env.KUNDER.put("salgsperre:" + orgnr, v);
   if (epost) await env.KUNDER.put("salgsperre:e:" + String(epost).toLowerCase(), v);
+  const d = salgDomene(domene);
+  if (d) await env.KUNDER.put("salgsperre:d:" + d, v);
 }
-async function salgToken(env, orgnr) {
-  const nokkel = await crypto.subtle.importKey("raw", new TextEncoder().encode("salg-avmeld:" + (env.ADMIN_KODE || "orvelo")), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+// Kalles når Preben lager/lagrer en sekretær eller et tilbud: det firmaet er Prebens eget salg eller kunde,
+// og skal aldri få e-post fra salgsmotoren i tillegg. Stopper også en sekvens som alt er i gang (status sjekkes før hver sending).
+async function salgSperrKunde(env, { orgnr, epost, nettside }) {
+  if (!env.KUNDER) return;
+  const o = String(orgnr || "").replace(/\D/g, "");
+  const e = /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(String(epost || "").trim()) ? String(epost).trim() : "";
+  await sperrSalg(env, { orgnr: o.length === 9 ? o : "", epost: e, grunn: "kunde" });
+  for (const d of new Set([salgDomene(e), salgDomene(nettside)])) if (d) await sperrSalg(env, { domene: d, grunn: "kunde" });
+}
+// Avmeldingslenkene signeres med en egen nøkkel, så de virker selv om ADMIN_KODE byttes. Nøkkelen lages én gang
+// og ligger i KV (salgnokkel), eller settes som Secret SALG_AVMELD_NOKKEL. Lenker laget med den gamle nøkkelen
+// (ADMIN_KODE) godtas fortsatt.
+async function salgHmac(hemmelig, orgnr) {
+  const nokkel = await crypto.subtle.importKey("raw", new TextEncoder().encode("salg-avmeld:" + hemmelig), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const sig = new Uint8Array(await crypto.subtle.sign("HMAC", nokkel, new TextEncoder().encode(String(orgnr))));
   return [...sig.slice(0, 8)].map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+async function salgNokkel(env) {
+  if (env.SALG_AVMELD_NOKKEL) return env.SALG_AVMELD_NOKKEL;
+  let k = await env.KUNDER.get("salgnokkel");
+  if (!k) {
+    k = [...crypto.getRandomValues(new Uint8Array(32))].map((x) => x.toString(16).padStart(2, "0")).join("");
+    await env.KUNDER.put("salgnokkel", k);
+  }
+  return k;
+}
+async function salgToken(env, orgnr) { return salgHmac(await salgNokkel(env), orgnr); }
+async function salgTokenOk(env, orgnr, t) {
+  if (!t) return false;
+  if (likKode(t, await salgToken(env, orgnr))) return true;
+  return !!env.ADMIN_KODE && likKode(t, await salgHmac(env.ADMIN_KODE, orgnr));
 }
 async function avmeldLenke(env, orgnr) {
   return `${env.SEKRETAR_URL || SEKRETAR_URL_DEFAULT}/avmeld?o=${orgnr}&t=${await salgToken(env, orgnr)}`;
@@ -4059,7 +4116,7 @@ async function avmeldRute(request, env, url) {
   const orgnr = String(url.searchParams.get("o") || "").replace(/\D/g, "").slice(0, 9);
   const t = String(url.searchParams.get("t") || "");
   const side = (tittel, tekstUt) => new Response(`<!doctype html><html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(tittel)}</title></head><body style="font:17px/1.5 system-ui,sans-serif;max-width:560px;margin:60px auto;padding:0 16px;color:#1d1b2b"><h1 style="font-size:24px">${esc(tittel)}</h1><p>${esc(tekstUt)}</p><p style="color:#666;font-size:14px">Orvelo · Hilleren Markedsføring, org.nr 938 720 673 · hilleren.bedrift@gmail.com</p></body></html>`, { headers: HTML_HODER });
-  if (!env.KUNDER || orgnr.length !== 9 || t !== (await salgToken(env, orgnr))) return side("Lenken virker ikke", "Svar «stopp» på e-posten, så fjerner vi adressen for hånd.");
+  if (!env.KUNDER || orgnr.length !== 9 || !(await salgTokenOk(env, orgnr, t))) return side("Lenken virker ikke", "Svar «stopp» på e-posten, så fjerner vi adressen for hånd.");
   const f = await env.KUNDER.get("salg:" + orgnr, "json");
   await sperrSalg(env, { orgnr, epost: f && f.epost, grunn: "avmeld" });
   if (f && f.status !== "avmeldt") {
@@ -4087,7 +4144,7 @@ async function salgFinn(env, cfg) {
     const epost = tekst(e.epostadresse, 120).toLowerCase();
     if (!ROLLEADRESSE.test(epost) || (e.organisasjonsform && e.organisasjonsform.kode) !== "AS") continue;
     const orgnr = e.organisasjonsnummer;
-    if (await env.KUNDER.get("salg:" + orgnr) || await salgSperret(env, orgnr, epost)) continue;
+    if (await env.KUNDER.get("salg:" + orgnr) || await salgSperret(env, orgnr, epost, { navn: e.navn, hjemmeside: e.hjemmeside })) continue;
     const adr = e.forretningsadresse || {};
     const f = { orgnr, navn: tekst(e.navn, 120), epost, fag: b.fag, bransje: b.navn, ansatte: Number(e.antallAnsatte) || 0,
       hjemmeside: tekst(e.hjemmeside, 120), sted: tekst(adr.poststed, 60), kommune: tekst(adr.kommune, 60),
@@ -4216,7 +4273,7 @@ async function salgRunde(env, naa = Date.now(), tving = {}) {
       for (const k of kø) {
         const f = await env.KUNDER.get(k.name, "json");
         if (!f || !["klar", "sendt"].includes(f.status)) continue;
-        if (await salgSperret(env, f.orgnr, f.epost)) { f.status = "stopp"; f.neste = ""; await lagreSalg(env, f); continue; }
+        if (await salgSperret(env, f.orgnr, f.epost, f)) { f.status = "stopp"; f.neste = ""; await lagreSalg(env, f); continue; }
         try {
           const r = await salgSend(env, f);
           const ny = f.steg === 0;
@@ -4314,6 +4371,7 @@ async function salgDrift(env, b) {
     for (const x of linjer) {
       if (/^\d{9}$/.test(x)) { await sperrSalg(env, { orgnr: x, grunn: b.grunn || "kontaktet" }); n++; }
       else if (/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(x)) { await sperrSalg(env, { epost: x, grunn: b.grunn || "kontaktet" }); n++; }
+      else if (salgDomene(x)) { await sperrSalg(env, { domene: x, grunn: b.grunn || "kontaktet" }); n++; }
     }
     return { lagt: n };
   }

@@ -1,5 +1,5 @@
 // Test av salgsmotoren (Orvelos egen kundeinnhenting): natt-søk, demo og fire e-poster, sending med grenser,
-// oppfølging dag 4, avmelding med lenke, sperreliste, pause, helg og dagsrapport til Preben.
+// oppfølging dag 4, avmelding med lenke, sperreliste (også egne kunder og Deja Vu), pause, helg og dagsrapport til Preben.
 // Enhetsregisteret, nettsider, Grok og Resend er ETTERLIGNET, så ingen nøkler trengs og ingenting sendes.
 //   node tools/test-salgsmotor.mjs
 import worker from "../worker/sekretar-worker.js";
@@ -41,6 +41,7 @@ globalThis.fetch = async (u, o = {}) => {
       : { navn: "Frisør 0 AS", kortnavn: "Frisør 0", bransje: "frisørsalong", type: "time", tjenester: [{ navn: "Klipp", pris: "600 kr" }], apent: {}, usikkert: [] };
     return Response.json({ choices: [{ message: { content: JSON.stringify(svar) } }], usage: { prompt_tokens: 10, completion_tokens: 10 } });
   }
+  if (url.includes("vilkar")) return new Response("<!-- versjon: test --><h2>Vilkår</h2><p>Test.</p>", { headers: { "content-type": "text/html" } });
   if (url.includes("api.resend.com")) { eposter.push({ ...JSON.parse(o.body) }); return Response.json({ id: "re_" + eposter.length }); }
   if (url.includes("formsubmit")) { eposter.push({ formsubmit: true, ...JSON.parse(o.body) }); return Response.json({}); }
   throw new Error("uventet kall: " + url);
@@ -177,6 +178,44 @@ const f8 = await firma(900000108);
 sjekk(lim.status === 200 && lim.d.resultat.hva === "sporsmal" && lim.d.resultat.trengerPreben && f8.status === "svart", "svar limt inn på /drift: agenten svarer og flagger at Preben må se på rabatt");
 const liste = await drift({ handling: "salg" });
 sjekk(liste.d.rader.some((r) => r.orgnr === "900000108" && r.tp === 1), "fanen merker «trenger deg»");
+
+const hmac16 = async (hemmelig, orgnr) => {
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode("salg-avmeld:" + hemmelig), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return [...new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(orgnr))).slice(0, 8)].map((x) => x.toString(16).padStart(2, "0")).join("");
+};
+const salgTokenFra = async (orgnr) => hmac16(await KV.get("salgnokkel"), orgnr);
+
+// Sperre for egne kunder: navn (Deja Vu), domene, firma Preben har laget sekretær eller tilbud til
+const klarFirma = async (orgnr, navn, epost, hjemmeside = "") => KV.put("salg:" + orgnr, JSON.stringify({ orgnr, navn, epost, hjemmeside, fag: "frisor", status: "klar", steg: 0, neste: "",
+  eposter: [1, 2, 3, 4].map((n) => ({ emne: "Emne " + n, tekst: "Tekst " + n })), logg: [] }), { metadata: { s: "klar", n: 0 } });
+await klarFirma("900000901", "DEJA VU FRISØR AS", "post@dejavu-test.no");
+await klarFirma("900000902", "Domene Frisør AS", "post@domenefrisor.no");
+await klarFirma("900000903", "Laget Selv AS", "firmapost@lagetselv.no");
+await klarFirma("900000904", "Tilbud Sendt AS", "post@tilbudsendt.no");
+const spD = await drift({ handling: "salg-sperr", liste: "https://www.domenefrisor.no/" });
+sjekk(spD.d.lagt === 1 && await KV.get("salgsperre:d:domenefrisor.no"), "et domene kan legges på sperrelisten");
+const lagre = await worker.fetch(new Request("https://x.dev/lagre", { method: "POST", headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ kode: "admin", id: "laget-selv-ab12", profil: { navn: "Laget Selv AS", nettside: "https://lagetselv.no", epost: "post@lagetselv.no" } }) }), env, { waitUntil: () => {} });
+sjekk(lagre.status === 200 && await KV.get("salgsperre:d:lagetselv.no"), "sekretær laget på /lag eller /lagre sperrer firmaets domene");
+const avt = await worker.fetch(new Request("https://x.dev/avtale/ny", { method: "POST", headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ kode: "admin", avtale: { kunde: { firma: "Tilbud Sendt AS", orgnr: "900 000 904", epost: "post@tilbudsendt.no" }, pris: { alternativer: [{ navn: "Pro", mnd: 1490 }] } } }) }), env, { waitUntil: () => {} });
+const avtOk = await KV.get("salgsperre:900000904");
+sjekk(avt.status === 200 && avtOk && await KV.get("salgsperre:e:post@tilbudsendt.no"), "tilbud på /avtale/ny sperrer org.nr og e-post");
+const foerSperre = eposter.length;
+await cron(oslo("2026-11-18", "09:00"));
+const tilSperret = eposter.slice(foerSperre).filter((e) => e.to && ["post@dejavu-test.no", "post@domenefrisor.no", "firmapost@lagetselv.no"].includes(e.to[0]));
+sjekk(tilSperret.length === 0, "Deja Vu, sperret domene og egen sekretær-kunde får ingen salgs-e-post");
+sjekk((await firma(900000901)).status === "stopp" && (await firma(900000903)).status === "stopp", "de står som stoppet");
+
+// Avmeldingslenkene overlever bytte av ADMIN_KODE, og gamle lenker (signert med ADMIN_KODE) virker fortsatt
+sjekk(await KV.get("salgnokkel") && e1.text.includes("t=" + await salgTokenFra("900000100")), "avmeldingslenkene signeres med egen nøkkel (salgnokkel i KV)");
+const gammelLenke = await worker.fetch(new Request(`https://x.dev/avmeld?o=900000107&t=${await hmac16("admin", "900000107")}`), env, { waitUntil: () => {} });
+sjekk((await gammelLenke.text()).includes("meldt av"), "lenker signert med den gamle nøkkelen (ADMIN_KODE) virker fortsatt");
+const gammelKode = env.ADMIN_KODE;
+env.ADMIN_KODE = "ny-kode";
+const avNy = await worker.fetch(new Request(`https://x.dev/avmeld?o=900000106&t=${await salgTokenFra("900000106")}`), env, { waitUntil: () => {} });
+sjekk((await avNy.text()).includes("meldt av"), "avmeldingslenke virker etter at ADMIN_KODE er byttet");
+env.ADMIN_KODE = gammelKode;
 
 console.log(feil ? `\n${feil} FEIL` : "\nAlle tester OK");
 process.exit(feil ? 1 : 0);
