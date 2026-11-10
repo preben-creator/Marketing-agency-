@@ -22,6 +22,8 @@ const profiler = JSON.parse(readFileSync(join(her, "demo-profiler.json"), "utf8"
 await KV.put("kunde:demo-frisor", JSON.stringify(profiler["demo-frisor"]));
 await KV.put("kunde:demo-rorlegger", JSON.stringify(profiler["demo-rorlegger"]));
 await KV.put("rediger:demo-rorlegger", "rkode12345");
+// Demoen bruker frisørens egen kode (den felles DEMO_KODE gjelder ikke vilkårlige firmaer lenger)
+await KV.put("demokode:demo-frisor", "frisorkode1"); await KV.put("dkode:frisorkode1", "demo-frisor");
 await KV.put("rapport:demo-frisor", JSON.stringify({ pakke: "pro", aktiv: false }));
 
 // Etterlignet Grok: chatten får et svar med en pris og et nummer som ikke står i profilen
@@ -51,7 +53,7 @@ async function kall(sti, body) {
 const mnd = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo", year: "numeric", month: "2-digit" }).format(new Date()).slice(0, 7);
 
 // 1. Chatmelding -> spor + kostnad
-let r = await kall("/chat/melding", { kunde: "demo-frisor", k: "demo", okt: "okt123abc", meldinger: [{ role: "user", content: "hva koster dameklipp?" }] });
+let r = await kall("/chat/melding", { kunde: "demo-frisor", k: "frisorkode1", okt: "okt123abc", meldinger: [{ role: "user", content: "hva koster dameklipp?" }] });
 sjekk(r.status === 200 && r.d.svar.includes("999"), "chatten svarte (etterlignet Grok)");
 const sporNokler = [...lager.keys()].filter((k) => k.startsWith("spor:"));
 sjekk(sporNokler.length === 1 && sporNokler[0].includes(":demo-frisor:okt123abc"), "én spor-rad for samtalen: " + sporNokler[0]);
@@ -61,13 +63,13 @@ sjekk(spor.flagg.some((f) => f.includes("999")), "flagg: pris 999 kr står ikke 
 sjekk(spor.flagg.some((f) => f.includes("12 34 56 78")), "flagg: nummeret står ikke i profilen");
 sjekk(lager.get(sporNokler[0]).metadata.f >= 2, "antall flagg ligger i metadata (til utvalget)");
 // Samme samtale, ny melding -> samme rad oppdateres
-await kall("/chat/melding", { kunde: "demo-frisor", k: "demo", okt: "okt123abc", meldinger: [{ role: "user", content: "hva koster dameklipp?" }, { role: "assistant", content: "x" }, { role: "user", content: "takk" }] });
+await kall("/chat/melding", { kunde: "demo-frisor", k: "frisorkode1", okt: "okt123abc", meldinger: [{ role: "user", content: "hva koster dameklipp?" }, { role: "assistant", content: "x" }, { role: "user", content: "takk" }] });
 sjekk([...lager.keys()].filter((k) => k.startsWith("spor:")).length === 1, "andre melding i samme samtale lager ikke ny rad");
 const kost = await KV.get(`kost:demo-frisor:${mnd}`, "json");
 sjekk(kost && kost.kall === 2 && kost.inn === 4000 && kost.ut === 300 && kost.bufret === 1000, "kostnad: 2 kall, 4000 inn, 300 ut, 1000 bufret");
 
 // 2. Stemme (/token teller økter, /logg teller minutter og lager spor)
-r = await kall("/logg", { kunde: "demo-frisor", k: "demo", kanal: "tale", sek: 125, start: new Date().toISOString(), utskrift: [["kunde", "når åpner dere?"], ["ai", "Vi åpner kl. 09.00."]] });
+r = await kall("/logg", { kunde: "demo-frisor", k: "frisorkode1", kanal: "tale", sek: 125, start: new Date().toISOString(), utskrift: [["kunde", "når åpner dere?"], ["ai", "Vi åpner kl. 09.00."]] });
 sjekk(r.status === 204, "/logg tok imot taleutskrift");
 sjekk((await KV.get(`kost:demo-frisor:${mnd}`, "json")).talesek === 125, "taleminutter telt (125 sek)");
 sjekk([...lager.keys()].filter((k) => k.startsWith("spor:")).length === 2, "talesamtalen fikk sitt eget spor");

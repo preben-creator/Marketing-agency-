@@ -1,0 +1,16 @@
+# Deploy-oppsett for orvelo-sekretar. Brukes av .github/workflows/worker.yml (ikke kjør for hånd uten å vite hva du gjør).
+# Hemmeligheter (XAI_API_KEY, ADMIN_KODE, DEMO_KODE, Twilio …) og tekstvariabler som TWILIO_FROM ligger i Cloudflare
+# og står aldri her. keep_vars = true gjør at deployen ikke sletter dem.
+name = "orvelo-sekretar"
+main = "sekretar-worker.js"
+compatibility_date = "2026-11-05"
+workers_dev = true
+keep_vars = true
+
+kv_namespaces = [{ binding = "KUNDER", id = "694cc63a2de84ee1b952c509b842cebc" }]
+
+[triggers]
+crons = ["*/15 * * * *", "0 6 * * 1"]
+
+[observability]
+enabled = true

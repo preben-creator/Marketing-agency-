@@ -43,7 +43,13 @@
 //   fbside:<sideId>         Facebook-side -> firma-id
 //   innboks:m:<id>:<nøkkel> én melding med svarforslag
 
-const GH_RAW = "https://raw.githubusercontent.com/preben-creator/marketing-agency-/main/";
+// Sidene hentes fra en LÅST versjon (commit) av repoet, aldri fra main. Deploy-jobben setter GH_REF.
+const GH_REPO_RAW = "https://raw.githubusercontent.com/preben-creator/marketing-agency-/";
+const KILDE_REF_STANDARD = "d31ef0eacffd3d798608f5459e22d5195bb56a23";
+function ghRaw(env) {
+  const r = String((env && env.GH_REF) || "").trim();
+  return GH_REPO_RAW + (/^[0-9a-f]{40}$/.test(r) ? r : KILDE_REF_STANDARD) + "/";
+}
 const HTML_HODER = { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache", "X-Robots-Tag": "noindex" };
 const LAGRES_DAGER = 30;
 const MAKS_TEKST = 6000;
@@ -630,7 +636,7 @@ function offentlig(key, rec) {
 async function innboksRute(request, env, ctx, url) {
   const p = url.pathname;
   if (p === "/innboks" && request.method === "GET") {
-    const r = await fetch(GH_RAW + "snakk/innboks.html", { cf: { cacheTtl: 60 } }).catch(() => null);
+    const r = await fetch(ghRaw(env) + "snakk/innboks.html", { cf: { cacheTtl: 3600 } }).catch(() => null);
     if (!r || !r.ok) return new Response("Siden er ikke tilgjengelig akkurat nå.", { status: 502 });
     return new Response(await r.text(), { headers: HTML_HODER });
   }

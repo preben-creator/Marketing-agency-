@@ -11,24 +11,26 @@ gratis Cloudflare Worker (`sekretar-worker.js`). Den viser siden og lager en nø
 3. Trykk **Edit code**, slett alt som står der, lim inn hele `worker/sekretar-worker.js`, og trykk **Deploy**.
 4. Gå til workeren → **Settings → Variables and Secrets → Add**:
    - Type **Secret**, navn `XAI_API_KEY`, verdi: xAI-nøkkelen din (fra https://console.x.ai)
-   - Type **Secret**, navn `DEMO_KODE`, verdi: en kode du velger, f.eks. `dejavu2026`
+   - Type **Secret**, navn `DEMO_KODE`, verdi: en lang tilfeldig kode (ikke et ord eller et kundenavn). Den brukes nesten ikke lenger, se under.
    Trykk **Deploy** / **Save**.
-5. Lenken til kunden blir: `https://orvelo-sekretar.<ditt-navn>.workers.dev/?k=<DEMO_KODE>`
+5. Demolenker lages på `/lag` (én kode per firma, se under). Ikke send ut lenker med den felles `DEMO_KODE`.
 
-Siden hentes fra `main` i GitHub-repoet, så endringer i `snakk/index.html` kommer ut av seg selv (innen et par minutter) uten å røre Cloudflare.
+Deploy skjer nå fra GitHub Actions (`.github/workflows/worker.yml`), og Preben godkjenner hver deploy. Sidene (demosiden, `/lag`, `chat.js` osv.)
+hentes fra **den commiten som ble deployet** (`GH_REF`), ikke fra `main`. En endring i `snakk/` når derfor ikke kundene før den er godkjent og deployet.
+Se `worker/SIKKERHET.md`.
 
 ## Kostnad og grenser
 
 - Cloudflare Workers: gratis (100 000 forespørsler per dag).
 - Grok-stemme: ca. 0,08 dollar per minutt samtale (ca. 85 øre). 20 dollar holder til rundt 250 minutter.
 - Innebygde bremser: maks 10 minutter per samtale, legger på etter 75 sekunder stillhet, maks 8 samtaler per 30 min per nettverk,
-  og lenken virker bare med riktig `?k=`-kode. Slå av automatisk påfylling i xAI-konsollen, så kan det aldri koste mer enn saldoen.
+  lenken virker bare med riktig `?k=`-kode, og maks 10 samtaler per demo og 60 for alle demoer per døgn (`DEMO_TALE_DAG`, `DEMO_TALE_ALLE`). Slå av automatisk påfylling i xAI-konsollen, så kan det aldri koste mer enn saldoen.
 
 ## Lag en egen sekretær for hver bedrift (knappen «Lag sekretær»)
 
 Siden `/lag` på workeren lager en sekretær for et hvilket som helst firma. Grok leser firmaets nettside
 (forsiden pluss sider om priser, tjenester, kontakt og om oss) og lager en profil med tjenester, priser,
-åpningstider, ansatte og område. Du får en lenke som `/?kunde=berg-ror-x7k2&k=<kode>` som du kan sende kunden. Hvert firma får sin egen kode (lagres i KV), så lenken viser aldri koden eller navnet til en annen kunde. Lenker som alt er sendt med den gamle felles `DEMO_KODE` virker fortsatt.
+åpningstider, ansatte og område. Du får en lenke som `/?kunde=berg-ror-x7k2&k=<kode>` som du kan sende kunden. Hvert firma får sin egen kode (lagres i KV). Koden virker bare for sitt eget firma, og i 30 dager (`DEMO_DAGER`) etter at lenken sist ble laget. Lag lenken på nytt på `/lag` for å forlenge. Den gamle felles `DEMO_KODE` virker bare for den innebygde Deja Vu-demoen og firmaene i `DEMO_KODE_KUNDER` (standard Deja Vu og Ramsvik), og bare til `DEMO_KODE_UTLOPER` (standard 2026-12-31).
 Før du sender: se over feltene på siden (spesielt listen «Sjekk dette»), rett det som er feil og trykk «Lagre endringer».
 
 Oppsett én gang (ca. 5 minutter):

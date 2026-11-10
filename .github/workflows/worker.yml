@@ -1,0 +1,80 @@
+# Tester og deploy av workerne.
+#  - Hver PR og hver push til main: kjører testene (ingen nøkler, alt etterlignes).
+#  - Push til main: deploy venter på at Preben godkjenner i GitHub (miljøet «produksjon»).
+#    Deployen setter GH_REF = commiten, så sidene og chat.js kundene får er nøyaktig det som ble godkjent.
+# Oppsett: se worker/SIKKERHET.md (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID og miljøet «produksjon»).
+name: Worker
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      worker:
+        description: "Hvilken worker (alle, sekretar, innboks, ring)"
+        default: alle
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worker-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntaks
+        run: for f in worker/*.js; do node --check "$f"; done
+      - name: Tester
+        run: |
+          set -e
+          for t in sikkerhet drift salgsmotor nye-agenter anmeldelse-auto innboks ringeagent; do
+            echo "::group::test-$t"
+            node tools/test-$t.mjs
+            echo "::endgroup::"
+          done
+
+  deploy:
+    needs: test
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: produksjon
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy orvelo-sekretar
+        if: github.event_name == 'push' || inputs.worker == 'alle' || inputs.worker == 'sekretar'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          command: deploy --config wrangler-sekretar.toml --var GH_REF:${{ github.sha }}
+      - name: Deploy orvelo-innboks
+        if: github.event_name == 'push' || inputs.worker == 'alle' || inputs.worker == 'innboks'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          command: deploy --config wrangler-innboks.toml --var GH_REF:${{ github.sha }}
+      - name: Deploy orvelo-ring
+        if: github.event_name == 'push' || inputs.worker == 'alle' || inputs.worker == 'ring'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          command: deploy --config wrangler-ring.toml
+      - name: Sjekk at den nye versjonen svarer
+        run: |
+          sleep 10
+          curl -fsS https://orvelo-sekretar.preben-m-hilleren.workers.dev/helse | tee /dev/stderr | grep -q '"versjon":"${{ github.sha }}"'
