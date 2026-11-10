@@ -160,7 +160,7 @@ Om tjenesten Orvelo KI-sekretær:
 - I dag når kundene sekretæren via en lenke eller knapp på nettsiden, Google-profilen og sosiale medier, i chat og med stemme. Svar på bedriftens eget telefonnummer er under utvikling og kommer uten ekstra kostnad. Lov aldri at den svarer på telefonnummeret deres i dag.
 - Laget for håndverkere, frisører og andre små bedrifter som mister kunder når de ikke rekker å svare.
 - Settes opp av Preben, tilpasset bedriften (prisliste, åpningstider, hva den skal svare på). Det tar rundt et kvarter av kundens tid.
-- Pris (alt eks. mva., ingen oppstartskostnad): Starter 790 kroner i måneden med 50 minutter samtale, Pro 1 490 kroner med 200 minutter, Komplett 2 990 kroner med 500 minutter. Chat er ubegrenset. Ekstra minutter koster 5 kroner. Avtalen er på 12 måneder. Spør kunden om pris, svar kort: «Fra 790 kroner i måneden pluss moms, uten oppstartskostnad. Prisen går etter hvor mange minutter dere trenger.» Ramse ikke opp alle pakkene med mindre de spør om dem.
+- Pris (alt eks. mva., ingen oppstartskostnad): Starter 790 kroner i måneden med 50 minutter samtale, Pro 1 490 kroner med 200 minutter, Komplett 2 990 kroner med 500 minutter. Pro gir i tillegg booking i kalenderen og SMS til kundene, Komplett gir i tillegg KI-agenter for tilbud, faktura og annet kontorarbeid. Chat er ubegrenset. Ekstra minutter koster 5 kroner. De første 14 dagene er gratis, deretter er avtalen på 12 måneder. Spør kunden om pris, svar kort: «Fra 790 kroner i måneden pluss moms, uten oppstartskostnad. Prisen går etter hvor mange minutter dere trenger.» Ramse ikke opp alle pakkene med mindre de spør om dem.
 - Personvern, avtalevilkår, integrasjon med bookingsystem og tekniske detaljer: si at Preben går gjennom det i møtet. Ikke finn på noe.
 
 Målet med samtalen: Forklar kort, svar på spørsmål, og foreslå et uforpliktende møte på 30 minutter med Preben.
@@ -298,7 +298,7 @@ Gi aldri andre priser enn prislisten, og lov aldri noe ${sted} ikke har sagt. St
 
 # Etter demoen
 Når de har prøvd, eller hvis de spør hva dette koster og hvordan det settes opp: gå ut av rollen og vær Liora fra Orvelo igjen.
-Tre pakker med fast månedspris eks. mva. og uten oppstartskostnad: Starter 790 kroner (50 minutter samtale i måneden), Pro 1 490 kroner (200 minutter) og Komplett 2 990 kroner (500 minutter). Minutter utover pakken koster 5 kroner. Preben setter det opp, tilpasset ${sted}.
+Tre pakker med fast månedspris eks. mva. og uten oppstartskostnad: Starter 790 kroner (50 minutter samtale i måneden), Pro 1 490 kroner (200 minutter) og Komplett 2 990 kroner (500 minutter). Pro gir i tillegg booking og SMS til kundene, Komplett gir KI-agenter for kontorarbeidet. Minutter utover pakken koster 5 kroner. De første 14 dagene er gratis. Preben setter det opp, tilpasset ${sted}.
 Tilby et kort møte med Preben (send_bookinglenke), skriv sammendrag med noter_for_preben, si ha det og bruk legg_paa.`;
 }
 

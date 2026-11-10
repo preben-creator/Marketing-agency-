@@ -122,10 +122,9 @@ details summary{cursor:pointer;color:var(--muted);font-weight:600;margin-top:6px
 const $=id=>document.getElementById(id);let id="",profil=null;
 const FRA="hilleren.bedrift@gmail.com", BOOK="https://calendar.app.google/24niGvpRRwPqNqr28";
 const PAKKER=[
-  ["Starter","790 kr/mnd, 50 minutter med stemme","Passer hvis dere får få samtaler."],
-  ["Pro","1 490 kr/mnd, 200 minutter med stemme","Passer for de fleste."],
-  ["Komplett","2 990 kr/mnd, 500 minutter med stemme","Passer hvis dere får mange samtaler hver uke."]];
-// Alle pakkene: egen sekretær som svarer døgnet rundt i chat og med stemme, foreslår ledige tider og kan rettes selv. Ingen oppstartspris, 12 mnd binding, chat ubegrenset, ekstra minutter 5 kr/min.
+  ["Starter","790 kr/mnd, 50 minutter med stemme","KI-sekretæren i chat og med stemme på nettsiden, Google og sosiale medier."],
+  ["Pro","1 490 kr/mnd, 200 minutter","Alt i Starter, pluss booking i kalenderen og SMS til kundene: bekreftelse, påminnelse, tapt anrop og Google-anmeldelse (200 SMS)."],
+  ["Komplett","2 990 kr/mnd, 500 minutter","Alt i Pro med 500 SMS, pluss 9 KI-agenter som lager utkast til tilbud, faktura, purring, jobbrapport og mer."]];
 const q=new URLSearchParams(location.search);
 ["firma","nettside","bransje","kontaktperson","til","variant"].forEach(k=>{if(q.get(k))$(k).value=q.get(k);});
 try{$("kode").value=localStorage.getItem("orvelo-admin")||"";}catch{}
@@ -150,7 +149,7 @@ function epost(lenke){
     "- Sier alltid fra at den er en digital assistent, og gir aldri andre priser enn deres egne","",
     "PRIS (eks. mva.)",
     ...PAKKER.map(([n,p,h])=>`- ${n}: ${p}. ${h}`),
-    "Alle pakkene har samme innhold: egen sekretær som svarer kundene døgnet rundt i chat og med stemme, foreslår ledige tider, og som dere kan rette selv. Ingen oppstartspris, 12 mnd binding. Chat er ubegrenset, og ekstra minutter koster 5 kr per minutt.",
+    "Ingen oppstartspris. Dere prøver gratis i 14 dager, deretter er avtalen på 12 måneder. Chat er ubegrenset, ekstra minutter koster 5 kr og ekstra SMS 1 kr. Svar på eget telefonnummer, innboks og ukesrapport kommer uten ekstra kostnad i Pro og Komplett når det er klart.",
     "Avtalen fornyes automatisk med nye 12 måneder, med mindre den sies opp skriftlig senest 2 måneder før perioden går ut.","",
     "SLIK KOMMER DERE I GANG",
     "1. Et kort møte (ca. 20 min) der vi går gjennom hvordan dere vil at sekretæren skal svare",

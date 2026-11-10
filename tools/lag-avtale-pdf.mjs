@@ -15,10 +15,12 @@ const ORVELO = { navn: "Orvelo v/ Preben Hilleren", orgnr: "938 720 673", adress
 const TJENESTER = [
   { t: "Egen KI-sekretær", b: "laget for firmaet deres ut fra nettsiden, med tjenestene, prisene og åpningstidene deres. Hun snakker og skriver norsk og svarer kundene døgnet rundt." },
   { t: "Svar og forslag til time", b: "sekretæren svarer på spørsmål om tjenester, priser og åpningstider, og foreslår ledige tider til kundene." },
-  { t: "Lenke dere kan dele", b: "kundene når sekretæren via en lenke eller knapp på nettsiden, Google-profilen og sosiale medier." },
+  { t: "Lenke og chat dere kan dele", b: "kundene når sekretæren via en lenke eller knapp på nettsiden, Google-profilen og sosiale medier, og som chat rett på deres egen nettside." },
   { t: "Rett selv", b: "dere får en egen side der dere selv endrer tjenester, priser, varighet og åpningstider. Endringene gjelder med en gang." },
+  { t: "Booking og SMS (Pro og Komplett)", b: "timer legges rett i kalenderen deres, og kunden får SMS med bekreftelse og påminnelse dagen før. I tillegg SMS ved tapt anrop og forespørsel om Google-anmeldelse." },
+  { t: "KI-agenter (Komplett)", b: "9 agenter som lager utkast til tilbud, faktura, purring, jobbrapport, innkjøpsliste, dagens rute, salgs- og markedsføringstekster og svar på anmeldelser. Dere sjekker og sender selv." },
   { t: "Oppsett", b: "jeg setter opp alt og går gjennom sekretæren sammen med dere før oppstart. Det tar rundt 15–30 minutter av deres tid." },
-  { t: "Svar på deres eget telefonnummer", b: "er under utvikling. Når det er klart, får dere det uten ekstra kostnad i avtaleperioden." },
+  { t: "Kommer uten ekstra kostnad (Pro og Komplett)", b: "svar på deres eget telefonnummer, innboks for e-post og Facebook, og ukesrapport på e-post. Dere får beskjed når det er klart." },
 ];
 // Tjenestene slik de stod i tilbudet Deja Vu fikk 6. november 2026.
 const TJENESTER_DEJAVU = [
@@ -28,13 +30,13 @@ const TJENESTER_DEJAVU = [
   { t: "Oppsett", b: "jeg setter opp alt, legger inn tjenestene og prislisten deres, og tester sammen med dere. Det tar rundt 30 minutter av deres tid." },
   { t: "Endringer", b: "send meg nye priser, tjenester eller åpningstider på e-post, så oppdaterer jeg sekretæren innen to virkedager." },
 ];
-// Gjeldende pris fra 9. november 2026: tre pakker, ingen oppstartspris, 12 mnd binding.
+// Gjeldende pris fra 10. november 2026: tre pakker med ulikt innhold, ingen oppstartspris, 14 dagers gratis prøve, deretter 12 mnd.
 const PRIS = { oppstart: 0, alternativer: [
-  { kode: "A", navn: "Starter", mnd: 790, prosent: 0, passer: "50 samtaleminutter med stemme per måned" },
-  { kode: "B", navn: "Pro", mnd: 1490, prosent: 0, passer: "200 samtaleminutter med stemme per måned" },
-  { kode: "C", navn: "Komplett", mnd: 2990, prosent: 0, passer: "500 samtaleminutter med stemme per måned" },
+  { kode: "A", navn: "Starter", mnd: 790, prosent: 0, passer: "Sekretæren i chat og med stemme på nettsiden. 50 minutter med stemme per måned" },
+  { kode: "B", navn: "Pro", mnd: 1490, prosent: 0, passer: "Alt i Starter, pluss booking i kalenderen og SMS til kundene (200 SMS). 200 minutter" },
+  { kode: "C", navn: "Komplett", mnd: 2990, prosent: 0, passer: "Alt i Pro med 500 SMS, pluss 9 KI-agenter for kontorarbeidet. 500 minutter" },
 ] };
-const MERKNAD = "Chat er ubegrenset i alle pakker. Går dere over minuttene i pakken, koster ekstra minutter 5 kr per minutt.";
+const MERKNAD = "De første 14 dagene fra oppstartsdato er en gratis prøveperiode. Sier dere fra på e-post før den er over, koster det ingenting. Chat er ubegrenset i alle pakker. Ekstra minutter med stemme koster 5 kr per minutt og ekstra SMS 1 kr per stykk.";
 // Tilbudet Deja Vu fikk 6. november 2026 (gammel pris), beholdt slik det ble sendt.
 const PRIS_DEJAVU = { oppstart: 14990, alternativer: [
   { kode: "A", navn: "Fast månedspris", mnd: 1990, prosent: 0, passer: "Sekretæren booker for mer enn 15 000 kr i måneden" },
