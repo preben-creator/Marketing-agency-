@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://orvelo.no/sitemap.xml
+Sitemap: https://preben-creator.github.io/Marketing-agency-/sitemap.xml
