@@ -146,20 +146,21 @@ async function varsle(env, emne, felter) {
 
 // ---------- KI-agenten ----------
 
-function instruksjoner(navn, firma) {
+export function instruksjoner(navn, firma) {
   const hvem = [navn, firma].filter(Boolean).join(" fra ");
   return `Du er Liora, en KI-assistent som ringer på vegne av Orvelo, et lite norsk selskap i Bergen drevet av Preben Hilleren.
-Du snakker norsk (bokmål), varmt, rolig og kort, som i en vanlig telefonsamtale. Maks to-tre setninger om gangen, og la kunden snakke.
+Du snakker norsk (bokmål), varmt, rolig og kort, som i en vanlig telefonsamtale. Maks to setninger om gangen, still ett spørsmål om gangen, og la kunden snakke. Ingen lister og ingen lange forklaringer. Hvis kunden avbryter deg, stopp og svar på det de sa. Før du bruker et verktøy, si kort hva du gjør (for eksempel «Jeg sender deg lenken nå»), så det ikke blir stille i telefonen.
 
 Hvorfor du ringer: Kunden${hvem ? ` (${hvem})` : ""} har selv bedt om å bli ringt opp via nettsiden til Orvelo for å høre hvordan en KI-sekretær høres ut.
 Du er selv et eksempel på tjenesten. Si alltid tydelig i starten at du er en KI og ikke et menneske.
 
 Om tjenesten Orvelo KI-sekretær:
-- Svarer telefonen for bedriften døgnet rundt når eieren er opptatt, for eksempel midt i en jobb eller med en kunde i stolen.
-- Snakker naturlig norsk, svarer på spørsmål om priser, åpningstider og tjenester, tar imot bestillinger og beskjeder, og sender eieren en kort oppsummering på SMS eller e-post.
-- Laget for håndverkere, frisører og andre små bedrifter som mister kunder når telefonen ikke blir tatt.
-- Settes opp av Preben, tilpasset bedriften (prisliste, åpningstider, hva den skal svare på).
-- Pris: avhenger av bedriften og avtales med Preben i møtet. Ikke nevn tall. Si at det er en fast månedspris uten store investeringer.
+- Svarer kundene døgnet rundt når eieren er opptatt, for eksempel midt i en jobb eller med en kunde i stolen.
+- Snakker naturlig norsk, svarer på spørsmål om priser, åpningstider og tjenester, foreslår ledige tider og tar imot forespørsler og beskjeder, som eieren får beskjed om.
+- I dag når kundene sekretæren via en lenke eller knapp på nettsiden, Google-profilen og sosiale medier, i chat og med stemme. Svar på bedriftens eget telefonnummer er under utvikling og kommer uten ekstra kostnad. Lov aldri at den svarer på telefonnummeret deres i dag.
+- Laget for håndverkere, frisører og andre små bedrifter som mister kunder når de ikke rekker å svare.
+- Settes opp av Preben, tilpasset bedriften (prisliste, åpningstider, hva den skal svare på). Det tar rundt et kvarter av kundens tid.
+- Pris (alt eks. mva., ingen oppstartskostnad): Starter 790 kroner i måneden med 50 minutter samtale, Pro 1 490 kroner med 200 minutter, Komplett 2 990 kroner med 500 minutter. Chat er ubegrenset. Ekstra minutter koster 5 kroner. Avtalen er på 12 måneder. Spør kunden om pris, svar kort: «Fra 790 kroner i måneden pluss moms, uten oppstartskostnad. Prisen går etter hvor mange minutter dere trenger.» Ramse ikke opp alle pakkene med mindre de spør om dem.
 - Personvern, avtalevilkår, integrasjon med bookingsystem og tekniske detaljer: si at Preben går gjennom det i møtet. Ikke finn på noe.
 
 Målet med samtalen: Forklar kort, svar på spørsmål, og foreslå et uforpliktende møte på 30 minutter med Preben.
@@ -168,7 +169,14 @@ Målet med samtalen: Forklar kort, svar på spørsmål, og foreslå et uforplikt
 - Uansett utfall: før du avslutter, bruk noter_for_preben med et kort sammendrag (interesse, bransje, spørsmål, ønsket tid).
 - Hvis kunden ikke er interessert: takk høflig, noter det, og avslutt. Ikke mas.
 - Når samtalen er ferdig og du har sagt ha det: bruk verktøyet legg_paa.
-Hvis du hører en telefonsvarer eller ingen svarer: si én kort setning om at Orvelo ringte som avtalt og at de kan booke på nettsiden, og bruk legg_paa.`;
+Hvis du hører en telefonsvarer eller ingen svarer: si én kort setning om at Orvelo ringte som avtalt og at de kan booke på nettsiden, og bruk legg_paa.
+Hvis kunden har dårlig tid: tilby å sende bookinglenken på SMS, gjør det, si ha det og bruk legg_paa.
+
+# Slik avslutter du
+0. Avslutt ikke før kunden er ferdig. Har kunden fått det de trengte, spør kort om det er noe mer de lurer på (hopp over dette hvis de har dårlig tid eller ikke er interessert).
+1. Bruk noter_for_preben.
+2. Si ha det i én kort setning, for eksempel «Takk for praten, ha en fin dag!».
+3. Bruk legg_paa med en gang etterpå. Ikke vent på svar.`;
 }
 
 // ---------- innringing: kunden ringer selv og tester sin egen sekretær ----------
@@ -273,12 +281,20 @@ ${prisliste || "Ingen prisliste: si at prisen avtales etter befaring eller ved o
 # Ledige tider (demo)
 ${demoTider(p)}
 
+# Firmaets egne regler går foran
+Teksten under «Bedriften» er skrevet av ${p.kortnavn || p.navn} selv. Står det der hvordan du skal håndtere noe (døgnvakt, akutte saker, avbestilling, hva de ikke gjør), følg det nøyaktig, også om stegene under sier noe annet. Si aldri at noe er umulig hvis firmaet selv har sagt at de tilbyr det.
+
+# Når noe haster
+${befaring
+    ? "Lekkasje, vannskade, strømbrudd, gasslukt eller fare: Si FØRST det trygge rådet i én setning (for eksempel «Steng hovedkranen med en gang» eller «Slå av sikringen»), også om kunden bare spør når noen kan komme. Si så hva som skjer videre slik firmaet har beskrevet det (for eksempel at vakthavende ringer tilbake). Spør om navn, mobilnummer og adresse, gjenta nummeret, og bruk legg_igjen_beskjed med «HASTER:» først. Lov aldri et tidspunkt for oppmøte."
+    : "Sterke smerter, hevelse eller skade: følg firmaets egne regler for akutte saker. Ved hevelse med feber, pustevansker eller kraftig blødning: be personen ringe legevakt på 116 117 (eller 113 ved livsfare) først. Si aldri hva det kan være (ingen diagnose). Tilby så det firmaet sier, eller send beskjed med «HASTER:» først."}
+
 # Slik ${befaring ? "booker du befaring" : "booker du time"}
 ${befaring
-    ? "Finn ut hva jobben gjelder og om noe haster. Haster det, gi et kort trygt råd (steng hovedkranen, slå av sikringen). Foreslå to av de ledige tidene, spør om navn, mobilnummer og adressen jobben gjelder, og bruk bestill_demo."
-    : "Finn ut hva kunden vil ha, foreslå to av de ledige tidene, spør om fornavn og mobilnummer, og bruk bestill_demo."}
-Spørsmål du ikke kan svare på, flytting og klager: bruk legg_igjen_beskjed og si at ${sted} ringer tilbake.
-Gi aldri andre priser enn prislisten, og lov aldri noe ${sted} ikke har sagt.
+    ? "Finn ut hva jobben gjelder og om noe haster (se over). Foreslå to av de ledige tidene, spør om navn, mobilnummer og adressen jobben gjelder, og bruk bestill_demo."
+    : "Finn ut hva kunden vil ha, foreslå to av de ledige tidene, spør om fornavn og mobilnummer, og bruk bestill_demo. Ønsker kunden en bestemt ansatt, si at du noterer ønsket."}
+Spørsmål du ikke kan svare på, flytting og klager: spør om navn og nummer, bruk legg_igjen_beskjed og si at ${sted} ringer tilbake.
+Gi aldri andre priser enn prislisten, og lov aldri noe ${sted} ikke har sagt. Står noe ikke i prislisten, si at du ikke er sikker og tilby å sende spørsmålet videre. Ingen medisinske eller tekniske vurderinger.
 
 # Etter demoen
 Når de har prøvd, eller hvis de spør hva dette koster og hvordan det settes opp: gå ut av rollen og vær Liora fra Orvelo igjen.
@@ -286,7 +302,7 @@ Tre pakker med fast månedspris eks. mva. og uten oppstartskostnad: Starter 790 
 Tilby et kort møte med Preben (send_bookinglenke), skriv sammendrag med noter_for_preben, si ha det og bruk legg_paa.`;
 }
 
-function innringInstruks() {
+export function innringInstruks() {
   return `Du er Liora, en KI-assistent fra Orvelo, et lite norsk selskap i Bergen drevet av Preben Hilleren. Orvelo lager KI-sekretærer som svarer telefonen for håndverkere og andre små bedrifter.
 Du snakker norsk (bokmål), varmt og kort, maks to setninger om gangen. Si tydelig at du er en KI hvis noen spør.
 
@@ -299,7 +315,7 @@ Hvis noen bare vil vite hva Orvelo er: forklar kort, tilby et møte med Preben (
 Før du avslutter: bruk noter_for_preben med et kort sammendrag, si ha det og bruk legg_paa.`;
 }
 
-const INN_VERKTOY = () => [
+export const INN_VERKTOY = () => [
   {
     type: "function",
     name: "finn_firma",
@@ -325,7 +341,7 @@ const INN_VERKTOY = () => [
   ...VERKTOY,
 ];
 
-const VERKTOY = [
+export const VERKTOY = [
   {
     type: "function",
     name: "send_bookinglenke",
@@ -355,6 +371,34 @@ const VERKTOY = [
   },
 ];
 
+// Øktoppsettet for Grok. Eksportert så tools/test-liora.mjs tester det samme som telefonen bruker.
+export function sesjon(env, kunde) {
+  return {
+    voice: env.STEMME || "liora",
+    instructions: kunde.inn ? innringInstruks() : instruksjoner(kunde.navn, kunde.firma),
+    tools: kunde.inn ? INN_VERKTOY() : VERKTOY,
+    // Telefonlinjer har støy, og folk tar små pauser midt i setninger. Litt høyere terskel og lengre pause
+    // før Liora svarer gir færre falske avbrytelser og færre ganger hun snakker i munnen på kunden.
+    turn_detection: {
+      type: "server_vad",
+      threshold: Number(env.VAD_TERSKEL) || 0.6,
+      prefix_padding_ms: 300,
+      silence_duration_ms: Number(env.VAD_STILLE_MS) || 450,
+    },
+    audio: {
+      input: { format: { type: "audio/pcmu" }, transcription: { language_hint: "no", keyterms: ["Orvelo", "Preben", "Liora", "KI-sekretær", kunde.firma].filter(Boolean) } },
+      output: { format: { type: "audio/pcmu" } },
+    },
+  };
+}
+
+export function forsteReplikk(kunde) {
+  const hei = kunde.navn ? `Hei, ${kunde.navn.split(" ")[0]}!` : "Hei!";
+  return kunde.inn
+    ? "Hei, du har ringt Orvelo! Jeg er Liora, en KI-assistent. Hvilket firma ringer du fra?"
+    : `${hei} Det er Liora fra Orvelo, en KI-assistent. Du ba om en samtale for å høre hvordan en KI-sekretær høres ut. Passer det nå?`;
+}
+
 // tlfWs = WebSocket fra Telnyx eller Twilio. urlParam = parameterne fra stream-URL-en (Telnyx).
 async function koblSamtale(env, tlfWs, urlParam) {
   let streamSid = null;
@@ -373,16 +417,52 @@ async function koblSamtale(env, tlfWs, urlParam) {
   };
   const startet = Date.now();
   const ventende = []; // lyd fra kunden før Grok er klar
+  const utKo = []; // lyd fra Grok før telefonstrømmen har sagt «start»
+  let tlfKlar = false;
+  let avbrutt = false; // kunden avbrøt: dropp resten av lyden fra svaret som ble avbrutt
+  let lydSlutt = 0; // når lyden vi har sendt er ferdig spilt av hos kunden (ms, omtrent)
+  let sisteAktivitet = Date.now(); // sist noen snakket
+  let spurtOmTilstede = false;
+  let avslutter = false;
 
   const tilTlf = (obj) => { try { tlfWs.send(JSON.stringify(obj)); } catch {} };
-  const sendLyd = (payload) => erTelnyx
-    ? tilTlf({ event: "media", media: { payload } })
-    : streamSid && tilTlf({ event: "media", streamSid, media: { payload } });
-  const stoppLyd = () => erTelnyx ? tilTlf({ event: "clear" }) : streamSid && tilTlf({ event: "clear", streamSid });
+  const sendLyd = (payload) => {
+    if (!tlfKlar) { if (utKo.length < 400) utKo.push(payload); return; }
+    // PCMU er 8000 byte i sekundet. Hold oversikt over når lyden er ferdig avspilt.
+    const ms = (payload.length * 3 / 4) / 8;
+    lydSlutt = Math.max(lydSlutt, Date.now()) + ms;
+    sisteAktivitet = Date.now();
+    if (erTelnyx) tilTlf({ event: "media", media: { payload } });
+    else if (streamSid) tilTlf({ event: "media", streamSid, media: { payload } });
+  };
+  const stoppLyd = () => {
+    lydSlutt = Date.now();
+    if (erTelnyx) tilTlf({ event: "clear" }); else if (streamSid) tilTlf({ event: "clear", streamSid });
+  };
   const tilXai = (obj) => { if (xai && xai.readyState === 1) xai.send(JSON.stringify(obj)); };
 
+  // Stillhet: spør én gang om de er der etter 20 sek, legg på etter 12 sek til. Sparer minutter på telefonsvarer og glemte samtaler.
+  const stilleMs = Number(env.STILLE_MS) || 20000;
+  const stilleSjekk = setInterval(() => {
+    if (avslutter || !xai) return;
+    const stille = Date.now() - Math.max(sisteAktivitet, lydSlutt);
+    if (!spurtOmTilstede && stille > stilleMs) {
+      spurtOmTilstede = true;
+      sisteAktivitet = Date.now();
+      tilXai({ type: "response.create", response: { instructions: "Det har vært stille en stund. Spør kort og vennlig om personen fortsatt er der." } });
+    } else if (spurtOmTilstede && stille > stilleMs * 0.6) {
+      avslutter = true;
+      logg.push(`[${tid()}] (lagt på etter stillhet)`);
+      leggPaa(0);
+    }
+  }, Math.min(2000, stilleMs / 4));
+
   async function leggPaa(etterMs) {
+    avslutter = true;
+    clearInterval(stilleSjekk);
     await new Promise((r) => setTimeout(r, etterMs));
+    // Vent til ha det-replikken faktisk er spilt av (maks 12 sek), så den ikke kuttes midt i.
+    for (let i = 0; i < 40 && Date.now() < lydSlutt + 600; i++) await new Promise((r) => setTimeout(r, 300));
     if (callSid && erTelnyx) await telnyx(env, `calls/${encodeURIComponent(callSid)}/actions/hangup`, {});
     else if (callSid) await twilio(env, `Calls/${callSid}.json`, { Status: "completed" });
     try { tlfWs.close(1000, "ferdig"); } catch {}
@@ -408,6 +488,9 @@ async function koblSamtale(env, tlfWs, urlParam) {
       return { ok: true, info: "Bestilt i demoen. Si at kunden får en SMS med bekreftelse (i demoen sendes den ikke)." };
     }
     if (navn === "legg_igjen_beskjed") {
+      args.beskjed = String(args.beskjed || "").replace(/^\s*(haster|akutt|hastesak)\s*[:!.-]?\s*/i, "HASTER: ");
+      if (!/\d{8,}/.test(String(args.mobil || "").replace(/\D/g, "")))
+        return { ok: false, feil: "Beskjeden er IKKE sendt ennå. Haster det, si først det trygge rådet og hva som skjer videre. Spør så om navn og mobilnummer, gjenta nummeret, og send beskjeden når du har det." };
       demoHendelser.push(`Demo-beskjed: ${[args.beskjed, args.navn, args.mobil].filter(Boolean).join(" · ")}`);
       return { ok: true, info: "Beskjeden er notert i demoen." };
     }
@@ -424,7 +507,7 @@ async function koblSamtale(env, tlfWs, urlParam) {
       return { ok: true };
     }
     if (navn === "legg_paa") {
-      leggPaa(3500);
+      leggPaa(800);
       return { ok: true };
     }
     return { ok: false, melding: "Ukjent verktøy" };
@@ -441,23 +524,8 @@ async function koblSamtale(env, tlfWs, urlParam) {
     }
     xai = r.webSocket;
     xai.accept();
-    tilXai({
-      type: "session.update",
-      session: {
-        voice: env.STEMME || "liora",
-        instructions: kunde.inn ? innringInstruks() : instruksjoner(kunde.navn, kunde.firma),
-        tools: kunde.inn ? INN_VERKTOY() : VERKTOY,
-        turn_detection: { type: "server_vad" },
-        audio: {
-          input: { format: { type: "audio/pcmu" }, transcription: { language_hint: "no", keyterms: ["Orvelo", "Preben", "KI-sekretær"] } },
-          output: { format: { type: "audio/pcmu" } },
-        },
-      },
-    });
-    const hei = kunde.navn ? `Hei, ${kunde.navn.split(" ")[0]}!` : "Hei!";
-    const forste = kunde.inn
-      ? "Hei, du har ringt Orvelo! Jeg er Liora, en KI-assistent. Hvilket firma ringer du fra, så finner jeg KI-sekretæren vi har laget til dere?"
-      : `${hei} Dette er Liora, en KI-assistent fra Orvelo. Du ba om å bli ringt for å høre hvordan en KI-sekretær høres ut, så her er jeg! Har du et par minutter?`;
+    tilXai({ type: "session.update", session: sesjon(env, kunde) });
+    const forste = forsteReplikk(kunde);
     tilXai({
       type: "conversation.item.create",
       item: {
@@ -471,12 +539,13 @@ async function koblSamtale(env, tlfWs, urlParam) {
       let e;
       try { e = JSON.parse(m.data); } catch { return; }
       const t = e.type;
+      if (t === "response.created") { avbrutt = false; return; }
       if (t === "response.output_audio.delta" || t === "response.audio.delta") {
-        sendLyd(e.delta);
+        if (!avbrutt) sendLyd(e.delta);
         return;
       }
       if (t === "response.output_audio_transcript.done" || t === "response.audio_transcript.done") {
-        if (e.transcript && e.transcript.trim()) logg.push(`[${tid()}] Liora: ${e.transcript.trim()}`);
+        if (e.transcript && e.transcript.trim()) logg.push(`[${tid()}] Liora: ${e.transcript.trim()}${avbrutt ? " (avbrutt)" : ""}`);
         return;
       }
       if (t.includes("input_audio_transcription.completed")) {
@@ -484,9 +553,14 @@ async function koblSamtale(env, tlfWs, urlParam) {
         return;
       }
       if (t === "input_audio_buffer.speech_started") {
+        // Kunden begynte å snakke: stopp det som spilles, og dropp resten av svaret som er på vei.
+        sisteAktivitet = Date.now();
+        spurtOmTilstede = false;
+        if (Date.now() < lydSlutt) avbrutt = true;
         stoppLyd();
         return;
       }
+      if (t === "input_audio_buffer.speech_stopped") { sisteAktivitet = Date.now(); return; }
       if (t === "response.function_call_arguments.done") {
         let args = {};
         try { args = JSON.parse(e.arguments || "{}"); } catch {}
@@ -497,7 +571,7 @@ async function koblSamtale(env, tlfWs, urlParam) {
       }
       if (t === "error") console.log("xAI-feil", JSON.stringify(e).slice(0, 300));
     });
-    xai.addEventListener("close", () => { try { tlfWs.close(1000, "grok lukket"); } catch {} });
+    xai.addEventListener("close", () => { clearInterval(stilleSjekk); try { tlfWs.close(1000, "grok lukket"); } catch {} });
   }
 
   tlfWs.addEventListener("message", async (m) => {
@@ -513,27 +587,23 @@ async function koblSamtale(env, tlfWs, urlParam) {
       erTelnyx = !!e.start.call_control_id;
       streamSid = e.start.streamSid || e.stream_id || null;
       callSid = e.start.callSid || e.start.call_control_id || null;
-      const p = erTelnyx ? urlParam : (e.start.customParameters || {});
-      if (p.modus === "inn") {
-        const forventet = await hmac(env.TWILIO_AUTH_TOKEN, `inn|${p.cid}|${p.fra}|${p.ts}`);
-        if (!erTelnyx || !likt(p.sig, forventet) || p.cid !== callSid || Date.now() - Number(p.ts) > 2 * 60 * 1000) {
-          console.log("Ugyldig innringing-signatur");
-          try { tlfWs.close(1008, "ugyldig"); } catch {}
+      if (tidligStart) {
+        // Grok ble startet da strømmen koblet til. Sjekk at innringingen gjelder denne samtalen, og send lyden som venter.
+        if (kunde.inn && urlParam.cid !== callSid) {
+          console.log("Innringing: feil samtale-id");
+          leggPaa(0);
           return;
         }
-        kunde = { til: p.fra || "ukjent", navn: "", firma: "", inn: true };
-        setTimeout(() => leggPaa(0), MAKS_SEK * 1000);
-        await startGrok();
+        tlfKlar = true;
+        while (utKo.length) sendLyd(utKo.shift());
         return;
       }
-      // Sjekk at samtalen faktisk ble startet av /ring (signert), ellers legg på.
-      const forventet = await hmac(env.TWILIO_AUTH_TOKEN, `samtale|${p.til}|${p.ts}`);
-      if (!likt(p.sig, forventet) || Date.now() - Number(p.ts) > 15 * 60 * 1000) {
-        console.log("Ugyldig samtale-signatur");
-        try { tlfWs.close(1008, "ugyldig"); } catch {}
-        return;
-      }
-      kunde = { til: p.til, navn: p.navn || "", firma: p.firma || "" };
+      tlfKlar = true;
+      const p = e.start.customParameters || {};
+      const kjent = p.modus === "inn" ? null : await sjekkParam(p); // innringing går bare via Telnyx
+      if (!kjent) { try { tlfWs.close(1008, "ugyldig"); } catch {} return; }
+      kunde = kjent;
+      setTimeout(() => leggPaa(0), MAKS_SEK * 1000);
       await startGrok();
       return;
     }
@@ -543,9 +613,35 @@ async function koblSamtale(env, tlfWs, urlParam) {
     }
   });
   tlfWs.addEventListener("close", async () => {
+    clearInterval(stilleSjekk);
     try { xai && xai.close(1000, "lagt på"); } catch {}
     await sendRapport();
   });
+
+  // Sjekker de signerte parameterne. Gir kunde-objektet, eller null hvis noe er galt.
+  async function sjekkParam(p) {
+    if (p.modus === "inn") {
+      const forventet = await hmac(env.TWILIO_AUTH_TOKEN, `inn|${p.cid}|${p.fra}|${p.ts}`);
+      if (!likt(p.sig, forventet) || Date.now() - Number(p.ts) > 2 * 60 * 1000) { console.log("Ugyldig innringing-signatur"); return null; }
+      return { til: p.fra || "ukjent", navn: "", firma: "", inn: true };
+    }
+    // Sjekk at samtalen faktisk ble startet av /ring (signert), ellers legg på.
+    const forventet = await hmac(env.TWILIO_AUTH_TOKEN, `samtale|${p.til}|${p.ts}`);
+    if (!likt(p.sig, forventet) || Date.now() - Number(p.ts) > 15 * 60 * 1000) { console.log("Ugyldig samtale-signatur"); return null; }
+    return { til: p.til, navn: p.navn || "", firma: p.firma || "" };
+  }
+
+  // Telnyx legger parameterne i URL-en, så vi kan koble til Grok med en gang strømmen åpnes,
+  // i stedet for å vente på «start». Det sparer rundt et halvt sekund før Liora sier hei.
+  let tidligStart = false;
+  if (urlParam && urlParam.sig) {
+    const kjent = await sjekkParam(urlParam);
+    if (!kjent) { try { tlfWs.close(1008, "ugyldig"); } catch {} return; }
+    tidligStart = true;
+    kunde = kjent;
+    setTimeout(() => leggPaa(0), MAKS_SEK * 1000);
+    await startGrok();
+  }
 
   // Én e-post per samtale: sammendrag + hele samtalen som tekst.
   async function sendRapport() {
