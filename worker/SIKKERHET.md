@@ -35,7 +35,7 @@
    I samme miljø, **Environment secrets**:
    - `CLOUDFLARE_API_TOKEN`: lag på dash.cloudflare.com → My Profile → API Tokens → *Create Token* → malen
      **Edit Cloudflare Workers**, bare din konto. (Tokenet kan bare deploye workers, ikke se DNS eller betaling.)
-   - `CLOUDFLARE_ACCOUNT_ID`: `702b473e150b3be788fdaf45c4d1de31`
+   (Konto-id-en står i `worker/wrangler-*.toml`, så den trengs ikke som hemmelighet.)
 3. **Code security**: slå på *Secret scanning* og *Push protection* (gratis for offentlige repoer), og *Dependabot alerts*.
 4. **Collaborators** og **Deploy keys**: sjekk at ingen andre enn deg har skrivetilgang.
 5. Din konto (github.com/settings/security): **tofaktor** på, og under *Applications* fjern apper og tokens du ikke bruker.
