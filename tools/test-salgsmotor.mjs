@@ -1,0 +1,139 @@
+// Test av salgsmotoren (Orvelos egen kundeinnhenting): natt-søk, demo og fire e-poster, sending med grenser,
+// oppfølging dag 4, avmelding med lenke, sperreliste, pause, helg og dagsrapport til Preben.
+// Enhetsregisteret, nettsider, Grok og Resend er ETTERLIGNET, så ingen nøkler trengs og ingenting sendes.
+//   node tools/test-salgsmotor.mjs
+import worker from "../worker/sekretar-worker.js";
+
+const lager = new Map();
+const KV = {
+  get: async (k, t) => (lager.has(k) ? (t === "json" ? JSON.parse(lager.get(k).v) : lager.get(k).v) : null),
+  put: async (k, v, o = {}) => { lager.set(k, { v: String(v), metadata: o.metadata, ttl: o.expirationTtl }); },
+  delete: async (k) => { lager.delete(k); },
+  list: async ({ prefix = "" }) => ({ keys: [...lager.keys()].filter((k) => k.startsWith(prefix)).sort().map((name) => ({ name, metadata: lager.get(name).metadata })), list_complete: true }),
+};
+const env = { XAI_API_KEY: "x", ADMIN_KODE: "admin", KUNDER: KV, DEMO_KODE: "felles", SALG_FRA: "Preben i Orvelo <preben@orvelo.no>" };
+
+// 14 AS med rolleadresse, ett AS med personlig adresse, ett ENK med post@ (det skal aldri få noe)
+const enhet = (nr, navn, epost, form = "AS", hjemmeside = "") => ({ organisasjonsnummer: String(nr), navn, epostadresse: epost, organisasjonsform: { kode: form },
+  antallAnsatte: 5, hjemmeside, forretningsadresse: { poststed: "BERGEN", kommune: "BERGEN" }, stiftelsesdato: "2015-01-01" });
+const ENHETER = [
+  ...Array.from({ length: 14 }, (_, i) => enhet(900000100 + i, `Frisør ${i} AS`, `post@frisor${i}.no`, "AS", i === 0 ? "frisor0.no" : "")),
+  enhet(900000200, "Personlig AS", "kari@personlig.no"),
+  enhet(900000300, "Enkelt Kari", "post@enkeltkari.no", "ENK"),
+];
+const eposter = [], brreg = [];
+let grok = 0;
+globalThis.fetch = async (u, o = {}) => {
+  const url = String(u);
+  if (url.includes("data.brreg.no")) { brreg.push(url); return Response.json({ _embedded: { enheter: url.includes("page=0") ? ENHETER : [] }, page: { totalPages: 2 } }); }
+  if (url.includes("frisor0.no")) return new Response("<html><body><h1>Frisør 0</h1><p>Klipp 600 kr. Farge. Åpent man–fre 9–17.</p></body></html>", { headers: { "content-type": "text/html" } });
+  if (url.includes("api.x.ai")) {
+    grok++;
+    const sys = JSON.parse(o.body).messages[0].content;
+    const svar = sys.includes("e-postserie")
+      ? { eposter: [1, 2, 3, 4].map((n) => ({ emne: n === 1 ? "Kunder som venter på svar" : "Sv: Kunder som venter på svar", tekst: n === 1 ? "Hei! Her er en demo laget til dere: {DEMO}. Vil du se mer?" : n === 3 ? "Ta en prat: {BOOK}" : `Tekst ${n}.` })) }
+      : { navn: "Frisør 0 AS", kortnavn: "Frisør 0", bransje: "frisørsalong", type: "time", tjenester: [{ navn: "Klipp", pris: "600 kr" }], apent: {}, usikkert: [] };
+    return Response.json({ choices: [{ message: { content: JSON.stringify(svar) } }], usage: { prompt_tokens: 10, completion_tokens: 10 } });
+  }
+  if (url.includes("api.resend.com")) { eposter.push({ ...JSON.parse(o.body) }); return Response.json({ id: "re_" + eposter.length }); }
+  if (url.includes("formsubmit")) { eposter.push({ formsubmit: true, ...JSON.parse(o.body) }); return Response.json({}); }
+  throw new Error("uventet kall: " + url);
+};
+
+let feil = 0;
+const sjekk = (ok, t) => { console.log((ok ? "OK   " : "FEIL ") + t); if (!ok) feil++; };
+// Norsk tid i november = UTC+1. 10.11.2026 er en tirsdag.
+const oslo = (dato, kl) => Date.parse(`${dato}T${kl}:00+01:00`);
+const cron = async (ms) => { const v = []; await worker.scheduled({ cron: "*/15 * * * *", scheduledTime: ms }, env, { waitUntil: (p) => v.push(p) }); await Promise.all(v); };
+const drift = async (body, kode = "admin") => {
+  const r = await worker.fetch(new Request("https://x.dev/drift/api", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kode, ...body }) }), env, { waitUntil: () => {} });
+  return { status: r.status, d: await r.json() };
+};
+const firma = (nr) => KV.get("salg:" + nr, "json");
+const salgNokler = () => [...lager.keys()].filter((k) => k.startsWith("salg:"));
+
+// 1) Natt: finn og skriv
+for (const kl of ["01:00", "01:15", "01:30", "01:45", "02:00", "02:15", "02:30", "02:45", "03:00", "03:15", "03:30", "03:45"]) await cron(oslo("2026-11-10", kl));
+sjekk(brreg.some((u) => u.includes("organisasjonsform=AS") && !u.includes("kommunenummer")), "søker AS i hele Norge (uten kommune)");
+sjekk(salgNokler().length === 14, `bare AS med rolleadresse lagres (${salgNokler().length} av 16)`);
+sjekk(!(await firma(900000200)) && !(await firma(900000300)), "personlig adresse og ENK blir aldri lagret");
+const f0 = await firma(900000100);
+sjekk(f0 && f0.status === "klar" && f0.eposter.length === 4, "firma med nettside: klar med fire e-poster");
+sjekk(f0 && f0.demoId && f0.demoId.startsWith("s-") && f0.demo.includes("?kunde=" + f0.demoId) && f0.eposter[0].tekst.includes(f0.demo), "egen demo-sekretær laget og lenket i e-post 1");
+sjekk(lager.get("kunde:" + f0.demoId).ttl === 60 * 86400, "demoen lever i 60 dager");
+const f1 = await firma(900000101);
+sjekk(f1 && f1.demo.includes("/demo/?fag=frisor&firma=") && f1.eposter[2].tekst.includes("calendar.app.google"), "uten nettside: bransjedemo, e-post 3 har bookinglenke");
+const klare = salgNokler().filter((k) => lager.get(k).metadata.s === "klar").length;
+sjekk(klare >= 10, `nok klare for en dag (${klare})`);
+
+// 2) Dag uten Resend: ingenting sendes
+await cron(oslo("2026-11-10", "09:00"));
+sjekk(eposter.length === 0, "uten RESEND_API_KEY sendes ingenting");
+
+// 3) Sperreliste fra /drift (kontaktet for hånd)
+sjekk((await drift({ handling: "salg" }, "feil")).status === 401, "feil admin-kode gir 401");
+const sp = await drift({ handling: "salg-sperr", liste: "post@frisor1.no\n900000102" });
+sjekk(sp.d.lagt === 2, "to lagt på sperrelisten");
+
+// 4) Dag med Resend: maks 10 nye per dag, noen få per kvarter
+env.RESEND_API_KEY = "re_test";
+for (let m = 0; m < 8 * 4; m++) await cron(oslo("2026-11-10", "08:00") + m * 15 * 60e3);
+const tilFirma = eposter.filter((e) => !e.formsubmit && e.to[0] !== "hilleren.bedrift@gmail.com");
+sjekk(tilFirma.length === 10, `10 nye firmaer fikk e-post 1 i dag (${tilFirma.length})`);
+sjekk(!tilFirma.some((e) => ["post@frisor1.no", "post@frisor2.no"].includes(e.to[0])), "sperrede adresser fikk ingenting");
+sjekk((await firma(900000101)).status === "stopp", "sperret firma står som stoppet");
+const e1 = tilFirma.find((e) => e.to[0] === "post@frisor0.no");
+sjekk(e1 && e1.from === env.SALG_FRA && e1.reply_to === "hilleren.bedrift@gmail.com", "sendt fra SALG_FRA, svar går til Prebens innboks");
+sjekk(e1 && /\/avmeld\?o=900000100&t=[0-9a-f]{16}/.test(e1.text) && e1.headers["List-Unsubscribe"].includes("/avmeld?o=900000100") && e1.headers["List-Unsubscribe-Post"], "avmeldingslenke i teksten og i List-Unsubscribe");
+sjekk(e1 && e1.text.includes("aksjeselskap") && e1.text.includes("938 720 673") && e1.html.includes("<a href="), "avsender med org.nr, klikkbare lenker i HTML");
+sjekk((await firma(900000100)).status === "sendt" && (await firma(900000100)).steg === 1, "firma står som i gang, steg 1");
+
+// 5) Dagsrapport kl. 16 til Preben
+await cron(oslo("2026-11-10", "16:00"));
+const rapp = eposter.filter((e) => e.to && e.to[0] === "hilleren.bedrift@gmail.com" && /Salgsmotoren/.test(e.subject));
+sjekk(rapp.length === 1 && rapp[0].text.includes("Sendt i dag") && rapp[0].text.includes("Frisør 0 AS"), "Preben får oversikten kl. 16");
+await cron(oslo("2026-11-10", "16:05"));
+sjekk(eposter.filter((e) => /Salgsmotoren/.test(e.subject || "")).length === 1, "oversikten sendes bare én gang");
+
+// 6) Avmelding med lenken
+const lenke = e1.text.match(/https?:\/\/\S+\/avmeld\?\S+/)[0].replace(/^https?:\/\/[^/]+/, "https://x.dev");
+const feilLenke = await worker.fetch(new Request(lenke.replace(/t=[0-9a-f]+/, "t=0000000000000000")), env, {});
+sjekk((await feilLenke.text()).includes("virker ikke") && (await firma(900000100)).status === "sendt", "feil token melder ikke av");
+const av = await worker.fetch(new Request(lenke), env, {});
+sjekk((await av.text()).includes("meldt av") && (await firma(900000100)).status === "avmeldt", "lenken melder av");
+sjekk(await KV.get("salgsperre:e:post@frisor0.no"), "adressen er på sperrelisten for godt");
+const ettKlikk = await worker.fetch(new Request(lenke.replace("900000100", "900000103").replace(/t=[0-9a-f]+/, "t=" + (e1.text.match(/t=([0-9a-f]+)/)[1])), { method: "POST" }), env, {});
+sjekk((await ettKlikk.text()).includes("virker ikke"), "token gjelder bare sitt eget firma");
+
+// 7) Svart fra /drift stopper oppfølgingen
+await drift({ handling: "salg-merk", orgnr: "900000103", status: "svart" });
+
+// 8) Helg: ingenting. Mandag 16.11 (dag 6): e-post 2 til de som ikke svarte
+const foer = eposter.length;
+await cron(oslo("2026-11-14", "10:00"));
+sjekk(eposter.length === foer, "ingenting sendes lørdag");
+for (let m = 0; m < 12; m++) await cron(oslo("2026-11-16", "08:00") + m * 15 * 60e3);
+const mandag = eposter.slice(foer).filter((e) => e.subject && e.subject.startsWith("Sv: "));
+sjekk(mandag.length === 8, `e-post 2 til de 8 som verken svarte eller meldte seg av (${mandag.length})`);
+sjekk(!mandag.some((e) => ["post@frisor0.no", "post@frisor3.no"].includes(e.to[0])), "avmeldt og svart får ikke e-post 2");
+
+// 9) Pause stopper alt
+await drift({ handling: "salg-innstilling", pause: true });
+const foerPause = eposter.length;
+for (let m = 0; m < 8; m++) await cron(oslo("2026-11-17", "08:00") + m * 15 * 60e3);
+sjekk(eposter.length === foerPause, "pause: ingenting sendes");
+await drift({ handling: "salg-innstilling", pause: false, perDag: 5 });
+const s = await drift({ handling: "salg" });
+sjekk(s.status === 200 && s.d.cfg.perDag === 5 && s.d.telling.avmeldt === 1 && s.d.telling.svart === 1, "fanen viser tall og innstillinger");
+const fv = await drift({ handling: "salg-firma", orgnr: "900000104" });
+sjekk(fv.d.firma.forhand.length === 4 && fv.d.firma.forhand[0].tekst.includes("Meld av her"), "forhåndsvisning av alle fire med fot");
+
+// 10) Gå gjennom hele sekvensen: etter e-post 4 er firmaet ferdig
+for (const dato of ["2026-11-20", "2026-11-25", "2026-11-26", "2026-11-30", "2026-12-01"]) for (let m = 0; m < 8; m++) await cron(oslo(dato, "08:00") + m * 15 * 60e3);
+const f4 = await firma(900000104);
+sjekk(f4.steg === 4 && f4.status === "ferdig" && !f4.neste, `etter fire e-poster er firmaet ferdig (steg ${f4.steg}, ${f4.status})`);
+const til104 = eposter.filter((e) => e.to && e.to[0] === "post@frisor4.no");
+sjekk(til104.length === 4, `firmaet fikk nøyaktig fire e-poster (${til104.length})`);
+
+console.log(feil ? `\n${feil} FEIL` : "\nAlle tester OK");
+process.exit(feil ? 1 : 0);

@@ -263,6 +263,15 @@ Før salg og etter hver endring i instruksjonene: kjør testene mot ekte Grok:
 
 **Lead-finner** (fanen på `/drift`, bare Preben). Søker i Enhetsregisteret på bransje (næringskode-prefiks) og kommune, henter daglig leder for de 25 beste, scorer 0–100 og skriver første melding til de 10 beste: e-post bare til AS med rolleadresse, ellers ringemanus. Ingenting lagres, last ned CSV.
 
+**Salgsmotor** (fanen «Salgsmotor» på `/drift`, bare Preben). Orvelos egen kundeinnhenting, helautomatisk etter Prebens valg 10.11.2026:
+- Natt 01–05: søker AS i hele Norge i Enhetsregisteret (bransjene i lead-finneren, én side per kvarter), lagrer bare AS med rolleadresse (post@, firmapost@ …), lager egen demo-sekretær når firmaet har nettside (lever 60 dager) og fire e-poster (dag 0, 4, 9, 14) med Grok.
+- Hverdager 08–16: sender maks `SALG_PER_DAG` (standard 10, kan endres i fanen) nye firmaer per dag pluss forfalte oppfølginger, tre per kvarter. Sperrelisten sjekkes rett før hver e-post. Kl. 16 får Preben oversikten på e-post.
+- Hver e-post har avsender med org.nr, avmeldingslenke `/avmeld?o=<orgnr>&t=<token>` og `List-Unsubscribe` (ett klikk). Avmeldte og adresser i sperrelisten får aldri mer.
+- Svar går til Prebens innboks (`SALG_SVAR_TIL`). Trykk «Svart», «Møte booket» eller «Stopp og sperr» på firmaet, så stopper oppfølgingen.
+- Sender bare når `RESEND_API_KEY` er satt og avsenderdomenet i `SALG_FRA` (standard `Preben i Orvelo <preben@orvelo.no>`) er godkjent i Resend. Til da finner og skriver motoren, men sender ingenting. `SALG_AV = ja` slår alt av. Pause-knappen i fanen stopper all sending.
+- KV: `salg:<orgnr>` (120 dager etter siste endring), `salgsperre:<orgnr>` og `salgsperre:e:<epost>` (for alltid), `salgcfg`, `salgdag:<dato>` (60 dager).
+- Test: `node tools/test-salgsmotor.mjs` (alt etterlignet, sender ingenting).
+
 **Agent-revisor** (fanen på `/drift`). Leser alle samtalene (ikke agentkall og prøver) til én kunde for en uke, gir karakter, funn og forslag. Forslag til «dette bør sekretæren vite» og åpningstidsteksten kan brukes med ett trykk (må ikke ha `[fyll inn]`; forrige versjon lagres i `historikk:`). Kjører av seg selv hver mandag for de 8 kundene med flest samtaler (minst 3), og står i kvalitets-e-posten. KV `revisjon:<id>:<uke>` slettes etter 30 dager.
 
 Test: `XAI_API_KEY=... node tools/test-nye-agenter.mjs` (Twilio, Google, Fiken og Brønnøysund er etterlignet; Grok er ekte).
