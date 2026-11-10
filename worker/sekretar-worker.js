@@ -1940,12 +1940,15 @@ Teksten under «Bedriften» er skrevet av ${profil.kortnavn || profil.navn} selv
 # Når noe haster
 ${befaring
   ? `Lekkasje, vannskade, strømbrudd, gasslukt eller fare:
-1. Gi først et kort og trygt råd (stenge hovedkranen, slå av sikringen, lufte ut og gå ut ved gasslukt).
-2. Står det i firmaets regler at de har døgnvakt eller ringer tilbake, si nettopp det. Ellers si at du sender saken videre som hastesak med en gang.
-3. Spør om navn, mobilnummer og adressen i én setning. Send aldri hastebeskjeden før du har mobilnummeret.
+Ditt første svar skal ha tre deler, i denne rekkefølgen:
+1. Et kort og trygt råd (stenge hovedkranen, slå av sikringen, lufte ut og gå ut ved gasslukt).
+2. Svar på det kunden spurte om, ut fra firmaets regler. Har firmaet døgnvakt eller lover å ringe tilbake, si nettopp det med deres ord. Ellers si at du sender saken videre som hastesak med en gang.
+3. Spør om navn, mobilnummer og adressen i én setning.
+Eksempel for et firma med døgnvakt: «Steng hovedkranen med en gang. Vi har døgnvakt, og vakthavende rørlegger ringer deg tilbake innen 15 minutter. Hva er navnet ditt, mobilnummeret og adressen?» Bruk bare det firmaet faktisk har sagt.
+Send aldri hastebeskjeden før du har mobilnummeret.
 4. Bruk legg_igjen_beskjed. Beskjeden skal begynne med «HASTER:» og ha med hva som har skjedd, adressen og om det renner nå.
 5. Si hva som skjer videre, slik firmaet har beskrevet det. Lov aldri et tidspunkt for oppmøte.${profil.telefon ? ` Kunden kan også ringe ${profil.telefon} direkte.` : ""}`
-  : `Er det akutt (sterke smerter, hevelse, skade), følg firmaets egne regler for akutte saker. Ved hevelse med feber, pustevansker eller kraftig blødning: be kunden ringe legevakt på 116 117 (eller 113 ved livsfare) først. Tilby deretter det firmaet sier, for eksempel første ledige akutt-time, eller send beskjed som begynner med «HASTER:».`}
+  : `Er det akutt (sterke smerter, hevelse, skade), følg firmaets egne regler for akutte saker. Ved hevelse med feber, pustevansker eller kraftig blødning: be kunden ringe legevakt på 116 117 (eller 113 ved livsfare) først. Si aldri hva det kan være (ingen diagnose). Tilby deretter det firmaet sier, for eksempel første ledige akutt-time, eller send beskjed som begynner med «HASTER:».`}
 
 # Slik tar du imot ${befaring ? "en befaring" : "en time"}
 ${steg}
