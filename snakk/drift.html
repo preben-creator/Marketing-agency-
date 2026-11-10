@@ -40,7 +40,7 @@ td.n,th.n{text-align:right;white-space:nowrap}.rod{color:var(--bad)}.gronn{color
 .skjult{display:none}
 </style></head><body><div class="wrap">
 <h1>Drift <span>og kvalitet</span></h1>
-<p class="lead">Hver samtale og hvert agentkall lagres som en sporbar logg i 30 dager. Her ser du ukens utvalg og merker om svaret var riktig, hva hver kunde koster i KI og SMS mot det de betaler, og sletting.</p>
+<p class="lead">Hver samtale og hvert agentkall lagres som en sporbar logg i 30 dager. Her ser du ukens utvalg og merker om svaret var riktig, hva hver kunde koster i KI og SMS mot det de betaler, sletting, agent-revisoren som foreslår rettelser i profilene, og lead-finneren.</p>
 
 <div class="card">
   <div class="g" style="grid-template-columns:1fr auto"><label>Admin-kode<input id="kode" type="password" autocomplete="current-password"></label>
@@ -48,7 +48,7 @@ td.n,th.n{text-align:right;white-space:nowrap}.rod{color:var(--bad)}.gronn{color
   <p class="msg" id="msg" style="margin:8px 0 0"></p>
 </div>
 
-<div class="tabs"><button data-t="kvalitet" class="on">Kvalitet</button><button data-t="kost">Kostnad per kunde</button><button data-t="slett">Sletting</button></div>
+<div class="tabs"><button data-t="kvalitet" class="on">Kvalitet</button><button data-t="kost">Kostnad per kunde</button><button data-t="slett">Sletting</button><button data-t="revisor">Agent-revisor</button><button data-t="leads">Lead-finner</button></div>
 
 <section id="t-kvalitet">
   <div class="card">
@@ -90,6 +90,32 @@ td.n,th.n{text-align:right;white-space:nowrap}.rod{color:var(--bad)}.gronn{color
   </div>
 </section>
 
+<section id="t-revisor" class="skjult">
+  <div class="card">
+    <h2>Agent-revisor</h2>
+    <p class="muted" style="margin:0 0 10px">Revisoren leser alle samtalene til én kunde for en uke, finner feil og vage svar, og foreslår rettelser i profilen. «Dette bør sekretæren vite» og åpningstidsteksten kan brukes med ett trykk (forrige versjon lagres). Priser og tjenester retter du på /lag. Hver mandag kjører den av seg selv for kundene med flest samtaler, og resultatet står i kvalitets-e-posten.</p>
+    <div class="g"><label>Kunde<select id="rKunde"></select></label>
+      <label>Uke<select id="rUke"><option value="1">Forrige uke</option><option value="0">Denne uka så langt</option><option value="2">For 2 uker siden</option><option value="3">For 3 uker siden</option></select></label></div>
+    <div class="row"><button id="rVis">Vis siste revisjon</button><button class="p" id="rKjor">Kjør revisoren nå</button><span class="msg" id="msgRev"></span></div>
+  </div>
+  <div id="revRes"></div>
+</section>
+
+<section id="t-leads" class="skjult">
+  <div class="card">
+    <h2>Lead-finner</h2>
+    <p class="muted" style="margin:0 0 10px">Finner bedrifter i en bransje og kommune i Enhetsregisteret, henter telefon, e-post, nettside og daglig leder, scorer dem 0–100 og lager første melding til de 10 beste. E-post bare til AS med rolleadresse (post@, firmapost@ …), ellers ringemanus du bruker selv (markedsføringsloven § 15). Ingenting lagres: last ned CSV.</p>
+    <div class="g"><label>Bransje<select id="lBransje"></select></label>
+      <label>Kommune (navn eller nummer)<input id="lKommune" value="bergen" list="lKommuner"><datalist id="lKommuner"></datalist></label>
+      <label>Eller næringskode<input id="lKode" placeholder="f.eks. 86.23"></label></div>
+    <div class="g" style="margin-top:12px"><label>Maks antall<select id="lAntall"><option>50</option><option selected>100</option><option>200</option><option>300</option></select></label>
+      <label class="cb" style="align-self:end"><input type="checkbox" id="lAS"> Bare AS</label>
+      <label class="cb" style="align-self:end"><input type="checkbox" id="lMeld" checked> Lag første melding til de 10 beste</label></div>
+    <div class="row"><button class="p" id="lFinn">Finn bedrifter</button><button id="lCsv" disabled>Last ned CSV</button><span class="msg" id="msgL"></span></div>
+  </div>
+  <div class="card"><div id="lRes" class="muted">Ingen søk ennå.</div></div>
+</section>
+
 <script>
 const $=(id)=>document.getElementById(id);
 const esc=(s)=>String(s??"").replace(/[&<>"]/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -102,8 +128,8 @@ async function api(body){
   if(!r.ok) throw new Error(d.feil||("Feil "+r.status));
   return d;
 }
-function vis(t){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));["kvalitet","kost","slett"].forEach(x=>$("t-"+x).classList.toggle("skjult",x!==t));}
-document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{vis(b.dataset.t);if(b.dataset.t==="kost")hentKost();if(b.dataset.t==="slett")oppbevaring();});
+function vis(t){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));["kvalitet","kost","slett","revisor","leads"].forEach(x=>$("t-"+x).classList.toggle("skjult",x!==t));}
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{vis(b.dataset.t);if(b.dataset.t==="kost")hentKost();if(b.dataset.t==="slett")oppbevaring();if(b.dataset.t==="revisor")revKunder();if(b.dataset.t==="leads")leadValg();});
 $("start").onclick=async()=>{
   try{localStorage.setItem("orvelo-admin",$("kode").value);}catch{}
   $("msg").textContent="";
@@ -186,5 +212,39 @@ $("slettEkte").onclick=async()=>{
   try{const d=await api({handling:"slett-kunde",kunde:id,ekte:true,bekreft:svar});$("msgS").innerHTML=`<span class="ok">${d.antall} nøkler slettet.</span>`;$("slettEkte").disabled=true;}
   catch(e){$("msgS").innerHTML='<span class="err">'+esc(e.message)+'</span>';}
 };
+
+// Agent-revisor
+const TYPE_N={feil:"Feil",vagt:"Vagt svar","fant_på":"Fant på noe",manglet_info:"Manglet info",regelbrudd:"Brøt en regel","verktøy":"Verktøy"};
+async function revKunder(){if($("rKunde").options.length)return;try{const d=await api({handling:"revisor-kunder"});$("rKunde").innerHTML=d.kunder.sort().map(k=>`<option>${esc(k)}</option>`).join("");}catch(e){$("msgRev").innerHTML='<span class="err">'+esc(e.message)+'</span>';}}
+let REV=null;function visRev(r){REV=r;if(!r){$("revRes").innerHTML='<div class="card muted">Ingen revisjon for denne uka ennå. Trykk «Kjør revisoren nå».</div>';return;}
+  $("revRes").innerHTML=`<div class="card"><h2>${esc(r.id)} · ${esc(r.uke)} · <span class="${r.karakter==="svak"?"rod":r.karakter==="god"?"gronn":""}">${esc(r.karakter)}</span></h2><p>${esc(r.oppsummering)}</p><p class="muted">${r.antall} samtaler lest · ${esc(new Date(r.tid).toLocaleString("nb-NO"))}</p></div>
+  <div class="card"><h2>Forslag til rettelser</h2>${r.rettelser.length?r.rettelser.map(x=>`<div class="sam ${x.brukt?"v-riktig":""}"><div class="topp"><span class="tag">${esc(x.felt)}</span>${x.samtaler.length?"samtale "+x.samtaler.join(", "):""}${x.brukt?' <span class="tag" style="border-color:var(--ok);color:var(--ok)">brukt</span>':""}</div>
+    ${["ekstra","apentTekst"].includes(x.felt)&&!x.brukt?`<textarea data-nr="${x.nr}" rows="3">${esc(x.tekst)}</textarea>`:`<div class="m ai">${esc(x.tekst)}</div>`}<p class="muted" style="margin:6px 0 0">${esc(x.begrunnelse)}</p>
+    ${["ekstra","apentTekst"].includes(x.felt)&&!x.brukt?`<div class="row" style="margin-top:8px"><button class="p rBruk" data-nr="${x.nr}">${x.felt==="ekstra"?"Legg til i profilen":"Bytt åpningstidsteksten"}</button></div>`:x.brukt?"":`<p class="muted" style="margin:6px 0 0">Rettes for hånd på <a href="/lag" style="color:var(--acc2)">/lag</a>.</p>`}</div>`).join(""):'<p class="muted">Ingen forslag.</p>'}</div>
+  <div class="card"><h2>Funn</h2>${r.funn.length?r.funn.map(f=>`<div class="sam"><div class="topp"><span class="tag f">${esc(TYPE_N[f.type]||f.type)}</span>samtale ${f.samtale} · ${esc(KANAL[f.kanal]||f.kanal)}</div>${f.sitat?`<div class="m ai">«${esc(f.sitat)}»</div>`:""}<p style="margin:6px 0 0">${esc(f.problem)}</p></div>`).join(""):'<p class="muted">Ingen funn.</p>'}</div>`;}
+$("rVis").onclick=async()=>{$("msgRev").textContent="Henter …";try{const d=await api({handling:"revisor",kunde:$("rKunde").value,uke:$("rUke").value});visRev(d.revisjon);$("msgRev").textContent="";}catch(e){$("msgRev").innerHTML='<span class="err">'+esc(e.message)+'</span>';}};
+$("rKjor").onclick=async()=>{const b=$("rKjor");b.disabled=true;$("msgRev").textContent="Revisoren leser samtalene (opptil ett minutt) …";
+  try{const d=await api({handling:"revisor",kunde:$("rKunde").value,uke:$("rUke").value,kjor:true});visRev(d.revisjon);$("msgRev").textContent="";}catch(e){$("msgRev").innerHTML='<span class="err">'+esc(e.message)+'</span>';}finally{b.disabled=false;}};
+$("revRes").addEventListener("click",async e=>{const b=e.target.closest(".rBruk");if(!b)return;const nr=+b.dataset.nr;const t=document.querySelector(`textarea[data-nr="${nr}"]`).value;
+  if(!confirm("Endre profilen til kunden nå? Forrige versjon lagres."))return;
+  try{const d=await api({handling:"revisor-bruk",kunde:REV.id,uke:REV.uke,nr,tekst:t});visRev(d.revisjon);}catch(err){alert(err.message);}});
+
+// Lead-finner
+let LR=null;
+async function leadValg(){if($("lBransje").options.length)return;try{const d=await api({handling:"leadvalg"});
+  $("lBransje").innerHTML='<option value="">(bruk næringskode)</option>'+Object.entries(d.bransjer).map(([k,v])=>`<option value="${k}" ${k==="frisor"?"selected":""}>${esc(v)}</option>`).join("");
+  $("lKommuner").innerHTML=d.kommuner.map(k=>`<option value="${esc(k)}">`).join("");}catch(e){$("msgL").innerHTML='<span class="err">'+esc(e.message)+'</span>';}}
+$("lFinn").onclick=async()=>{const b=$("lFinn");b.disabled=true;$("msgL").textContent="Søker i Enhetsregisteret"+($("lMeld").checked?" og skriver meldinger (opptil ett minutt)":"")+" …";
+  try{LR=await api({handling:"leadsok",bransje:$("lBransje").value,naeringskode:$("lKode").value,kommune:$("lKommune").value,antall:$("lAntall").value,kunAS:$("lAS").checked,meldinger:$("lMeld").checked});
+    $("msgL").innerHTML=`<span class="ok">${LR.rader.length} bedrifter (${esc(LR.bransje)}, kommune ${esc(LR.kommune)}).</span>`;$("lCsv").disabled=!LR.rader.length;
+    $("lRes").innerHTML=`<table><thead><tr><th class="n">Score</th><th>Bedrift</th><th>Kontakt</th><th>Kanal</th></tr></thead><tbody>${LR.rader.map(r=>`<tr><td class="n"><b>${r.score}</b></td>
+      <td><b>${esc(r.navn)}</b> <span class="muted">${esc(r.form)} · ${r.ansatte} ans.</span><div class="muted">${esc(r.adresse)}</div><div class="muted">${esc(r.hvorfor.join(", "))}</div>${r.demo?`<a href="${esc(r.demo)}" target="_blank" rel="noopener" style="color:var(--acc2);font-size:13px">demo</a>`:""}</td>
+      <td>${esc(r.kontakt||"")}<div>${r.telefon?`<a href="tel:${esc(r.telefon)}" style="color:var(--acc2)">${esc(r.telefon)}</a>`:""}</div><div class="muted">${esc(r.rolleepost||r.epost||"")}</div>${r.hjemmeside?`<div class="muted">${esc(r.hjemmeside)}</div>`:""}</td>
+      <td>${esc(r.kanal)}${r.melding?`<details><summary style="cursor:pointer;color:var(--acc2)">melding</summary>${r.melding.emne?`<div class="muted">Emne: ${esc(r.melding.emne)}</div>`:""}<div class="m ai">${esc(r.melding.tekst)}</div><button class="kop" data-t="${esc((r.melding.emne?"Emne: "+r.melding.emne+"\n\n":"")+r.melding.tekst)}">Kopier</button></details>`:""}</td></tr>`).join("")}</tbody></table>`;}
+  catch(e){$("msgL").innerHTML='<span class="err">'+esc(e.message)+'</span>';}finally{b.disabled=false;}};
+$("lRes").addEventListener("click",e=>{const b=e.target.closest(".kop");if(b)navigator.clipboard.writeText(b.dataset.t).then(()=>{b.textContent="Kopiert!";});});
+$("lCsv").onclick=()=>{if(!LR)return;const k=["score","navn","orgnr","form","ansatte","kontakt","telefon","rolleepost","epost","hjemmeside","adresse","bransje","kanal","demo"];
+  const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';const rows=[[...k,"emne","melding"].join(";"),...LR.rader.map(r=>[...k.map(x=>q(r[x])),q(r.melding&&r.melding.emne),q(r.melding&&r.melding.tekst)].join(";"))];
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+rows.join("\n")],{type:"text/csv"}));a.download=`leads-${LR.bransje}-${LR.kommune}.csv`.replace(/\s+/g,"-").toLowerCase();a.click();};
 </script>
 </div></body></html>
