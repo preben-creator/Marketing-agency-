@@ -27,6 +27,7 @@
 //   POST /chat/innstillinger -> Prebens side: slå chatten av/på, farge, hilsen, domener, varsel-e-post (ADMIN_KODE)
 //   POST /chat/innboks  -> timeforespørsler, beskjeder og tall for chatten (ADMIN_KODE)
 //   /sms, /tillegg/*, /s/* -> tilleggstjenester på SMS (påminnelse, tapt anrop, anmeldelse). Se nederst i filen.
+//   /agenter, /agenter/* -> KI-agenter for kunden: oppfølging av leads (salg) og markedsføring. Se nederst i filen.
 //   POST /logg          -> sekretærsiden sender et kort sammendrag når en samtale er ferdig (til ukesrapporten)
 //   GET  /rapport       -> Prebens side: se, prøvesend og slå på ukesrapporten per kunde (krever ADMIN_KODE)
 //   POST /rapport/api   -> data til /rapport
@@ -188,6 +189,10 @@ export default {
       return redigerRute(request, env, ctx, url);
     }
 
+    if (url.pathname === "/agenter" || url.pathname.startsWith("/agenter/")) {
+      return agentRute(request, env, ctx, url);
+    }
+
     if (url.pathname === "/avtale" || url.pathname.startsWith("/avtale/")) {
       return avtaleRute(request, env, ctx, url);
     }
@@ -299,11 +304,11 @@ const SKJEMA = `{
   "usikkert": ["Ting du ikke fant og måtte anta, så Preben kan sjekke dem"]
 }`;
 
-async function grokJson(env, system, bruker) {
+async function grokJson(env, system, bruker, temperatur = 0.2) {
   const kall = (model) => fetch("https://api.x.ai/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${env.XAI_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model, temperature: 0.2, response_format: { type: "json_object" },
+    body: JSON.stringify({ model, temperature: temperatur, response_format: { type: "json_object" },
       messages: [{ role: "system", content: system }, { role: "user", content: bruker }] }),
   });
   let model = env.TEKST_MODELL || "grok-4-fast-non-reasoning";
@@ -740,7 +745,7 @@ async function redigerRute(request, env, ctx, url) {
     if (!profil) return json({ feil: "Fant ingen sekretær med id «" + id + "»." }, 404);
     let kode = await env.KUNDER.get("rediger:" + id);
     if (!kode || body.ny) { kode = tilfeldig(10); await env.KUNDER.put("rediger:" + id, kode); }
-    return json({ id, profil, lenke: await demoLenke(url, env, id), rediger: `${url.origin}/rediger?kunde=${id}&r=${kode}` }, 200);
+    return json({ id, profil, lenke: await demoLenke(url, env, id), rediger: `${url.origin}/rediger?kunde=${id}&r=${kode}`, agenter: `${url.origin}/agenter?kunde=${id}&r=${kode}` }, 200);
   }
 
   if (p === "/rediger/lagre") {
@@ -2267,6 +2272,270 @@ async function chatRute(request, env, ctx, url) {
       dager.push({ dato: d, ...((await env.KUNDER.get(`chatstat:${id}:${d}`, "json")) || { meldinger: 0, samtaler: 0, timer: 0, beskjeder: 0 }) });
     }
     return json({ id, innboks: innboks.slice(0, 100), dager }, 200);
+  }
+
+  return new Response("Ikke funnet", { status: 404 });
+}
+
+// ======================================================================
+// KI-agenter for kunden: oppfølging (salg) og markedsføring
+//   Bygget etter salgs- og markedsføringsagenten i ai-agenter.zip, men med Grok og samme kundeprofil som sekretæren.
+//   Ingenting sendes herfra: agentene skriver forslag som kunden kopierer og sender selv.
+//
+// Ruter (kunden bruker samme rettekode som /rediger, Preben kan bruke ADMIN_KODE i stedet):
+//   GET  /agenter?kunde=..&r=..  -> kundens side (snakk/agenter.html fra GitHub)
+//   POST /agenter/data           -> leads (beskjeder og timeforespørsler fra chatten hentes inn automatisk), siste analyse og innhold
+//   POST /agenter/lead           -> legg til eller oppdater et lead { lead: { id?, navn, kontakt, interesse, stadie, notat, verdi } }
+//   POST /agenter/lead/slett     -> { id }
+//   POST /agenter/oppfolging     -> Grok rangerer åpne leads 0–100 og skriver ferdige oppfølgingsmeldinger
+//   POST /agenter/marked         -> { type: "innlegg" | "kampanje" | "landingsside", valg: { plattform, antall, tema, maal, uker, budsjett } }
+// Innstilling (valgfri): AGENT_MAKS_DAG = maks antall agentkjøringer per kunde per døgn (standard 25).
+// KV: leads:<id> (maks 300), agentanalyse:<id>, marked:<id> (siste 20), agentbruk:<id>:<dato> (teller, 2 døgn)
+// ======================================================================
+const LEAD_STADIER = ["ny", "kontaktet", "tilbud sendt", "vunnet", "tapt"];
+const MARKED_PLATTFORMER = ["instagram", "facebook", "linkedin", "tiktok", "google"];
+const agentTreff = new Map();
+
+function profilFakta(p) {
+  const tj = (p.tjenester || []).map(([kat, l]) => `${kat}:\n` + l.map(([n, pris, min]) => `  - ${n}: ${pris}${min ? ` (setter av ca. ${min} min i kalenderen)` : ""}`).join("\n")).join("\n");
+  return [
+    `Bedrift: ${p.navn}${p.kortnavn && p.kortnavn !== p.navn ? ` (kalles ${p.kortnavn})` : ""}`,
+    `Bransje: ${p.bransje || "ukjent"}`,
+    p.adresse ? `Adresse: ${p.adresse}` : null,
+    p.omraade ? `Område: ${p.omraade}` : null,
+    `Telefon: ${p.telefon || "(ikke oppgitt: skriv [telefonnummer] der det trengs, aldri et oppdiktet nummer)"}`,
+    p.epost ? `E-post: ${p.epost}` : null,
+    p.nettside ? `Nettside: ${p.nettside}` : null,
+    `Åpningstider: ${p.apentTekst || "ukjent"}`,
+    p.ansatte && p.ansatte.length ? `Ansatte: ${p.ansatte.join(", ")}` : null,
+    `Tjenester og priser:\n${tj || "(ingen oppgitt)"}`,
+    p.ekstra ? `Annet: ${p.ekstra}` : null,
+  ].filter(Boolean).join("\n");
+}
+
+function rensLead(l = {}, gml = {}) {
+  const naa = new Date().toISOString();
+  const stadie = LEAD_STADIER.includes(l.stadie) ? l.stadie : gml.stadie || "ny";
+  return {
+    id: gml.id || (/^[a-z0-9:-]{4,40}$/i.test(String(l.id || "")) ? l.id : "l" + tilfeldig(8)),
+    navn: tekst(l.navn ?? gml.navn, 80),
+    kontakt: tekst(l.kontakt ?? gml.kontakt, 120),
+    interesse: tekst(l.interesse ?? gml.interesse, 500),
+    notat: tekst(l.notat ?? gml.notat, 1000),
+    verdi: tall(l.verdi ?? gml.verdi),
+    kilde: tekst(gml.kilde || l.kilde, 20) || "manuell",
+    stadie,
+    opprettet: gml.opprettet || naa,
+    sistKontakt: stadie !== gml.stadie && gml.id ? naa : (gml.sistKontakt || ""),
+  };
+}
+
+// Beskjeder og timeforespørsler fra chatten blir leads (én gang). Bookede timer er ikke leads.
+function leadsFraChat(innboks, leads) {
+  const finnes = new Set(leads.map((l) => l.id));
+  const nye = [];
+  for (const r of innboks) {
+    if (!r || !r.tid || r.status === "booket") continue;
+    const id = "c:" + r.tid.replace(/[^0-9]/g, "").slice(0, 17);
+    if (finnes.has(id)) continue;
+    const kontakt = [r.mobil, r.epost].filter(Boolean).join(" · ");
+    nye.push({ id, navn: tekst(r.navn, 80), kontakt: tekst(kontakt, 120), kilde: "chat", stadie: "ny", verdi: 0, notat: "",
+      interesse: r.type === "time" ? tekst(`Ba om time: ${r.hva || "?"}, ${r.dato} kl. ${r.klokkeslett}${r.notat ? ". " + r.notat : ""}`, 500) : tekst(`Beskjed: ${r.beskjed}`, 500),
+      opprettet: r.tid, sistKontakt: "" });
+  }
+  return nye;
+}
+
+async function agentBruk(env, id) {
+  const dato = osloNaa().iso;
+  const key = `agentbruk:${id}:${dato}`;
+  const n = Number((await env.KUNDER.get(key)) || 0) + 1;
+  const maks = Number(env.AGENT_MAKS_DAG) || 25;
+  if (n > maks) return false;
+  await env.KUNDER.put(key, String(n), { expirationTtl: 2 * 24 * 3600 });
+  return true;
+}
+
+const dagerSiden = (iso) => (iso ? Math.floor((Date.now() - Date.parse(iso)) / 86400000) : null);
+
+async function analyserLeads(env, profil, leads) {
+  const apne = leads.filter((l) => !["vunnet", "tapt"].includes(l.stadie)).slice(0, 40);
+  if (!apne.length) return { leads: [], oppsummering: "Ingen åpne leads akkurat nå. Nye beskjeder og timeforespørsler fra chatten dukker opp her av seg selv." };
+  const rader = apne.map((l) => ({ id: l.id, navn: l.navn, kontakt: l.kontakt, interesse: l.interesse, stadie: l.stadie, kilde: l.kilde,
+    notat: l.notat, verdi_kr: l.verdi || undefined, dager_siden_kontakt: dagerSiden(l.sistKontakt || l.opprettet) }));
+  const system = `Du er en erfaren selger som hjelper eieren av ${profil.navn} å følge opp folk som har tatt kontakt.
+
+# Bedriftens informasjon (din eneste kilde til fakta)
+${profilFakta(profil)}
+
+Nå: ${chatDato(osloNaa().iso)} ${osloNaa().iso}
+
+# Regler
+- Scor hvert lead 0–100 etter hvor sannsynlig det er at de blir kunde snart: hvor konkret behovet er, kjøpssignaler, og hvor lenge siden siste kontakt (mer enn 7 dager stille = følg opp nå, mer enn 30 dager = kaldt).
+- Oppfølgingsmeldingen er et svar til en som SELV har tatt kontakt. Den skal være kort (2–4 setninger), personlig, nevne det de spurte om, og ha ett tydelig neste steg (f.eks. foreslå tid for befaring eller time, eller be dem ringe ${profil.telefon || "oss"}).
+- Velg kanal: "sms" når vi bare har mobilnummer, "e-post" når vi har e-post (skriv da også emne), "telefon" når det haster eller er en stor jobb (meldingen blir da et kort manus for samtalen).
+- Finn ALDRI på priser, rabatter, tilbud, ledige tider, oppmøtetid eller løfter som ikke står i informasjonen over.
+- Skriv på norsk, vennlig og direkte, i bedriftens navn. Ikke bruk emojier. Signer med ${profil.kortnavn || profil.navn}.
+- Lead-id-ene i svaret må være nøyaktig de samme som i listen.
+
+Svar bare med JSON i dette formatet:
+{"leads":[{"id":"...","score":0,"temperatur":"varm|lunken|kald","hvorfor":"én setning","neste_steg":"konkret neste steg for eieren","kanal":"sms|e-post|telefon","emne":"bare for e-post","melding":"ferdig tekst"}],"oppsummering":"2–3 setninger: hvor står salget, og hva bør eieren gjøre i dag"}`;
+  const svar = await grokJson(env, system, "Åpne leads (JSON):\n" + JSON.stringify(rader, null, 1) + "\n\nAnalyser alle, høyest score først.");
+  const kjent = new Map(apne.map((l) => [l.id, l]));
+  const ut = (Array.isArray(svar.leads) ? svar.leads : []).filter((x) => x && kjent.has(x.id)).map((x) => ({
+    id: x.id, navn: kjent.get(x.id).navn,
+    score: Math.max(0, Math.min(100, Math.round(Number(x.score) || 0))),
+    temperatur: ["varm", "lunken", "kald"].includes(x.temperatur) ? x.temperatur : "lunken",
+    hvorfor: tekst(x.hvorfor, 300), neste_steg: tekst(x.neste_steg, 300),
+    kanal: ["sms", "e-post", "telefon"].includes(x.kanal) ? x.kanal : "sms",
+    emne: tekst(x.emne, 120), melding: tekst(x.melding, 1200),
+  })).sort((a, b) => b.score - a.score);
+  return { tid: new Date().toISOString(), leads: ut, oppsummering: tekst(svar.oppsummering, 600) };
+}
+
+const MARKED_TYPER = {
+  innlegg: {
+    navn: "Innlegg til sosiale medier",
+    format: `{"innlegg":[{"krok":"første linje som stopper scrollingen","tekst":"hele teksten, klar til å limes inn","emneknagger":["#..."],"bilde":"hva bildet eller videoen bør vise","oppfordring":"én tydelig handling","naar":"foreslått dag og klokkeslett å poste"}]}`,
+    oppgave: (v) => `Lag ${v.antall} innlegg til ${v.plattform}.
+Tema: ${v.tema || "fritt, velg det som gir flest kunder for denne bedriften akkurat nå"}.
+Mål: ${v.maal || "flere bestillinger"}.
+Varier formatene (tips fra fagfolk, bak kulissene, før og etter, vanlige spørsmål, sesongtips, spørsmål til følgerne).
+Tilpass lengde og stil til ${v.plattform}${v.plattform === "google" ? " (Google Bedriftsprofil-innlegg: kort, saklig, maks 1 500 tegn, ingen emneknagger)" : ""}.`,
+  },
+  kampanje: {
+    navn: "Kampanjeplan",
+    format: `{"navn":"","oppsummering":"","malgruppe":"","budskap":"hovedbudskapet i én setning","kanaler":["..."],"uker":[{"uke":1,"tema":"","tiltak":["konkret ting å gjøre eller poste, og hvor"]}],"budsjett":["hvordan pengene bør brukes"],"maal":["tall å følge med på"]}`,
+    oppgave: (v) => `Lag en kampanjeplan over ${v.uker} uker.
+Mål: ${v.maal || "flere kunder"}.
+Budsjett: ${v.budsjett || "lite, mest gratis kanaler (Google Bedriftsprofil, Facebook, Instagram, nabolagsgrupper)"}.
+${v.tema ? `Tema eller tilbud: ${v.tema}.` : ""}
+Gjør hver uke konkret: hva som skal postes, sendes eller gjøres, og hvor.`,
+  },
+  landingsside: {
+    navn: "Tekst til landingsside",
+    format: `{"overskrift":"","underoverskrift":"","fordeler":[{"tittel":"","tekst":""}],"bevis":"hva slags ekte bevis eieren bør legge inn (anmeldelser, bilder, tall). Ikke finn på sitater.","sporsmal":[{"sporsmal":"","svar":""}],"oppfordring":"teksten på knappen","seo_tittel":"maks 60 tegn","seo_beskrivelse":"maks 155 tegn"}`,
+    oppgave: (v) => `Skriv teksten til en landingsside.
+Tjeneste eller tema: ${v.tema || "bedriftens viktigste tjeneste"}.
+Mål: ${v.maal || "flest mulig henvendelser"}.
+Svarene i spørsmål og svar skal være sanne ut fra informasjonen.`,
+  },
+};
+
+function rensValg(v = {}) {
+  const plattform = MARKED_PLATTFORMER.includes(v.plattform) ? v.plattform : "instagram";
+  return { plattform, antall: tilTall(v.antall, 1, 8, 4), uker: tilTall(v.uker, 1, 8, 4),
+    tema: tekst(v.tema, 300), maal: tekst(v.maal, 200), budsjett: tekst(v.budsjett, 200) };
+}
+
+async function lagMarkedsforing(env, profil, type, valg) {
+  const t = MARKED_TYPER[type];
+  if (!t) throw new Error("Ukjent type");
+  const naa = osloNaa();
+  const system = `Du er en dyktig markedsfører for små norske bedrifter. Du jobber for ${profil.navn}.
+
+# Bedriftens informasjon (din eneste kilde til fakta)
+${profilFakta(profil)}
+
+Nå: ${chatDato(naa.iso)} ${naa.iso}. Ta hensyn til årstid, vær og høytider i Norge.
+
+# Regler
+- Skriv på norsk bokmål, i en vennlig og jordnær stemme som passer en lokal ${profil.bransje || "bedrift"}.
+- Bruk bare fakta, priser og tilbud fra informasjonen over. Finn ALDRI på rabatter, kampanjepriser, anmeldelser, sitater, priser, tall eller årstall.
+- Vær konkret og lokal${profil.omraade ? ` (${profil.omraade})` : ""}. Unngå klisjeer som «vi brenner for» og «kvalitet i alle ledd».
+- Finn ALDRI på hendelser, jobber, kundehistorier eller ting som «skjedde i dag». Bak kulissene, før og etter og kundehistorier skrives som maler med [hakeparenteser] der eieren fyller inn det som faktisk skjedde.
+- Gi ikke farlige gjør-det-selv-råd (f.eks. åpen flamme, strøm, gass). Hold tipsene enkle og trygge.
+- Ikke lov resultater, garantier, oppmøtetid eller svartid som ikke står ordrett i informasjonen. Minuttene i prislisten er bare hvor lang tid som settes av i kalenderen, ikke hvor fort dere kommer.
+
+Svar bare med JSON i dette formatet:
+${t.format}`;
+  const innhold = await grokJson(env, system, t.oppgave(valg), 0.7);
+  return { id: "m" + tilfeldig(8), tid: new Date().toISOString(), type, navn: t.navn, valg, innhold };
+}
+
+async function agentRute(request, env, ctx, url) {
+  const p = url.pathname;
+  if (request.method === "GET" && (p === "/agenter" || p === "/agenter/")) {
+    try { return new Response(await hentFraGitHub("snakk/agenter.html", env), { headers: HTML_HODER }); }
+    catch (e) { return new Response(e.message, { status: 502 }); }
+  }
+  if (request.method !== "POST") return new Response("Ikke funnet", { status: 404 });
+  if (!env.KUNDER) return json({ feil: "KV-lageret KUNDER er ikke koblet til workeren." }, 500);
+  const origin = request.headers.get("Origin");
+  if (origin && origin !== url.origin) return json({ feil: "Ikke tillatt" }, 403);
+
+  const ip = request.headers.get("CF-Connecting-IP") || "ukjent";
+  const nu = Date.now();
+  const liste = (agentTreff.get(ip) || []).filter((t) => nu - t < 10 * 60 * 1000);
+  if (liste.length >= 60) return json({ feil: "Mange forespørsler på kort tid. Vent litt og prøv igjen." }, 429);
+  liste.push(nu); agentTreff.set(ip, liste); if (agentTreff.size > 5000) agentTreff.clear();
+
+  let body = {};
+  try { body = await request.json(); } catch {}
+  const id = rensId(body.kunde);
+  if (!id) return json({ feil: "Mangler kunde." }, 400);
+  const admin = !!env.ADMIN_KODE && typeof body.kode === "string" && likKode(body.kode, env.ADMIN_KODE);
+  if (!admin) {
+    const r = await env.KUNDER.get("rediger:" + id);
+    if (!r || typeof body.r !== "string" || !likKode(body.r, r)) return json({ feil: "Fant ikke siden. Sjekk at du har hele lenken, eller spør Preben om en ny." }, 404);
+  }
+  const profilRaw = await env.KUNDER.get("kunde:" + id, "json");
+  if (!profilRaw) return json({ feil: "Fant ikke sekretæren." }, 404);
+  const profil = normaliser(profilRaw);
+
+  const hentLeads = async () => {
+    const leads = (await env.KUNDER.get("leads:" + id, "json")) || [];
+    const nye = leadsFraChat((await env.KUNDER.get("chatinnboks:" + id, "json")) || [], leads);
+    if (nye.length) { leads.unshift(...nye); await env.KUNDER.put("leads:" + id, JSON.stringify(leads.slice(0, 300))); }
+    return leads;
+  };
+
+  if (p === "/agenter/data") {
+    return json({ firma: { navn: profil.navn, kortnavn: profil.kortnavn, bransje: profil.bransje },
+      leads: (await hentLeads()).filter((l) => !l.skjult), analyse: await env.KUNDER.get("agentanalyse:" + id, "json"),
+      marked: (await env.KUNDER.get("marked:" + id, "json")) || [], stadier: LEAD_STADIER, plattformer: MARKED_PLATTFORMER }, 200);
+  }
+
+  if (p === "/agenter/lead") {
+    const leads = await hentLeads();
+    const inn = body.lead || {};
+    const i = inn.id ? leads.findIndex((l) => l.id === inn.id) : -1;
+    const lead = rensLead(inn, i >= 0 ? leads[i] : {});
+    if (!lead.navn && !lead.kontakt) return json({ feil: "Skriv inn navn eller kontaktinfo." }, 400);
+    if (i >= 0) leads[i] = lead; else leads.unshift(lead);
+    await env.KUNDER.put("leads:" + id, JSON.stringify(leads.slice(0, 300)));
+    return json({ lead, leads: leads.filter((l) => !l.skjult) }, 200);
+  }
+
+  if (p === "/agenter/lead/slett") {
+    const leads = (await hentLeads()).filter((l) => l.id !== String(body.id || ""));
+    // Chat-leads beholdes som «tapt» så de ikke importeres på nytt
+    const slettet = String(body.id || "");
+    if (slettet.startsWith("c:")) leads.push({ ...rensLead({ id: slettet, navn: "(slettet)", stadie: "tapt" }), id: slettet, skjult: true });
+    await env.KUNDER.put("leads:" + id, JSON.stringify(leads.slice(0, 300)));
+    return json({ leads: leads.filter((l) => !l.skjult) }, 200);
+  }
+
+  if (p === "/agenter/oppfolging" || p === "/agenter/marked") {
+    if (!env.XAI_API_KEY) return json({ feil: "XAI_API_KEY mangler." }, 500);
+    if (!(await agentBruk(env, id))) return json({ feil: "Dagens kvote for agentene er brukt opp. Prøv igjen i morgen." }, 429);
+    try {
+      if (p === "/agenter/oppfolging") {
+        const analyse = await analyserLeads(env, profil, (await hentLeads()).filter((l) => !l.skjult));
+        await env.KUNDER.put("agentanalyse:" + id, JSON.stringify(analyse));
+        return json({ analyse }, 200);
+      }
+      const type = String(body.type || "");
+      if (!MARKED_TYPER[type]) return json({ feil: "Velg innlegg, kampanje eller landingsside." }, 400);
+      const ny = await lagMarkedsforing(env, profil, type, rensValg(body.valg));
+      const hist = (await env.KUNDER.get("marked:" + id, "json")) || [];
+      hist.unshift(ny);
+      await env.KUNDER.put("marked:" + id, JSON.stringify(hist.slice(0, 20)));
+      return json({ resultat: ny, marked: hist.slice(0, 20) }, 200);
+    } catch (e) {
+      console.log("agent feilet", e && e.stack);
+      return json({ feil: "Agenten fikk ikke svar fra KI-en. Prøv igjen om litt." }, 502);
+    }
   }
 
   return new Response("Ikke funnet", { status: 404 });

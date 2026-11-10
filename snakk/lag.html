@@ -54,7 +54,9 @@ details summary{cursor:pointer;color:var(--muted);font-weight:600;margin-top:6px
   <div id="oppstartBoks" hidden style="margin-top:10px"><p class="lead" style="margin:0 0 6px">Når kunden har sagt ja: send denne lenken. Skjemaet er fylt ut med det Grok fant, så kunden bare retter og legger til booking-regler, når den skal sette over, vanlige spørsmål og tone. Svarene kommer på e-post til deg.</p>
     <div class="link" id="oppstartLenke"></div><div class="row"><button type="button" id="kopierOppstart">Kopier</button><a class="btn" id="apneOppstart" target="_blank" rel="noopener">Åpne</a></div></div>
   <div id="retteBoks" hidden style="margin-top:10px"><p class="lead" style="margin:0 0 6px">Kunden kan rette tjenester, priser, varighet og åpningstider her. Du får e-post når noe endres, og forrige versjon lagres.</p>
-    <div class="link" id="retteLenke"></div><div class="row"><button type="button" id="kopierRette">Kopier</button><a class="btn" id="apneRette" target="_blank" rel="noopener">Åpne</a></div></div>
+    <div class="link" id="retteLenke"></div><div class="row"><button type="button" id="kopierRette">Kopier</button><a class="btn" id="apneRette" target="_blank" rel="noopener">Åpne</a></div>
+    <p class="lead" style="margin:12px 0 6px">KI-agenter (oppfølging av leads og markedsføring) med samme kode:</p>
+    <div class="link" id="agentLenke"></div><div class="row"><button type="button" id="kopierAgent">Kopier</button><a class="btn" id="apneAgent" target="_blank" rel="noopener">Åpne</a></div></div>
   <details id="chatDetaljer">
     <summary>Chat på kundens nettside</summary>
     <p class="lead" style="margin:10px 0 6px">Samme sekretær svarer skriftlig i en chat-boble på kundens nettside. Den er av til du slår den på. Timeforespørsler og beskjeder fra chatten går på e-post til adressen under (første gang må firmaet trykke på en bekreftelseslenke fra FormSubmit).</p>
@@ -183,14 +185,15 @@ $("lagre").addEventListener("click",async()=>{let p;try{p=JSON.parse($("json").v
   try{const d=await post("/lagre",{kode:$("kode").value,id,profil:p});vis(d);$("msg2").className="msg ok";$("msg2").textContent="Lagret.";}catch(err){$("msg2").className="msg err";$("msg2").textContent=err.message;}});
 function kopi(t,el,ok){navigator.clipboard.writeText(t).then(()=>{const o=el.textContent;el.textContent=ok;setTimeout(()=>el.textContent=o,1800);}).catch(()=>{});}
 async function retteLenke(){$("msg4").className="msg";$("msg4").textContent="Lager lenke …";
-  try{const d=await post("/rediger/lenke",{kode:$("kode").value,id});$("retteLenke").textContent=d.rediger;$("apneRette").href=d.rediger;$("retteBoks").hidden=false;$("msg4").textContent="";}
+  try{const d=await post("/rediger/lenke",{kode:$("kode").value,id});$("retteLenke").textContent=d.rediger;$("apneRette").href=d.rediger;if(d.agenter){$("agentLenke").textContent=d.agenter;$("apneAgent").href=d.agenter;}$("retteBoks").hidden=false;$("msg4").textContent="";}
   catch(err){$("msg4").className="msg err";$("msg4").textContent=err.message;}}
 $("retteBtn").addEventListener("click",retteLenke);
 $("kopierRette").addEventListener("click",()=>kopi($("retteLenke").textContent,$("kopierRette"),"Kopiert!"));
+$("kopierAgent").addEventListener("click",()=>kopi($("agentLenke").textContent,$("kopierAgent"),"Kopiert!"));
 $("hentBtn").addEventListener("click",async()=>{$("msg").className="msg";$("msg").textContent="Henter …";
   try{try{localStorage.setItem("orvelo-admin",$("kode").value);}catch{}
     const d=await post("/rediger/lenke",{kode:$("kode").value,id:$("hentId").value.trim()});
-    $("firma").value=d.profil.navn||"";vis(d);$("retteLenke").textContent=d.rediger;$("apneRette").href=d.rediger;$("retteBoks").hidden=false;
+    $("firma").value=d.profil.navn||"";vis(d);$("retteLenke").textContent=d.rediger;$("apneRette").href=d.rediger;if(d.agenter){$("agentLenke").textContent=d.agenter;$("apneAgent").href=d.agenter;}$("retteBoks").hidden=false;
     $("msg").className="msg ok";$("msg").textContent="Åpnet.";$("res").scrollIntoView({behavior:"smooth"});}
   catch(err){$("msg").className="msg err";$("msg").textContent=err.message;}});
 $("kopier").addEventListener("click",()=>kopi($("lenke").textContent,$("kopier"),"Kopiert!"));
