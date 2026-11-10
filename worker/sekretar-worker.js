@@ -2289,8 +2289,11 @@ async function chatRute(request, env, ctx, url) {
 //   POST /agenter/lead/slett     -> { id }
 //   POST /agenter/oppfolging     -> Grok rangerer åpne leads 0–100 og skriver ferdige oppfølgingsmeldinger
 //   POST /agenter/marked         -> { type: "innlegg" | "kampanje" | "landingsside", valg: { plattform, antall, tema, maal, uker, budsjett } }
+//   POST /agenter/tilbud         -> tilbudsagent: { beskrivelse (tre linjer), bilder: [data:image/jpeg;base64,...] (maks 3, krympet i nettleseren),
+//                                   kunde_navn?, adresse?, timepris? } -> tilbudsutkast med arbeid, materialer og forbehold.
+//                                   Bildene lagres ikke. Utkastet sier alltid at timer og priser må sjekkes.
 // Innstilling (valgfri): AGENT_MAKS_DAG = maks antall agentkjøringer per kunde per døgn (standard 25).
-// KV: leads:<id> (maks 300), agentanalyse:<id>, marked:<id> (siste 20), agentbruk:<id>:<dato> (teller, 2 døgn)
+// KV: leads:<id> (maks 300), agentanalyse:<id>, marked:<id> (siste 20), tilbudsutkast:<id> (siste 20), agentbruk:<id>:<dato> (teller, 2 døgn)
 // ======================================================================
 const LEAD_STADIER = ["ny", "kontaktet", "tilbud sendt", "vunnet", "tapt"];
 const MARKED_PLATTFORMER = ["instagram", "facebook", "linkedin", "tiktok", "google"];
@@ -2453,6 +2456,60 @@ ${t.format}`;
   return { id: "m" + tilfeldig(8), tid: new Date().toISOString(), type, navn: t.navn, valg, innhold };
 }
 
+// ---- Tilbudsagent: bilde av jobben + tre linjer -> tilbudsutkast ----
+const kr = (v) => Math.round(Number(v) || 0);
+const tilbudTall = (v, maks) => { const n = Number(String(v ?? "").replace(",", ".").replace(/[^\d.]/g, "")); return Number.isFinite(n) && n > 0 ? Math.min(maks, Math.round(n * 10) / 10) : 0; };
+
+async function lagTilbud(env, profil, inn) {
+  const beskrivelse = tekst(inn.beskrivelse, 1200);
+  if (beskrivelse.length < 10) throw Object.assign(new Error("Skriv noen linjer om hva som skal gjøres."), { status: 400 });
+  const bilder = (Array.isArray(inn.bilder) ? inn.bilder : []).filter((b) => typeof b === "string" && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(b) && b.length < 1_500_000).slice(0, 3);
+  const timepris = tilbudTall(inn.timepris, 5000);
+  const system = `Du er en erfaren ${profil.bransje || "håndverker"} som hjelper ${profil.navn} å skrive et UTKAST til tilbud. Eieren sjekker og retter alt før det sendes.
+
+# Bedriftens informasjon (prisene her er de eneste prisene du kan bruke som fakta)
+${profilFakta(profil)}
+${timepris ? `Timepris oppgitt av eieren: ${timepris} kr eks. mva.` : "Timepris er ikke oppgitt."}
+
+# Regler
+- Beskriv bare det du faktisk ser på bildene og det som står i beskrivelsen. Er noe uklart, skriv det under "usikkert" og "sporsmal", ikke gjett stille.
+- Arbeid: del jobben i konkrete poster med anslått antall timer. Timene er et anslag fra deg og skal være realistiske for en fagperson i Norge.
+- Timepris: bruk ${timepris ? timepris + " kr" : "en timepris fra bedriftens informasjon hvis den står der, ellers 0 (eieren fyller inn)"}. Finn ALDRI på en timepris.
+- Materialer: list det som trengs med antall og enhet. Enhetspris settes BARE hvis den står i bedriftens informasjon, ellers 0 (eieren fyller inn). Finn aldri på materialpriser.
+- Faste priser fra prislisten (f.eks. «befaring 0 kr», «service fra 1 290 kr») kan brukes som egne poster med timer 0 og fastpris.
+- Forbehold: vanlige og konkrete forbehold for akkurat denne jobben (skjulte skader, tilkomst, endringer underveis, priser gyldig i 30 dager, osv.).
+- Skriv på norsk bokmål, kort og saklig. Ingen emojier.
+
+Svar bare med JSON i dette formatet:
+{"tittel":"kort navn på jobben","sammendrag":"2-3 setninger til kunden om hva tilbudet gjelder","det_jeg_ser":"hva du ser på bildene, eller tom tekst uten bilder","arbeid":[{"post":"","timer":0,"fastpris":0}],"materialer":[{"vare":"","antall":0,"enhet":"stk|m|m2|sett|liter","enhetspris":0}],"forbehold":["..."],"sporsmal":["ting eieren bør avklare med kunden før tilbudet sendes"],"usikkert":["ting du måtte anta"],"tidsbruk":"anslått varighet, f.eks. 2 arbeidsdager"}`;
+  const innhold = [
+    ...bilder.map((url) => ({ type: "image_url", image_url: { url, detail: "high" } })),
+    { type: "text", text: `Jobben (fra eieren):\n${beskrivelse}${inn.kunde_navn ? `\nKunde: ${tekst(inn.kunde_navn, 80)}` : ""}${inn.adresse ? `\nAdresse: ${tekst(inn.adresse, 160)}` : ""}${bilder.length ? `\n${bilder.length} bilde(r) av jobben er vedlagt.` : "\nIngen bilder."}` },
+  ];
+  const svar = await grokJson(env, system, innhold);
+  const tp = timepris || 0;
+  const arbeid = (Array.isArray(svar.arbeid) ? svar.arbeid : []).slice(0, 20).map((a) => {
+    const timer = tilbudTall(a.timer, 500), fast = kr(tilbudTall(a.fastpris, 1e7));
+    return { post: tekst(a.post, 160), timer, timepris: tp, fastpris: fast, sum: fast + kr(timer * tp) };
+  }).filter((a) => a.post);
+  const materialer = (Array.isArray(svar.materialer) ? svar.materialer : []).slice(0, 30).map((m) => {
+    const antall = tilbudTall(m.antall, 100000), pris = kr(tilbudTall(m.enhetspris, 1e6));
+    return { vare: tekst(m.vare, 160), antall, enhet: tekst(m.enhet, 12) || "stk", enhetspris: pris, sum: kr(antall * pris) };
+  }).filter((m) => m.vare);
+  const liste = (v, n) => (Array.isArray(v) ? v : []).map((x) => tekst(x, 300)).filter(Boolean).slice(0, n);
+  const sumArbeid = arbeid.reduce((s, a) => s + a.sum, 0), sumMat = materialer.reduce((s, m) => s + m.sum, 0);
+  return {
+    id: "t" + tilfeldig(8), tid: new Date().toISOString(),
+    kunde_navn: tekst(inn.kunde_navn, 80), adresse: tekst(inn.adresse, 160), beskrivelse, antallBilder: bilder.length,
+    tittel: tekst(svar.tittel, 120) || "Tilbud", sammendrag: tekst(svar.sammendrag, 600), det_jeg_ser: tekst(svar.det_jeg_ser, 800),
+    tidsbruk: tekst(svar.tidsbruk, 120), arbeid, materialer,
+    forbehold: liste(svar.forbehold, 12), sporsmal: liste(svar.sporsmal, 10), usikkert: liste(svar.usikkert, 10),
+    sum: { arbeid: sumArbeid, materialer: sumMat, eksMva: sumArbeid + sumMat, mva: kr((sumArbeid + sumMat) * 0.25), inklMva: kr((sumArbeid + sumMat) * 1.25) },
+    mangler: [!tp ? "timepris" : null, materialer.some((m) => !m.enhetspris) ? "materialpriser" : null].filter(Boolean),
+    advarsel: "Dette er et utkast laget av KI. Sjekk alltid timer, mengder og priser selv før du sender det. KI kan finne på tall.",
+  };
+}
+
 async function agentRute(request, env, ctx, url) {
   const p = url.pathname;
   if (request.method === "GET" && (p === "/agenter" || p === "/agenter/")) {
@@ -2493,7 +2550,8 @@ async function agentRute(request, env, ctx, url) {
   if (p === "/agenter/data") {
     return json({ firma: { navn: profil.navn, kortnavn: profil.kortnavn, bransje: profil.bransje },
       leads: (await hentLeads()).filter((l) => !l.skjult), analyse: await env.KUNDER.get("agentanalyse:" + id, "json"),
-      marked: (await env.KUNDER.get("marked:" + id, "json")) || [], stadier: LEAD_STADIER, plattformer: MARKED_PLATTFORMER }, 200);
+      marked: (await env.KUNDER.get("marked:" + id, "json")) || [],
+      tilbudsutkast: (await env.KUNDER.get("tilbudsutkast:" + id, "json")) || [], stadier: LEAD_STADIER, plattformer: MARKED_PLATTFORMER }, 200);
   }
 
   if (p === "/agenter/lead") {
@@ -2516,7 +2574,7 @@ async function agentRute(request, env, ctx, url) {
     return json({ leads: leads.filter((l) => !l.skjult) }, 200);
   }
 
-  if (p === "/agenter/oppfolging" || p === "/agenter/marked") {
+  if (p === "/agenter/oppfolging" || p === "/agenter/marked" || p === "/agenter/tilbud") {
     if (!env.XAI_API_KEY) return json({ feil: "XAI_API_KEY mangler." }, 500);
     if (!(await agentBruk(env, id))) return json({ feil: "Dagens kvote for agentene er brukt opp. Prøv igjen i morgen." }, 429);
     try {
@@ -2524,6 +2582,13 @@ async function agentRute(request, env, ctx, url) {
         const analyse = await analyserLeads(env, profil, (await hentLeads()).filter((l) => !l.skjult));
         await env.KUNDER.put("agentanalyse:" + id, JSON.stringify(analyse));
         return json({ analyse }, 200);
+      }
+      if (p === "/agenter/tilbud") {
+        const t = await lagTilbud(env, profil, body);
+        const hist = (await env.KUNDER.get("tilbudsutkast:" + id, "json")) || [];
+        hist.unshift(t);
+        await env.KUNDER.put("tilbudsutkast:" + id, JSON.stringify(hist.slice(0, 20)));
+        return json({ tilbud: t, tilbudsutkast: hist.slice(0, 20) }, 200);
       }
       const type = String(body.type || "");
       if (!MARKED_TYPER[type]) return json({ feil: "Velg innlegg, kampanje eller landingsside." }, 400);
@@ -2533,6 +2598,7 @@ async function agentRute(request, env, ctx, url) {
       await env.KUNDER.put("marked:" + id, JSON.stringify(hist.slice(0, 20)));
       return json({ resultat: ny, marked: hist.slice(0, 20) }, 200);
     } catch (e) {
+      if (e && e.status === 400) return json({ feil: e.message }, 400);
       console.log("agent feilet", e && e.stack);
       return json({ feil: "Agenten fikk ikke svar fra KI-en. Prøv igjen om litt." }, 502);
     }

@@ -58,6 +58,18 @@ if (!utenKi) {
     sjekk(r.status === 200 && r.d.resultat && r.d.resultat.innhold, "markedsføring: " + type);
     console.log(JSON.stringify(r.d.resultat?.innhold || r.d, null, 1));
   }
+  // Tilbudsagent: tekst + bilde (et av e-postbildene, bare for å teste at bilder går gjennom)
+  const bilde = "data:image/jpeg;base64," + readFileSync(join(her, "../assets/epost/ror.jpg")).toString("base64");
+  r = await kall("/agenter/tilbud", { kunde: "demo-rorlegger", r: "rkode12345", timepris: "950", kunde_navn: "Ola Hansen", bilder: [bilde],
+    beskrivelse: "Bytte varmtvannsbereder 200 l i vaskerom i kjeller.\nGammel bereder kobles fra og kjøres bort.\nNy sikkerhetsventil og avstengningskran." });
+  const t = r.d.tilbud || {};
+  sjekk(r.status === 200 && t.arbeid?.length && t.materialer?.length && t.forbehold?.length, "tilbud med arbeid, materialer og forbehold");
+  sjekk(t.arbeid?.every((a) => a.timepris === 950 || a.timer === 0), "timeprisen er den eieren skrev, ikke oppdiktet");
+  sjekk(/sjekk alltid/i.test(t.advarsel || ""), "tilbudet har advarsel om å sjekke tall");
+  sjekk(t.antallBilder === 1, "bildet ble sendt med");
+  console.log(JSON.stringify(t, null, 1));
+  r = await kall("/agenter/tilbud", { kunde: "demo-rorlegger", r: "rkode12345", beskrivelse: "x" });
+  sjekk(r.status === 400, "for kort beskrivelse gir 400");
 }
 console.log(feil ? `\n${feil} feil` : "\nAlt OK");
 process.exit(feil ? 1 : 0);
