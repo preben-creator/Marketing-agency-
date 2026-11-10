@@ -196,3 +196,59 @@ Skjemaet på orvelo.no sender til `POST /kontakt` på denne workeren i stedet fo
 - Alle henvendelser som JSON: `/kontakt/liste?a=<ADMIN_KODE>`.
 
 Nettsiden faller tilbake til FormSubmit bare hvis `/kontakt` svarer 404, altså før denne koden er lastet opp.
+
+## Drift: sporbar logg, kvalitetssjekk, kostnad og sletting (`/drift`)
+
+Åpne `https://orvelo-sekretar.preben-m-hilleren.workers.dev/drift` og skriv admin-koden.
+
+**Sporbar logg.** Hver chatsamtale, talesamtale (fra stemmesiden), hvert agentkall på `/agenter`, hvert svarforslag i
+`orvelo-innboks` og hver samtale med ringeagenten lagres som én rad i KV: `spor:<dato>:<kunde>:<nøkkel>`, med hele
+samtalen, verktøykallene (args og svar), modell, svartid og automatiske flagg. Slettes etter 30 dager (`SPOR_DAGER`).
+
+**Automatiske flagg** (kommer alltid med i ukens utvalg): en pris eller et telefonnummer i svaret som ikke står i
+profilen eller i kundens egen melding, et verktøy som feilet, reservesvar («Beklager, jeg fikk ikke med meg …»),
+Grok-feil, for lange chatsvar, kundemelding uten svarforslag (innboks), ringeagent uten sammendrag.
+
+**Ukentlig kvalitetssjekk.** Fanen «Kvalitet» viser forrige uke: alle flaggede + 10 tilfeldige (samme utvalg hver gang
+du åpner, så det ikke endrer seg). Merk hver som riktig, delvis eller feil, velg feiltype og skriv et kort notat
+(uten navn og nummer). Tabellen under viser feilrate per uke. Hver mandag kl. 07 får du en e-post med lenken.
+Vurderingene lagres i `vurdering:<uke>:…` i 400 dager uten samtaleteksten.
+
+**Kostnad per kunde.** Workeren teller Grok-tokens (fra `usage` i hvert svar), taleøkter og taleminutter (fra stemmesiden
+og ringeagenten) og SMS sendt (Twilio) i `kost:<kunde>:<måned>`. Fanen «Kostnad per kunde» regner om til kroner og
+sammenligner med pakken som er satt på `/rapport` (Starter 790, Pro 1 490, Komplett 2 990, pluss 5 kr per ekstra minutt
+og 1 kr per ekstra SMS). `orvelo` er Orvelos egen kostnad (/lag og ringeagenten). Prisene er et anslag og kan endres
+uten ny kode med Text-variabler i Cloudflare:
+
+| Variabel | Standard | Hva |
+| --- | --- | --- |
+| `PRIS_INN` | 0.20 | USD per million input-tokens |
+| `PRIS_BUFRET` | 0.05 | USD per million bufrede input-tokens |
+| `PRIS_UT` | 0.50 | USD per million output-tokens |
+| `PRIS_TALE_MIN` | 0.05 | USD per minutt med Grok-stemmen |
+| `PRIS_SMS` | 0.07 | USD per SMS (Twilio, Norge) |
+| `PRIS_USD_NOK` | 11 | kroner per dollar |
+
+Telefonminutter hos Telnyx/Twilio for ringeagenten er ikke med. Stemmesiden sender minuttene når samtalen er ferdig,
+så en samtale der nettleseren lukkes brått kan mangle.
+
+**Oppbevaring og sletting** (står i databehandleravtalen, `avtale/vilkar.html` versjon 2026-11f):
+
+| Hva | Hvor lenge |
+| --- | --- |
+| Hele samtaler og agentkall (`spor:`) | 30 dager |
+| Forespørsler, beskjeder, leads, tapte anrop, SMS-logg, tilbud og andre agent-utkast | 90 dager etter siste endring |
+| Bestilte timer (`timer:`) | 90 dager etter timen |
+| Sammendrag til ukesrapporten (`logg:`) | 62 dager |
+| E-post/Facebook-meldinger i innboksen | 30 dager |
+| Kostnadstall og vurderinger (ingen personopplysninger) | 400 dager |
+
+Ryddingen kjører hver mandag kl. 07 sammen med ukesrapporten (cron `0 6 * * 1`), og kan kjøres med «Rydd nå».
+Fanen «Sletting» kan også slette alt om én kunde når avtalen slutter (vis først, så skriv kunde-id-en for å bekrefte).
+Signerte avtaler og kostnadstall beholdes. Endrer du en frist i koden (`SPOR_DAGER`, `SAK_DAGER`), må teksten i
+`avtale/vilkar.html` og `personvern/index.html` endres også, og vilkårsversjonen økes.
+
+**Tester.** `node tools/test-drift.mjs` tester lagringen (etterlignet Grok, ingen nøkkel).
+Før salg og etter hver endring i instruksjonene: kjør testene mot ekte Grok:
+`RUNDER=3 node tools/test-sekretar.mjs`, `node tools/test-agenter.mjs`, `node tools/test-innboks.mjs ekte` og
+`node tools/test-liora.mjs` (alle trenger `XAI_API_KEY`, ingenting sendes).

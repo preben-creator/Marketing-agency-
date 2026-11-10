@@ -237,7 +237,7 @@ export function videresendt(t) {
 }
 
 // ---------- Grok ----------
-async function grokJson(env, system, bruker) {
+async function grokJson(env, system, bruker, bruk) {
   const kall = (model) => fetch("https://api.x.ai/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${env.XAI_API_KEY}`, "Content-Type": "application/json" },
@@ -258,6 +258,7 @@ async function grokJson(env, system, bruker) {
   }
   if (!r.ok) throw new Error("Grok svarte " + r.status + ": " + (await r.text()).slice(0, 200));
   const d = await r.json();
+  if (bruk) { const u = d.usage || {}; bruk.inn = u.prompt_tokens || 0; bruk.ut = u.completion_tokens || 0; bruk.bufret = (u.prompt_tokens_details && u.prompt_tokens_details.cached_tokens) || 0; bruk.modell = model; }
   const innhold = d.choices?.[0]?.message?.content || "";
   return JSON.parse(innhold.slice(innhold.indexOf("{"), innhold.lastIndexOf("}") + 1));
 }
@@ -328,8 +329,15 @@ export async function lagForslag(env, profil, cfg, kanal, melding) {
   const bruker = `Fra: ${melding.navn || "(ukjent navn)"}${melding.epost ? " <" + melding.epost + ">" : ""}
 ${melding.emne ? "Emne: " + melding.emne + "\n" : ""}${melding.tidligere ? "Tidligere i samtalen:\n" + melding.tidligere + "\n\n" : ""}Melding:
 ${String(melding.tekst || "").slice(0, 4000) || "(tom melding)"}`;
-  const d = await grokJson(env, systemTekst(profil, cfg, kanal), bruker);
+  const bruk = {};
+  const startMs = Date.now();
+  const d = await grokJson(env, systemTekst(profil, cfg, kanal), bruker, bruk);
   const kategori = KATEGORIER.includes(d.kategori) ? d.kategori : "annet";
+  // Kostnad og sporbar logg (samme format som orvelo-sekretar, vises på /drift der). Feiler stille.
+  if (profil && profil.id && env.KUNDER) await Promise.allSettled([
+    leggTilKost(env, profil.id, { kall: 1, inn: bruk.inn, ut: bruk.ut, bufret: bruk.bufret }),
+    lagreSpor(env, profil, kanal, bruker, d, Date.now() - startMs, bruk.modell),
+  ]);
   return {
     kategori,
     tema: TEMA.includes(d.tema) ? d.tema : "annet",
@@ -339,6 +347,31 @@ ${String(melding.tekst || "").slice(0, 4000) || "(tom melding)"}`;
     trygg: kategori === "kunde" && d.trygg === true && !d.haster,
     mangler: (Array.isArray(d.mangler) ? d.mangler : []).map((x) => tekst(x, 200)).filter(Boolean).slice(0, 6),
   };
+}
+
+// ---------- kostnad og sporbar logg (leses av /drift i orvelo-sekretar) ----------
+// Oppbevaring: spor 30 dager (som meldingene her), kostnadstall 400 dager. Se SPOR_DAGER/KOST_DAGER i sekretar-worker.js.
+const SPOR_DAGER = 30, KOST_DAGER = 400;
+const osloDato = (ms) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+async function leggTilKost(env, id, delta) {
+  const key = `kost:${id}:${osloDato(Date.now()).slice(0, 7)}`;
+  const k = (await env.KUNDER.get(key, "json")) || {};
+  for (const [f, v] of Object.entries(delta)) if (Number(v)) k[f] = (k[f] || 0) + Number(v);
+  k.sist = new Date().toISOString();
+  await env.KUNDER.put(key, JSON.stringify(k), { expirationTtl: KOST_DAGER * 86400 });
+}
+async function lagreSpor(env, profil, kanal, bruker, d, ms, modell) {
+  const tallTekst = (x) => String(x || "").replace(/(\d)[ .\u00a0](?=\d{3}\b)/g, "$1");
+  const kjent = new Set((tallTekst(JSON.stringify(profil) + " " + bruker).match(/\d+/g) || []).map((n) => String(Number(n))));
+  const svar = tekst(d.svar, 3000);
+  const flagg = [];
+  for (const m of tallTekst(svar).matchAll(/(\d+)\s*(kr\b|kroner|,-)/gi)) if (!kjent.has(String(Number(m[1])))) flagg.push(`Pris ${m[1]} kr står ikke i profilen`);
+  if (d.kategori === "kunde" && !svar) flagg.push("Kundemelding uten svarforslag");
+  const rec = { id: profil.id, kanal, t: new Date().toISOString(), prov: false,
+    meldinger: [["kunde", tekst(bruker, 3000)], ["ai", svar || `(ingen svar, sortert som ${tekst(d.kategori, 20)})`]],
+    verktoy: [], flagg: [...new Set(flagg)], info: { ms, modell, kategori: tekst(d.kategori, 20), trygg: !!d.trygg, haster: !!d.haster } };
+  await env.KUNDER.put(`spor:${osloDato(Date.now())}:${profil.id}:${tilfeldig(8)}`, JSON.stringify(rec),
+    { expirationTtl: SPOR_DAGER * 86400, metadata: { f: rec.flagg.length, k: kanal, p: 0 } });
 }
 
 // ---------- lagring ----------

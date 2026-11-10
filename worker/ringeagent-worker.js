@@ -659,7 +659,27 @@ async function koblSamtale(env, tlfWs, urlParam) {
       "Bookinglenke sendt": lenkeSendt ? "ja" : "nei",
       Samtale: logg.length ? logg.join("\n") : "(ingen tekst registrert)",
     });
+    // Kostnad (Orvelos egne salgssamtaler) og sporbar logg til kvalitetssjekken på /drift i orvelo-sekretar.
+    // Bare når KV-en KUNDER er koblet til. Nummeret lagres ikke i sporet.
+    if (env.KUNDER) await lagreDrift(env, Math.round((Date.now() - startet) / 1000), logg, kunde.inn ? "ring-inn" : "ring-ut", n).catch((e) => console.log("drift feilet", e && e.message));
   }
+}
+
+// ---------- kostnad og spor (samme format som orvelo-sekretar, se /drift der) ----------
+const SPOR_DAGER = 30, KOST_DAGER = 400;
+const osloDato = (ms) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+async function lagreDrift(env, sek, logg, kanal, notat) {
+  const id = "orvelo";
+  const key = `kost:${id}:${osloDato(Date.now()).slice(0, 7)}`;
+  const k = (await env.KUNDER.get(key, "json")) || {};
+  k.talesek = (k.talesek || 0) + sek; k.taleokter = (k.taleokter || 0) + 1; k.sist = new Date().toISOString();
+  await env.KUNDER.put(key, JSON.stringify(k), { expirationTtl: KOST_DAGER * 86400 });
+  if (!logg.length) return;
+  const meldinger = logg.map((l) => { const m = l.match(/^\[[^\]]*\] (Kunde|Liora): (.*)$/); return m ? [m[1] === "Kunde" ? "kunde" : "ai", m[2].replace(/\+?\d[\d ]{7,}/g, "[nummer]")] : ["info", l]; });
+  const rec = { id, kanal, t: new Date(Date.now() - sek * 1000).toISOString(), prov: false, meldinger: meldinger.slice(-80), verktoy: [],
+    flagg: notat && notat.sammendrag ? [] : ["Agenten skrev ikke sammendrag"], info: { sek, interesse: (notat && notat.interesse) || "" } };
+  await env.KUNDER.put(`spor:${osloDato(Date.now())}:${id}:${Math.random().toString(36).slice(2, 10)}`, JSON.stringify(rec),
+    { expirationTtl: SPOR_DAGER * 86400, metadata: { f: rec.flagg.length, k: kanal, p: 0 } });
 }
 
 // ---------- endepunkter ----------
