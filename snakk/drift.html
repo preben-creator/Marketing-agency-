@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Drift · Orvelo</title><meta name="robots" content="noindex">
+<!-- Serveres av workeren orvelo-sekretar på /drift (hentes fra GitHub). Krever ADMIN_KODE.
+     Kvalitet: ukens utvalg av samtaler (alle flaggede + tilfeldige) som Preben merker riktig/delvis/feil.
+     Kostnad: Grok-tokens, taleminutter og SMS per kunde og måned, mot prisen på pakken.
+     Sletting: rydd etter oppbevaringstiden nå, eller slett alt om en kunde når avtalen slutter. -->
+<style>
+:root{--bg:#0f0e17;--card:#1a1928;--ink:#eeedf7;--muted:#a3a0bd;--line:#2e2c44;--acc:#8f78ff;--acc2:#2fd0ee;--ok:#5fd59a;--warn:#ffb547;--bad:#ff6b81;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:28px 16px 60px}
+h1{font-size:28px;margin:0 0 4px}h1 span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-size:18px;margin:0 0 10px}
+p.lead{color:var(--muted);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+label.cb{flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink)}
+input,select,textarea{font:inherit;text-transform:none;letter-spacing:0;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 11px;width:100%}
+input[type=checkbox]{width:auto}
+.g{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}@media(max-width:700px){.g{grid-template-columns:1fr}}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
+button{font:inherit;font-weight:600;border-radius:9px;padding:9px 14px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.p{background:var(--acc);border-color:var(--acc);color:#0f0e17}
+button:disabled{opacity:.5;cursor:wait}
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}.tabs button.on{background:var(--acc);border-color:var(--acc);color:#0f0e17}
+.msg{font-size:14px}.err{color:var(--warn)}.ok{color:var(--ok)}
+.muted{color:var(--muted);font-size:14px}
+.sam{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.sam.v-riktig{border-color:var(--ok)}.sam.v-delvis{border-color:var(--warn)}.sam.v-feil{border-color:var(--bad)}
+.topp{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin-bottom:8px}
+.tag{border:1px solid var(--line);border-radius:99px;padding:1px 9px;font-size:12px}.tag.f{border-color:var(--warn);color:var(--warn)}
+.m{margin:4px 0;padding:7px 10px;border-radius:9px;white-space:pre-wrap;font-size:14px}
+.m.kunde{background:#24223a}.m.ai{background:#16303a}.m.inn{background:#24223a;font-size:12px;max-height:160px;overflow:auto}.m.info{color:var(--muted);font-size:12px}
+.vk{font-size:12px;color:var(--muted);font-family:ui-monospace,monospace;white-space:pre-wrap;word-break:break-word;margin:4px 0}
+.dom{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}
+.dom button.on.riktig{background:var(--ok);color:#0f0e17}.dom button.on.delvis{background:var(--warn);color:#0f0e17}.dom button.on.feil{background:var(--bad);color:#0f0e17}
+.dom select,.dom input{width:auto;flex:1;min-width:160px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+td.n,th.n{text-align:right;white-space:nowrap}.rod{color:var(--bad)}.gronn{color:var(--ok)}
+.skjult{display:none}
+</style></head><body><div class="wrap">
+<h1>Drift <span>og kvalitet</span></h1>
+<p class="lead">Hver samtale og hvert agentkall lagres som en sporbar logg i 30 dager. Her ser du ukens utvalg og merker om svaret var riktig, hva hver kunde koster i KI og SMS mot det de betaler, og sletting.</p>
+
+<div class="card">
+  <div class="g" style="grid-template-columns:1fr auto"><label>Admin-kode<input id="kode" type="password" autocomplete="current-password"></label>
+  <div class="row" style="align-self:end;margin:0"><button class="p" id="start">Åpne</button></div></div>
+  <p class="msg" id="msg" style="margin:8px 0 0"></p>
+</div>
+
+<div class="tabs"><button data-t="kvalitet" class="on">Kvalitet</button><button data-t="kost">Kostnad per kunde</button><button data-t="slett">Sletting</button></div>
+
+<section id="t-kvalitet">
+  <div class="card">
+    <div class="g">
+      <label>Uke<select id="uke"><option value="1">Forrige uke</option><option value="0">Denne uka så langt</option><option value="2">For 2 uker siden</option><option value="3">For 3 uker siden</option></select></label>
+      <label>Tilfeldige i tillegg til flaggede<select id="antall"><option>5</option><option selected>10</option><option>20</option><option>40</option></select></label>
+      <label class="cb" style="align-self:end"><input type="checkbox" id="demo" checked> Ta med demoer og prøvesamtaler</label>
+    </div>
+    <div class="row"><button class="p" id="hentUtvalg">Hent utvalget</button><span class="msg" id="msgK"></span></div>
+    <p class="muted" style="margin:10px 0 0">Flaggede samtaler er med automatisk (f.eks. en pris eller et nummer som ikke står i profilen, et verktøy som feilet, eller et reservesvar). Les samtalen og merk den. Notatet skal ikke inneholde navn eller nummer.</p>
+  </div>
+  <div id="utvalg"></div>
+  <div class="card"><h2>Feilrate per uke</h2><div id="oversikt" class="muted">Ingen vurderinger ennå.</div>
+  <p class="muted" style="margin:10px 0 0">Feilrate = (feil + halvparten av delvis) / vurdert. Mål før salg: under 5 % feil, og ingen «Fant på noe».</p></div>
+</section>
+
+<section id="t-kost" class="skjult">
+  <div class="card">
+    <div class="g"><label>Måned<input id="mnd" type="month"></label></div>
+    <div class="row"><button class="p" id="hentKost">Vis kostnad</button><span class="msg" id="msgC"></span></div>
+    <p class="muted" style="margin:10px 0 0">Pakken settes på <a href="/rapport" style="color:var(--acc2)">/rapport</a>. Kostnaden er et anslag ut fra tokens, minutter og SMS ganget med prisene under. Sjekk av og til mot fakturaene fra xAI og Twilio.</p>
+  </div>
+  <div class="card"><div id="kost" class="muted">Velg måned.</div></div>
+</section>
+
+<section id="t-slett" class="skjult">
+  <div class="card">
+    <h2>Oppbevaringstid</h2>
+    <div id="opp" class="muted"></div>
+    <div class="row"><button id="rydd">Rydd nå</button><span class="msg" id="msgR"></span></div>
+    <p class="muted" style="margin:10px 0 0">Ryddingen kjører også av seg selv hver mandag kl. 07.</p>
+  </div>
+  <div class="card">
+    <h2>Slett alt om en kunde</h2>
+    <p class="muted" style="margin:0 0 10px">Når en avtale slutter: sekretær, saker, leads, timer, logg, spor og innstillinger. Signerte avtaler og kostnadstall beholdes. Trykk «Se hva som slettes» først.</p>
+    <div class="g"><label>Kunde-id<input id="skunde" placeholder="f.eks. deja-vu-frisor-089t"></label></div>
+    <div class="row"><button id="slettSe">Se hva som slettes</button><button id="slettEkte" disabled>Slett for godt</button><span class="msg" id="msgS"></span></div>
+    <div id="slettListe" class="vk"></div>
+  </div>
+</section>
+
+<script>
+const $=(id)=>document.getElementById(id);
+const esc=(s)=>String(s??"").replace(/[&<>"]/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const kr=(n)=>(Math.round(n*100)/100).toLocaleString("nb-NO",{minimumFractionDigits:2,maximumFractionDigits:2})+" kr";
+try{$("kode").value=localStorage.getItem("orvelo-admin")||"";}catch{}
+$("mnd").value=new Date().toISOString().slice(0,7);
+async function api(body){
+  const r=await fetch("/drift/api",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({kode:$("kode").value,...body})});
+  const d=await r.json().catch(()=>({feil:"Uventet svar"}));
+  if(!r.ok) throw new Error(d.feil||("Feil "+r.status));
+  return d;
+}
+function vis(t){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));["kvalitet","kost","slett"].forEach(x=>$("t-"+x).classList.toggle("skjult",x!==t));}
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{vis(b.dataset.t);if(b.dataset.t==="kost")hentKost();if(b.dataset.t==="slett")oppbevaring();});
+$("start").onclick=async()=>{
+  try{localStorage.setItem("orvelo-admin",$("kode").value);}catch{}
+  $("msg").textContent="";
+  try{await hentUtvalg();await oversikt();$("msg").innerHTML='<span class="ok">Klar.</span>';}catch(e){$("msg").innerHTML='<span class="err">'+esc(e.message)+'</span>';}
+};
+
+let UKE="",FEILTYPER=[];
+const KANAL={chat:"Chat",tale:"Stemme",tekst:"Tekst",epost:"E-post",facebook:"Facebook","ring-inn":"Telefon inn (Orvelo)","ring-ut":"Telefon ut (Orvelo)"};
+function samtale(s){
+  const v=s.vurdering||{};
+  const kanal=KANAL[s.kanal]||(s.kanal||"").replace("agent-","Agent: ");
+  const t=new Date(s.t).toLocaleString("nb-NO",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+  const m=(s.meldinger||[]).map(([h,x])=>`<div class="m ${esc(h)}">${h==="inn"?"<b>Til KI-en:</b>\n":""}${esc(x)}</div>`).join("");
+  const vk=(s.verktoy||[]).map(x=>`<div class="vk">↳ ${esc(x.navn)} ${esc(x.args)} → ${esc(x.res)}</div>`).join("");
+  const info=s.info&&Object.keys(s.info).length?`<div class="vk">${esc(JSON.stringify(s.info))}</div>`:"";
+  return `<div class="sam ${v.d?"v-"+v.d:""}" data-key="${esc(s.key)}" data-kanal="${esc(s.kanal)}">
+    <div class="topp"><b style="color:var(--ink)">${esc(s.id)}</b><span class="tag">${esc(kanal)}</span>${s.prov?'<span class="tag">demo</span>':""}<span>${esc(t)}</span>${(s.flagg||[]).map(f=>`<span class="tag f">⚑ ${esc(f)}</span>`).join("")}</div>
+    ${m}${vk}${info}
+    <div class="dom">${["riktig","delvis","feil"].map(d=>`<button class="${d} ${v.d===d?"on":""}" data-d="${d}">${d[0].toUpperCase()+d.slice(1)}</button>`).join("")}
+      <select class="ft">${FEILTYPER.map(f=>`<option ${v.t===f?"selected":""}>${esc(f)}</option>`).join("")}</select>
+      <input class="nt" placeholder="Kort notat (uten navn og nummer)" value="${esc(v.n||"")}">
+      <span class="msg"></span></div></div>`;
+}
+async function hentUtvalg(){
+  $("msgK").textContent="Henter …";
+  const d=await api({handling:"utvalg",uke:Number($("uke").value),antall:Number($("antall").value),demo:$("demo").checked});
+  UKE=d.uke;FEILTYPER=d.feiltyper;
+  const vurdert=d.utvalg.filter(x=>x.vurdering).length;
+  $("msgK").innerHTML=`<b>${esc(d.uke)}</b> (${esc(d.fra)} – ${esc(d.til)}): ${d.totalt} lagret, ${d.flagget} flagget, ${d.utvalg.length} i utvalget, ${vurdert} vurdert.`;
+  $("utvalg").innerHTML=d.utvalg.length?d.utvalg.map(samtale).join(""):'<div class="card muted">Ingen samtaler lagret denne uka.</div>';
+}
+$("hentUtvalg").onclick=()=>hentUtvalg().catch(e=>$("msgK").innerHTML='<span class="err">'+esc(e.message)+'</span>');
+$("utvalg").addEventListener("click",async(e)=>{
+  const b=e.target.closest("button[data-d]");if(!b)return;
+  const kort=b.closest(".sam");const msg=kort.querySelector(".msg");
+  const dom=b.classList.contains("on")?null:b.dataset.d;
+  try{
+    await api({handling:"vurder",uke:UKE,key:kort.dataset.key,kanal:kort.dataset.kanal,dom,feiltype:kort.querySelector(".ft").value,notat:kort.querySelector(".nt").value});
+    kort.querySelectorAll(".dom button").forEach(x=>x.classList.toggle("on",x===b&&!!dom));
+    kort.className="sam"+(dom?" v-"+dom:"");msg.innerHTML='<span class="ok">Lagret</span>';oversikt();
+  }catch(err){msg.innerHTML='<span class="err">'+esc(err.message)+'</span>';}
+});
+async function oversikt(){
+  const d=await api({handling:"oversikt"});
+  if(!d.uker.length){$("oversikt").textContent="Ingen vurderinger ennå.";return;}
+  $("oversikt").innerHTML=`<table><tr><th>Uke</th><th class="n">Vurdert</th><th class="n">Riktig</th><th class="n">Delvis</th><th class="n">Feil</th><th class="n">Feilrate</th><th>Vanligste feil</th></tr>${d.uker.map(u=>`<tr><td>${esc(u.uke)}</td><td class="n">${u.vurdert}</td><td class="n">${u.riktig}</td><td class="n">${u.delvis}</td><td class="n">${u.feil}</td><td class="n ${u.feilrate>5?"rod":"gronn"}">${u.feilrate} %</td><td>${esc(Object.entries(u.feiltyper).sort((a,b)=>b[1]-a[1]).map(([k,n])=>k+" ("+n+")").join(", "))}</td></tr>`).join("")}</table>`;
+}
+
+async function hentKost(){
+  $("msgC").textContent="Henter …";
+  try{
+    const d=await api({handling:"kost",mnd:$("mnd").value});
+    $("msgC").textContent="";
+    const p=d.priser;
+    const rader=d.rader.map(r=>`<tr><td>${esc(r.navn)}<div class="muted" style="font-size:12px">${esc(r.id)}</div></td><td>${esc(r.pakke||"–")}</td><td class="n">${r.kall}</td><td class="n">${r.min}${r.ekstraMin?` <span class="rod">(+${r.ekstraMin})</span>`:""}</td><td class="n">${r.sms}${r.ekstraSms?` <span class="rod">(+${r.ekstraSms})</span>`:""}</td><td class="n">${kr(r.krTekst)}</td><td class="n">${kr(r.krTale)}</td><td class="n">${kr(r.krSms)}</td><td class="n"><b>${kr(r.kost)}</b></td><td class="n">${r.pakke?kr(r.inntekt):"–"}</td><td class="n ${r.margin!==null&&r.andel>30?"rod":"gronn"}">${r.margin===null?"–":kr(r.margin)+`<div style="font-size:12px">${r.andel} % av prisen</div>`}</td></tr>`).join("");
+    $("kost").innerHTML=d.rader.length?`<div style="overflow-x:auto"><table><tr><th>Kunde</th><th>Pakke</th><th class="n">KI-kall</th><th class="n">Tale-min</th><th class="n">SMS</th><th class="n">Tekst-KI</th><th class="n">Stemme</th><th class="n">SMS</th><th class="n">Kost</th><th class="n">Inntekt</th><th class="n">Dekning</th></tr>${rader}
+      <tr><td><b>Sum</b></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="n"><b>${kr(d.sum.kost)}</b></td><td class="n"><b>${kr(d.sum.inntekt)}</b></td><td></td></tr></table></div>
+      <p class="muted" style="margin:12px 0 0">Inntekt = pakkepris + ${5} kr per ekstra minutt og 1 kr per ekstra SMS over det som er inkludert (tall i rødt). Kunder uten pakke er demoer: kostnaden er salgskostnad.<br>
+      Priser brukt: tekst ${p.PRIS_INN} / ${p.PRIS_UT} USD per million tokens inn/ut (bufret ${p.PRIS_BUFRET}), stemme ${p.PRIS_TALE_MIN} USD/min, SMS ${p.PRIS_SMS} USD, 1 USD = ${p.PRIS_USD_NOK} kr. Endres med variablene PRIS_* i Cloudflare.</p>`
+      :"Ingen bruk registrert denne måneden.";
+  }catch(e){$("msgC").innerHTML='<span class="err">'+esc(e.message)+'</span>';}
+}
+$("hentKost").onclick=hentKost;
+
+async function oppbevaring(){
+  try{const d=await api({handling:"oppbevaring"});
+  $("opp").innerHTML=`Hele samtaler og agentkall (spor): <b>${d.spor} dager</b>.<br>Forespørsler, beskjeder, leads, tapte anrop, tilbud og andre agent-utkast: <b>${d.saker} dager</b> etter siste endring. Bestilte timer: ${d.saker} dager etter timen.<br>Korte sammendrag til ukesrapporten (uten fullt navn og nummer): <b>${d.logg} dager</b>.<br>Kostnadstall og vurderinger (ingen personopplysninger): ${d.kost} dager.`;}catch(e){$("opp").innerHTML='<span class="err">'+esc(e.message)+'</span>';}
+}
+$("rydd").onclick=async()=>{$("msgR").textContent="Rydder …";try{const d=await api({handling:"rydd"});$("msgR").innerHTML=`<span class="ok">${d.fjernet} saker fjernet hos ${d.kunder} kunder.</span>`;}catch(e){$("msgR").innerHTML='<span class="err">'+esc(e.message)+'</span>';}};
+$("slettSe").onclick=async()=>{
+  $("slettEkte").disabled=true;$("slettListe").textContent="";
+  try{const d=await api({handling:"slett-kunde",kunde:$("skunde").value.trim()});
+    $("msgS").textContent=`${d.antall} nøkler vil bli slettet.`;$("slettListe").textContent=d.eksempler.join("\n")+(d.antall>d.eksempler.length?"\n…":"");$("slettEkte").disabled=!d.antall;}
+  catch(e){$("msgS").innerHTML='<span class="err">'+esc(e.message)+'</span>';}
+};
+$("slettEkte").onclick=async()=>{
+  const id=$("skunde").value.trim();
+  const svar=prompt(`Skriv kunde-id-en (${id}) for å slette alt om kunden for godt:`);
+  if(svar!==id){$("msgS").textContent="Avbrutt.";return;}
+  try{const d=await api({handling:"slett-kunde",kunde:id,ekte:true,bekreft:svar});$("msgS").innerHTML=`<span class="ok">${d.antall} nøkler slettet.</span>`;$("slettEkte").disabled=true;}
+  catch(e){$("msgS").innerHTML='<span class="err">'+esc(e.message)+'</span>';}
+};
+</script>
+</div></body></html>
