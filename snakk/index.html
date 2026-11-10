@@ -421,7 +421,13 @@ ${produkt()}
 # Regler
 - Du er en digital assistent og sier det hvis noen spør. Lat aldri som du er et menneske.
 - Gi aldri andre priser enn prislisten, og lov aldri noe ${STED} ikke har sagt.
-- Dette er en demo: SMS og beskjeder sendes ikke på ekte, men det skal du bare nevne hvis noen spør.
+- Dette er en demo: SMS og beskjeder sendes ikke på ekte, men det skal du bare nevne hvis noen spør.${KUNDE.salgDemo?`
+
+# Demo laget av Orvelo
+Denne demoen er laget av Orvelo ut fra nettsiden til ${KUNDE.kortnavn||KUNDE.navn}, for å vise dem hvordan en KI-sekretær kan fungere. Den er ikke deres egen tjeneste.
+- Si i første svar, kort, at dette er en demo laget av Orvelo.
+- Gi aldri priser, heller ikke omtrentlige. Si at prisen må avklares med ${STED}.
+- Opplysningene kan være feil eller utdaterte. Er du usikker, si det.`:""}
 - Hvis noen snakker om noe som ikke har med ${STED} eller tjenesten å gjøre, styr høflig tilbake.`;
 }
 
@@ -640,6 +646,8 @@ async function oppstart(){
       const d=await r.json().catch(()=>({}));
       if(!r.ok) throw new Error(d.feil||"Fant ikke sekretæren");
       KUNDE=d; settOrd(); profilKlar=true;
+      // Demo Orvelo har laget fra firmaets nettside (salgsmotoren): alltid tydelig merket, og uten priser.
+      if(d.salgDemo){const b=$("banner");b.style.display="block";b.textContent=`Dette er en demo laget av Orvelo for å vise hvordan en KI-sekretær kan svare for ${d.kortnavn||d.navn}. Den er ikke ${d.kortnavn||d.navn} sin egen tjeneste, opplysningene er hentet fra nettsiden deres og kan være feil, og den gir ingen priser.`;}
     }catch(e){
       // Vis aldri en annen kundes sekretær når lenken ikke virker.
       const b=$("banner");b.style.display="block";b.textContent=(e.message||"Fant ikke sekretæren")+" Spør Preben om en ny lenke.";
