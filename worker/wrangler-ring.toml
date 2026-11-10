@@ -2,6 +2,7 @@
 name = "orvelo-ring"
 main = "ringeagent-worker.js"
 compatibility_date = "2026-11-05"
+account_id = "702b473e150b3be788fdaf45c4d1de31"
 workers_dev = true
 keep_vars = true
 
