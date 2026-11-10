@@ -265,11 +265,14 @@ Før salg og etter hver endring i instruksjonene: kjør testene mot ekte Grok:
 
 **Salgsmotor** (fanen «Salgsmotor» på `/drift`, bare Preben). Orvelos egen kundeinnhenting, helautomatisk etter Prebens valg 10.11.2026:
 - Natt 01–05: søker AS i hele Norge i Enhetsregisteret (bransjene i lead-finneren, én side per kvarter), lagrer bare AS med rolleadresse (post@, firmapost@ …), lager egen demo-sekretær når firmaet har nettside (lever 60 dager) og fire e-poster (dag 0, 4, 9, 14) med Grok.
-- Hverdager 08–16: sender maks `SALG_PER_DAG` (standard 10, kan endres i fanen) nye firmaer per dag pluss forfalte oppfølginger, tre per kvarter. Sperrelisten sjekkes rett før hver e-post. Kl. 16 får Preben oversikten på e-post.
+- Hverdager 08–16: sender maks `SALG_PER_DAG` (standard 30, kan endres i fanen) nye firmaer per dag pluss forfalte oppfølginger, tre per kvarter. Sperrelisten sjekkes rett før hver e-post. Kl. 16 får Preben oversikten på e-post.
 - Hver e-post har avsender med org.nr, avmeldingslenke `/avmeld?o=<orgnr>&t=<token>` og `List-Unsubscribe` (ett klikk). Avmeldte og adresser i sperrelisten får aldri mer.
-- Svar går til Prebens innboks (`SALG_SVAR_TIL`). Trykk «Svart», «Møte booket» eller «Stopp og sperr» på firmaet, så stopper oppfølgingen.
+- I fanen kan Preben også trykke «Svart», «Møte booket» eller «Stopp og sperr» på et firma.
 - Sender bare når `RESEND_API_KEY` er satt og avsenderdomenet i `SALG_FRA` (standard `Preben i Orvelo <preben@orvelo.no>`) er godkjent i Resend. Til da finner og skriver motoren, men sender ingenting. `SALG_AV = ja` slår alt av. Pause-knappen i fanen stopper all sending.
 - KV: `salg:<orgnr>` (120 dager etter siste endring), `salgsperre:<orgnr>` og `salgsperre:e:<epost>` (for alltid), `salgcfg`, `salgdag:<dato>` (60 dager).
+- **Svaragenten** (Prebens valg 10.11.2026): leser svar, sorterer dem (interessert, spørsmål, nei, avmeld, autosvar) og svarer selv ut fra faste fakta om Orvelo (`SALG_FAKTA`: pakker, priser, prøveperiode, binding, demo, bookinglenke). Den lover aldri telefonsvar, rabatt eller egne priser. Nei og avmeld går på sperrelisten. Autosvar lar sekvensen fortsette. Den sender maks `SALG_MAKS_SVAR` (standard 3) svar per firma, så tar Preben over. Preben får kopi (bcc) og en e-post om hvert svar, merket «TRENGER DEG» når han må ta det. `SALG_AUTOSVAR = nei` slår av svarene.
+- Slik kommer svarene inn: Cloudflare Email Routing på orvelo.no med `svar@orvelo.no` → «Send to a Worker» → orvelo-sekretar (workerens `email()`). Sett så `SALG_SVAR_TIL = svar@orvelo.no`, så svarer kundene dit. Til det er klart, går svarene til Gmail. Da limer Preben dem inn i fanen («La agenten ta svaret»).
+- Standard er 30 nye firmaer per dag (`SALG_PER_DAG`, eller valget i fanen, maks 50).
 - Test: `node tools/test-salgsmotor.mjs` (alt etterlignet, sender ingenting).
 
 **Agent-revisor** (fanen på `/drift`). Leser alle samtalene (ikke agentkall og prøver) til én kunde for en uke, gir karakter, funn og forslag. Forslag til «dette bør sekretæren vite» og åpningstidsteksten kan brukes med ett trykk (må ikke ha `[fyll inn]`; forrige versjon lagres i `historikk:`). Kjører av seg selv hver mandag for de 8 kundene med flest samtaler (minst 3), og står i kvalitets-e-posten. KV `revisjon:<id>:<uke>` slettes etter 30 dager.

@@ -11,7 +11,7 @@ const KV = {
   delete: async (k) => { lager.delete(k); },
   list: async ({ prefix = "" }) => ({ keys: [...lager.keys()].filter((k) => k.startsWith(prefix)).sort().map((name) => ({ name, metadata: lager.get(name).metadata })), list_complete: true }),
 };
-const env = { XAI_API_KEY: "x", ADMIN_KODE: "admin", KUNDER: KV, DEMO_KODE: "felles", SALG_FRA: "Preben i Orvelo <preben@orvelo.no>" };
+const env = { XAI_API_KEY: "x", ADMIN_KODE: "admin", KUNDER: KV, DEMO_KODE: "felles", SALG_FRA: "Preben i Orvelo <preben@orvelo.no>", SALG_PER_DAG: "10" };
 
 // 14 AS med rolleadresse, ett AS med personlig adresse, ett ENK med post@ (det skal aldri få noe)
 const enhet = (nr, navn, epost, form = "AS", hjemmeside = "") => ({ organisasjonsnummer: String(nr), navn, epostadresse: epost, organisasjonsform: { kode: form },
@@ -30,6 +30,12 @@ globalThis.fetch = async (u, o = {}) => {
   if (url.includes("api.x.ai")) {
     grok++;
     const sys = JSON.parse(o.body).messages[0].content;
+    const bruker = JSON.parse(o.body).messages[1].content;
+    if (sys.includes("salgsassistenten")) {
+      const siste = bruker.split("KUNDEN: ").pop();
+      const kat = /nei takk/i.test(siste) ? "nei" : /hva koster/i.test(siste) ? "sporsmal" : /rabatt/i.test(siste) ? "sporsmal" : "interessert";
+      return Response.json({ choices: [{ message: { content: JSON.stringify({ kategori: kat, svar: kat === "nei" ? "Hei,\n\nTakk for svar. Vi skriver ikke mer." : "Hei,\n\nStarter koster 790 kr/mnd eks. mva, og dere kan prøve 14 dager gratis.", trenger_preben: /rabatt/i.test(siste), oppsummering: "Kunden spør om pris." }) } }], usage: {} });
+    }
     const svar = sys.includes("e-postserie")
       ? { eposter: [1, 2, 3, 4].map((n) => ({ emne: n === 1 ? "Kunder som venter på svar" : "Sv: Kunder som venter på svar", tekst: n === 1 ? "Hei! Her er en demo laget til dere: {DEMO}. Vil du se mer?" : n === 3 ? "Ta en prat: {BOOK}" : `Tekst ${n}.` })) }
       : { navn: "Frisør 0 AS", kortnavn: "Frisør 0", bransje: "frisørsalong", type: "time", tjenester: [{ navn: "Klipp", pris: "600 kr" }], apent: {}, usikkert: [] };
@@ -51,6 +57,13 @@ const drift = async (body, kode = "admin") => {
 };
 const firma = (nr) => KV.get("salg:" + nr, "json");
 const salgNokler = () => [...lager.keys()].filter((k) => k.startsWith("salg:"));
+
+// Rå e-post slik Cloudflare Email Routing leverer den
+const raaEpost = (fra, emne, kropp, ekstra = "") => {
+  const raw = `From: Kari <${fra}>\r\nTo: svar@orvelo.no\r\nSubject: =?utf-8?Q?${emne.replace(/ /g, "_").replace(/ø/g, "=C3=B8")}?=\r\nMessage-ID: <abc123@firma.no>\r\n${ekstra}MIME-Version: 1.0\r\nContent-Type: multipart/alternative; boundary="XX"\r\n\r\n--XX\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n${kropp.replace(/ø/g, "=C3=B8").replace(/å/g, "=C3=A5")}\r\n\r\nDen 10. nov. 2026 skrev Preben i Orvelo:\r\n> Hei, her er en demo\r\n--XX\r\nContent-Type: text/html; charset=utf-8\r\n\r\n<p>html</p>\r\n--XX--\r\n`;
+  return { from: fra, to: "svar@orvelo.no", raw: new Response(raw).body };
+};
+const epostInn = (m) => worker.email(m, env, { waitUntil: () => {} });
 
 // 1) Natt: finn og skriv
 for (const kl of ["01:00", "01:15", "01:30", "01:45", "02:00", "02:15", "02:30", "02:45", "03:00", "03:15", "03:30", "03:45"]) await cron(oslo("2026-11-10", kl));
@@ -134,6 +147,36 @@ const f4 = await firma(900000104);
 sjekk(f4.steg === 4 && f4.status === "ferdig" && !f4.neste, `etter fire e-poster er firmaet ferdig (steg ${f4.steg}, ${f4.status})`);
 const til104 = eposter.filter((e) => e.to && e.to[0] === "post@frisor4.no");
 sjekk(til104.length === 4, `firmaet fikk nøyaktig fire e-poster (${til104.length})`);
+
+// 11) Svaragenten
+const foerSvar = eposter.length;
+await epostInn(raaEpost("post@frisor5.no", "Sv: Kunder som venter på svar", "Hei! Hva koster det å prøve? Vi er åpne for det."));
+const svar5 = eposter.slice(foerSvar).find((e) => e.to && e.to[0] === "post@frisor5.no");
+const f5 = await firma(900000105);
+sjekk(svar5 && svar5.text.includes("790 kr") && svar5.bcc[0] === "hilleren.bedrift@gmail.com" && svar5.headers["In-Reply-To"] === "<abc123@firma.no>", "spørsmål: agenten svarer med fakta, kopi til Preben, i samme tråd");
+sjekk(svar5 && svar5.subject.startsWith("Sv: ") && svar5.text.includes("KI-assistent"), "svaret sier at det er skrevet av KI");
+sjekk(f5.status === "svart" && !f5.neste && f5.samtale.length === 2 && f5.samtale[0].tekst.includes("Hva koster") && !f5.samtale[0].tekst.includes("her er en demo"), "status svart, oppfølging stoppet, sitert tekst fjernet");
+sjekk(eposter.slice(foerSvar).some((e) => e.to && e.to[0] === "hilleren.bedrift@gmail.com" && /svarte \(sporsmal\)/.test(e.subject)), "Preben får beskjed om svaret");
+await epostInn(raaEpost("ola@frisor6.no", "Sv: Kunder", "Nei takk, ikke interessert."));
+const f6 = await firma(900000106);
+sjekk(f6.status === "stopp" && await KV.get("salgsperre:e:post@frisor6.no") && await KV.get("salgsperre:e:ola@frisor6.no"), "nei fra en annen adresse på samme domene: stopp og sperret");
+const f7foer = await firma(900000107);
+await epostInn(raaEpost("post@frisor7.no", "Fravær", "Jeg er på ferie til mandag.", "Auto-Submitted: auto-replied\r\n"));
+const f7 = await firma(900000107);
+sjekk(f7.status === f7foer.status && f7.neste === f7foer.neste && !eposter.slice(foerSvar).some((e) => e.to && e.to[0] === "post@frisor7.no"), "autosvar: ingen svar, sekvensen fortsetter");
+const n = eposter.length;
+await epostInn(raaEpost("noe@ukjent.no", "Hei", "Hvem er dere?"));
+sjekk(eposter.length === n + 1 && eposter.at(-1).to[0] === "hilleren.bedrift@gmail.com", "ukjent avsender: bare beskjed til Preben");
+await epostInn(raaEpost("preben@orvelo.no", "loop", "test"));
+sjekk(eposter.length === n + 1, "e-post fra oss selv blir ignorert (ingen løkke)");
+for (let i = 0; i < 3; i++) await epostInn(raaEpost("post@frisor5.no", "Sv: Kunder", "Interessant, fortell mer " + i));
+const f5b = await firma(900000105);
+sjekk(f5b.samtale.filter((m) => m.fra === "agent").length === 3 && f5b.trengerPreben, "maks 3 automatiske svar, deretter tar Preben over");
+const lim = await drift({ handling: "salg-svar", fra: "post@frisor8.no", emne: "Sv: Kunder", tekst: "Kan dere gi rabatt?" });
+const f8 = await firma(900000108);
+sjekk(lim.status === 200 && lim.d.resultat.hva === "sporsmal" && lim.d.resultat.trengerPreben && f8.status === "svart", "svar limt inn på /drift: agenten svarer og flagger at Preben må se på rabatt");
+const liste = await drift({ handling: "salg" });
+sjekk(liste.d.rader.some((r) => r.orgnr === "900000108" && r.tp === 1), "fanen merker «trenger deg»");
 
 console.log(feil ? `\n${feil} FEIL` : "\nAlle tester OK");
 process.exit(feil ? 1 : 0);

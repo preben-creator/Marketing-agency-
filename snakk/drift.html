@@ -119,15 +119,22 @@ td.n,th.n{text-align:right;white-space:nowrap}.rod{color:var(--bad)}.gronn{color
 <section id="t-salg" class="skjult">
   <div class="card">
     <h2>Salgsmotor</h2>
-    <p class="muted" style="margin:0 0 10px">Finner AS i hele Norge med rolleadresse (post@, firmapost@ …) om natta, lager egen demo og fire e-poster (dag 0, 4, 9 og 14), og sender dem på hverdager 08–16 uten at du trenger å godkjenne. Sperrelisten sjekkes før hver e-post. Du får oversikten på e-post kl. 16. Når et firma svarer: trykk «Svart», så stopper oppfølgingen.</p>
+    <p class="muted" style="margin:0 0 10px">Finner AS i hele Norge med rolleadresse (post@, firmapost@ …) om natta, lager egen demo og fire e-poster (dag 0, 4, 9 og 14), og sender dem på hverdager 08–16 uten at du trenger å godkjenne. Sperrelisten sjekkes før hver e-post. Svaragenten sorterer svarene og svarer selv ut fra faste fakta (maks 3 ganger per firma), og du får kopi. Du får oversikten på e-post kl. 16.</p>
     <div id="sStatus" class="muted">Ikke hentet ennå.</div>
-    <div class="g" style="margin-top:12px"><label>Nye firmaer per dag<select id="sPerDag"><option>5</option><option>10</option><option>15</option><option>20</option><option>30</option></select></label>
+    <div class="g" style="margin-top:12px"><label>Nye firmaer per dag<select id="sPerDag"><option>5</option><option>10</option><option>20</option><option>30</option><option>40</option><option>50</option></select></label>
       <label>Vis<select id="sFilter"><option value="">Alle</option><option value="klar">Klare</option><option value="sendt">I gang</option><option value="svart">Svart</option><option value="mote">Møte</option><option value="ferdig">Ferdig uten svar</option><option value="avmeldt">Avmeldt</option><option value="stopp">Stoppet</option><option value="feil">Feil</option><option value="funnet">Funnet (ikke skrevet)</option></select></label>
       <div class="row" style="align-self:end;margin:0"><button id="sPause">Pause</button></div></div>
     <div class="row"><button class="p" id="sHent">Oppdater</button><button id="sFinn">Finn og skriv 2 nå</button><button id="sSend">Send det som er klart nå</button><span class="msg" id="msgS2"></span></div>
   </div>
   <div class="card"><div id="sRes" class="muted">–</div></div>
   <div class="card" id="sFirma" style="display:none"></div>
+  <div class="card">
+    <h2>Lim inn et svar fra Gmail</h2>
+    <p class="muted" style="margin:0 0 10px">Når svar@orvelo.no er koblet til, leser svaragenten svarene selv. Til da: lim inn svar som kommer til Gmail, så sorterer agenten det, svarer kunden (med kopi til deg) og stopper oppfølgingen.</p>
+    <div class="g"><label>Fra (e-post)<input id="svFra" placeholder="post@firma.no"></label><label>Emne<input id="svEmne"></label></div>
+    <label style="margin-top:10px">Teksten i svaret<textarea id="svTekst" rows="5" style="min-height:0;font-family:inherit"></textarea></label>
+    <div class="row"><button class="p" id="svKnapp">La agenten ta svaret</button><span class="msg" id="msgSv"></span></div>
+  </div>
   <div class="card">
     <h2>Sperreliste</h2>
     <p class="muted" style="margin:0 0 10px">Lim inn e-postadresser eller org.nr som aldri skal få e-post fra motoren (allerede kontaktet for hånd, sagt nei, meldt av). Én per linje.</p>
@@ -279,7 +286,7 @@ async function salgHent(){
       (d.resend?`Sender fra ${esc(d.fra)}.`:'<span class="rod">Sender ikke ennå: RESEND_API_KEY mangler (venter på orvelo.no). Motoren finner og skriver likevel.</span>')+
       `<br>I dag: ${d.idag.nye} nye av ${d.cfg.perDag}, ${d.idag.sendt.length} e-poster sendt.`+
       `<br>${Object.entries(t).filter(([,n])=>n).map(([s,n])=>`${S_NAVN[s]}: <b>${n}</b>`).join(" · ")||"Ingen firmaer ennå."}`;
-    $("sRes").innerHTML=d.rader.length?`<table><tr><th>Firma</th><th>Status</th><th>Neste</th><th></th></tr>${d.rader.map(r=>`<tr><td><b>${esc(r.f)}</b><div class="muted">${esc(r.e)} · ${esc(r.b)} · ${esc(r.orgnr)}</div></td><td>${esc(S_NAVN[r.s]||r.s)}${r.st?` (${r.st}/4)`:""}</td><td>${r.n?esc(new Date(r.n).toLocaleDateString("nb-NO",{weekday:"short",day:"numeric",month:"short"})):"–"}</td><td><button class="sVis" data-o="${esc(r.orgnr)}">Åpne</button></td></tr>`).join("")}</table>`:"Ingen firmaer her.";
+    $("sRes").innerHTML=d.rader.length?`<table><tr><th>Firma</th><th>Status</th><th>Neste</th><th></th></tr>${d.rader.map(r=>`<tr><td><b>${esc(r.f)}</b><div class="muted">${esc(r.e)} · ${esc(r.b)} · ${esc(r.orgnr)}</div></td><td>${esc(S_NAVN[r.s]||r.s)}${r.st?` (${r.st}/4)`:""}${r.tp?' <span class="tag f">trenger deg</span>':""}</td><td>${r.n?esc(new Date(r.n).toLocaleDateString("nb-NO",{weekday:"short",day:"numeric",month:"short"})):"–"}</td><td><button class="sVis" data-o="${esc(r.orgnr)}">Åpne</button></td></tr>`).join("")}</table>`:"Ingen firmaer her.";
   }catch(e){sFeil("msgS2",e);}
 }
 $("sHent").onclick=salgHent;$("sFilter").onchange=salgHent;
@@ -295,12 +302,17 @@ $("sRes").addEventListener("click",async e=>{const b=e.target.closest(".sVis");i
     $("sFirma").innerHTML=`<h2>${esc(f.navn)} <span class="tag">${esc(S_NAVN[f.status]||f.status)}</span></h2><p class="muted">${esc(f.epost)} · ${esc(f.bransje)} · ${esc(f.sted||f.kommune||"")} · ${f.ansatte} ansatte · score ${f.score??"–"}${f.hjemmeside?" · "+esc(f.hjemmeside):""}${f.demo?` · <a href="${esc(f.demo)}" target="_blank" rel="noopener" style="color:var(--acc2)">demo</a>`:""}</p>
       <div class="row">${["svart","mote","kunde","stopp"].map(s=>`<button class="sMerk" data-o="${esc(f.orgnr)}" data-s="${s}">${{svart:"Svart (stopp oppfølging)",mote:"Møte booket",kunde:"Ble kunde",stopp:"Stopp og sperr"}[s]}</button>`).join("")}</div>
       ${(f.forhand||[]).map((m,i)=>`<div class="sam ${i<f.steg?"v-riktig":""}"><div class="topp">E-post ${i+1} · dag ${[0,4,9,14][i]}${i<f.steg?' · <span class="gronn">sendt</span>':""} <button class="sTest" data-o="${esc(f.orgnr)}" data-i="${i}" style="margin-left:auto;padding:3px 9px;font-size:12px">Send test til meg</button></div><div class="muted">Emne: ${esc(m.emne)}</div><div class="m ai">${esc(m.tekst)}</div></div>`).join("")}
+      ${(f.samtale||[]).length?`<h2 style="margin-top:14px">Samtale</h2>${f.samtale.map(m=>`<div class="m ${m.fra==="kunde"?"kunde":"ai"}"><b>${m.fra==="kunde"?"Kunden":"Agenten"}</b> · ${esc(new Date(m.tid).toLocaleString("nb-NO"))}\n${esc(m.tekst)}</div>`).join("")}`:""}
       <h2 style="margin-top:14px">Logg</h2>${(f.logg||[]).slice().reverse().map(l=>`<div class="muted">${esc(new Date(l.tid).toLocaleString("nb-NO"))}: ${esc(l.hva)}</div>`).join("")}`;
     $("sFirma").scrollIntoView({behavior:"smooth"});
   }catch(err){sFeil("msgS2",err);}});
 $("sFirma").addEventListener("click",async e=>{const m=e.target.closest(".sMerk"),t=e.target.closest(".sTest");
   try{if(m){if(m.dataset.s==="stopp"&&!confirm("Stoppe og sette firmaet på sperrelisten for godt?"))return;await api({handling:"salg-merk",orgnr:m.dataset.o,status:m.dataset.s});m.textContent="Lagret";salgHent();}
     if(t){await api({handling:"salg-test",orgnr:t.dataset.o,steg:Number(t.dataset.i)});t.textContent="Sendt til deg";}}catch(err){alert(err.message);}});
+$("svKnapp").onclick=async()=>{const b=$("svKnapp");b.disabled=true;$("msgSv").textContent="Agenten leser og svarer …";
+  try{const d=await api({handling:"salg-svar",fra:$("svFra").value,emne:$("svEmne").value,tekst:$("svTekst").value});const r=d.resultat;
+    $("msgSv").innerHTML='<span class="ok">'+esc(r.hva==="ukjent"?"Fant ikke firmaet i salgsmotoren. Du fikk e-post om det.":`Sortert som «${r.hva}». ${r.sendt?"Agenten svarte (kopi til deg).":"Agenten svarte ikke."}${r.trengerPreben?" Trenger deg.":""}`)+'</span>';
+    $("svTekst").value="";salgHent();}catch(e){sFeil("msgSv",e);}finally{b.disabled=false;}};
 $("sSperrKnapp").onclick=async()=>{try{const d=await api({handling:"salg-sperr",liste:$("sSperr").value});$("msgS3").innerHTML=`<span class="ok">${d.lagt} lagt på sperrelisten.</span>`;$("sSperr").value="";}catch(e){sFeil("msgS3",e);}};
 </script>
 </div></body></html>
