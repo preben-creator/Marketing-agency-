@@ -957,7 +957,9 @@ function rensTillegg(t = {}, profil = {}) {
     paminnelse: { pa: !!p.pa, timerFor: tilTall(p.timerFor, 2, 72, 24), bekreftelse: p.bekreftelse !== false, sammeDag: tilTall(p.sammeDag, 0, 6, 0) },
     venteliste: { pa: !!(t.venteliste || {}).pa, antall: tilTall((t.venteliste || {}).antall, 1, 5, 3) },
     tapt: { pa: !!ta.pa, lenke: httpsLenke(ta.lenke) },
-    anmeldelse: { pa: !!a.pa, lenke: httpsLenke(a.lenke), timerEtter: tilTall(a.timerEtter, 1, 72, 3), placeId: tekst(a.placeId, 200).replace(/[^A-Za-z0-9_-]/g, "") },
+    anmeldelse: { pa: !!a.pa, lenke: httpsLenke(a.lenke), timerEtter: tilTall(a.timerEtter, 1, 72, 3), placeId: tekst(a.placeId, 200).replace(/[^A-Za-z0-9_-]/g, ""),
+      auto: a.auto && a.placeId ? { navn: tekst(a.auto.navn, 120), adresse: tekst(a.auto.adresse, 160), tid: tekst(a.auto.tid, 30) } : null,
+      sokt: /^\d{4}-\d{2}-\d{2}$/.test(a.sokt || "") ? a.sokt : "" },
     kalender: { pa: !!ka.pa },
     avsender: /[A-Za-z]/.test(avsender) ? avsender : "",
     live: !!t.live,
@@ -1575,9 +1577,13 @@ async function tilleggRute(request, env, ctx, url) {
     }
     let cfg = await hentTillegg(env, id, profil);
     if (body.tillegg) {
+      const gammel = cfg.anmeldelse;
       cfg = rensTillegg(body.tillegg, profil);
+      if (cfg.anmeldelse.placeId === gammel.placeId) { cfg.anmeldelse.auto = gammel.auto; cfg.anmeldelse.sokt = gammel.sokt; }
       await env.KUNDER.put("tillegg:" + id, JSON.stringify(cfg));
       await oppdaterAktive(env, id, cfg);
+      // Anmeldelser slått på uten Google-sted: finn bedriften automatisk (og lenken SMS-en bruker)
+      if (cfg.anmeldelse.pa && !cfg.anmeldelse.placeId && env.GOOGLE_PLACES_KEY) { try { await autoSted(env, id, profil, cfg); } catch (e) { console.log("autoSted feilet", e && e.message); } }
     }
     let hook = await env.KUNDER.get("hook:" + id);
     if (!hook) { hook = tilfeldig(16); await env.KUNDER.put("hook:" + id, hook); }
@@ -3013,6 +3019,45 @@ async function finnSteder(env, sok) {
     felt: "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount" });
   return (d.places || []).map((p) => ({ placeId: p.id, navn: p.displayName && p.displayName.text, adresse: p.formattedAddress, rating: p.rating || null, antall: p.userRatingCount || 0 }));
 }
+// Finner bedriften i Google automatisk ut fra profilen (navn + adresse/område), så ingen må søke selv.
+// Velger bare når det er ett tydelig treff: alle ordene i firmanavnet finnes i Google-navnet, og ved flere treff
+// avgjør postnummeret i adressen. Ellers lar vi være (eieren kan velge selv på /agenter). Prøver på nytt etter 7 dager.
+const NAVN_STOPP = new Set(["as", "asa", "enk", "da", "ans", "og", "i", "the"]);
+function navnOrd(s) {
+  return String(s || "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9æø]+/g, " ")
+    .split(" ").filter((w) => w.length > 1 && !NAVN_STOPP.has(w));
+}
+function velgSted(profil, steder) {
+  const ord = navnOrd(profil.kortnavn || profil.navn), alle = new Set([...ord, ...navnOrd(profil.navn)]);
+  if (!ord.length) return null;
+  const treff = steder.filter((s) => {
+    const so = navnOrd(s.navn);
+    return so.length && (ord.every((w) => so.includes(w)) || so.every((w) => alle.has(w)));
+  });
+  const postnr = (String(profil.adresse || "").match(/\b\d{4}\b/) || [])[0];
+  if (postnr && treff.length > 1) {
+    const m = treff.filter((s) => String(s.adresse || "").includes(postnr));
+    return m.length === 1 ? m[0] : null;
+  }
+  return treff.length === 1 ? treff[0] : null;
+}
+const anmLenke = (placeId) => "https://search.google.com/local/writereview?placeid=" + encodeURIComponent(placeId);
+// cfg = rensede tillegg. Lagrer resultatet (også når ingenting ble funnet, så vi ikke søker hver dag).
+async function autoSted(env, id, raw, cfg) {
+  const profil = normaliser(raw);
+  const sok = [profil.navn, profil.adresse || profil.omraade].filter(Boolean).join(" ");
+  const s = velgSted(profil, await finnSteder(env, sok));
+  cfg.anmeldelse.sokt = osloDeler(Date.now()).dato;
+  if (s) {
+    cfg.anmeldelse.placeId = s.placeId;
+    cfg.anmeldelse.auto = { navn: s.navn || "", adresse: s.adresse || "", tid: new Date().toISOString() };
+    if (!cfg.anmeldelse.lenke) cfg.anmeldelse.lenke = anmLenke(s.placeId); // lenken i SMS-en som ber om anmeldelse
+  }
+  await env.KUNDER.put("tillegg:" + id, JSON.stringify(cfg));
+  return s;
+}
+const soktNylig = (cfg) => cfg.anmeldelse.sokt && Date.now() - osloTilMs(cfg.anmeldelse.sokt, "00:00") < 7 * 864e5;
+
 async function hentGoogleAnmeldelser(env, placeId) {
   const d = await placesKall(env, "places/" + encodeURIComponent(placeId) + "?languageCode=no", { felt: "displayName,rating,userRatingCount,reviews,googleMapsUri" });
   return { navn: d.displayName && d.displayName.text, rating: d.rating || null, antall: d.userRatingCount || 0, url: d.googleMapsUri || "",
@@ -3021,9 +3066,12 @@ async function hentGoogleAnmeldelser(env, placeId) {
       tid: r.publishTime || "", naar: tekst(r.relativePublishTimeDescription, 40) })).filter((r) => r.gid) };
 }
 // Lager svarutkast til anmeldelser vi ikke har sett før. Returnerer { sted, nye: [resultat], kjente }
-async function nyeAnmeldelser(env, profil, id, placeId, maks = 5) {
+// forsteGang: første automatiske sjekk lager bare svar til anmeldelser fra de siste 14 dagene (de eldre er nok besvart før).
+async function nyeAnmeldelser(env, profil, id, placeId, maks = 5, { forsteGang = false } = {}) {
   const sted = await hentGoogleAnmeldelser(env, placeId);
-  const sett = new Set((await env.KUNDER.get("anmsett:" + id, "json")) || []);
+  const lagret = await env.KUNDER.get("anmsett:" + id, "json");
+  const sett = new Set(lagret || []);
+  if (forsteGang && !lagret) for (const r of sted.anmeldelser) if (!r.tid || Date.now() - Date.parse(r.tid) > 14 * 864e5) sett.add(r.gid);
   const nye = sted.anmeldelser.filter((r) => !sett.has(r.gid)).slice(0, maks);
   const ut = [];
   for (const r of nye) {
@@ -3036,19 +3084,26 @@ async function nyeAnmeldelser(env, profil, id, placeId, maks = 5) {
   await env.KUNDER.put("anmsett:" + id, JSON.stringify([...sett].slice(-200)));
   return { sted: { navn: sted.navn, rating: sted.rating, antall: sted.antall, url: sted.url }, nye: ut, kjente: sted.anmeldelser.length - nye.length };
 }
-// Hver morgen (cron mellom 07:00 og 07:15): sjekk nye anmeldelser for kunder med Place ID.
+// Hver morgen (cron mellom 07:00 og 07:15): sjekk nye anmeldelser. Gjelder kunder med Place ID, og kunder med
+// anmeldelse-tillegget eller Komplett-pakken som ikke har en ennå (da finner vi bedriften i Google automatisk først).
 // E-post til bedriften bare når kunden er satt til «live» (ekte utsending), ellers bare til Preben.
 async function anmeldelseRunde(env) {
   if (!env.GOOGLE_PLACES_KEY || !env.KUNDER || !env.XAI_API_KEY) return { kunder: 0 };
   const ut = { kunder: 0, nye: 0 };
   for (const id of await alleKunder(env)) {
     const t = await env.KUNDER.get("tillegg:" + id, "json");
-    if (!t || !t.anmeldelse || !t.anmeldelse.placeId) continue;
     const raw = await env.KUNDER.get("kunde:" + id, "json");
     if (!raw) continue;
-    const profil = normaliser(raw), cfg = rensTillegg(t, raw);
+    const profil = normaliser(raw), cfg = rensTillegg(t || TILLEGG_STD, raw);
     try {
-      const r = await nyeAnmeldelser(env, profil, id, cfg.anmeldelse.placeId, 5);
+      let forsteGang = false;
+      if (!cfg.anmeldelse.placeId) {
+        const innst = cfg.anmeldelse.pa ? null : await env.KUNDER.get("rapport:" + id, "json");
+        if (!cfg.anmeldelse.pa && !(innst && innst.pakke === "komplett")) continue;
+        if (soktNylig(cfg) || !(await autoSted(env, id, raw, cfg))) continue;
+        ut.funnet = (ut.funnet || 0) + 1; forsteGang = true;
+      }
+      const r = await nyeAnmeldelser(env, profil, id, cfg.anmeldelse.placeId, 5, { forsteGang });
       ut.kunder++; ut.nye += r.nye.length;
       if (!r.nye.length) continue;
       const chat = rensChat((await env.KUNDER.get("chat:" + id, "json")) || {});
@@ -3215,7 +3270,13 @@ async function agentRute(request, env, ctx, url) {
       tilbudsutkast: (await env.KUNDER.get("tilbudsutkast:" + id, "json")) || [],
       logg: Object.fromEntries(await Promise.all(Object.keys(AGENT_OPPGAVER).map(async (k) => [k, (await env.KUNDER.get(`agentlogg:${id}:${k}`, "json")) || []]))),
       adresse: profil.adresse || "", stadier: LEAD_STADIER, plattformer: MARKED_PLATTFORMER,
-      google: { placeId: (await hentTillegg(env, id, profilRaw)).anmeldelse.placeId, klar: !!env.GOOGLE_PLACES_KEY },
+      google: await (async () => {
+        const cfg = await hentTillegg(env, id, profilRaw);
+        // Første gang siden åpnes: prøv å finne bedriften i Google automatisk
+        if (env.GOOGLE_PLACES_KEY && !cfg.anmeldelse.placeId && !soktNylig(cfg)) { try { await autoSted(env, id, profilRaw, cfg); } catch (e) { console.log("autoSted feilet", e && e.message); } }
+        const navn = normaliser(profilRaw);
+        return { placeId: cfg.anmeldelse.placeId, auto: cfg.anmeldelse.auto, klar: !!env.GOOGLE_PLACES_KEY, sok: [navn.navn, navn.adresse || navn.omraade].filter(Boolean).join(" ") };
+      })(),
       regnskap: regnskapVis((await env.KUNDER.get("regnskap:" + id, "json")) || {}) }, 200);
   }
 
@@ -3311,7 +3372,10 @@ async function agentRute(request, env, ctx, url) {
   }
   if (p === "/agenter/anmeldelser/sted") {
     const t = await hentTillegg(env, id, profilRaw);
+    const forrige = t.anmeldelse.placeId;
     t.anmeldelse.placeId = tekst(body.placeId, 200).replace(/[^A-Za-z0-9_-]/g, "");
+    t.anmeldelse.auto = null; // valgt for hånd
+    if (t.anmeldelse.placeId && (!t.anmeldelse.lenke || (forrige && t.anmeldelse.lenke === anmLenke(forrige)))) t.anmeldelse.lenke = anmLenke(t.anmeldelse.placeId);
     await env.KUNDER.put("tillegg:" + id, JSON.stringify(t));
     return json({ placeId: t.anmeldelse.placeId }, 200);
   }
