@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KI-agenter · Orvelo</title><meta name="robots" content="noindex">
+<!-- Serveres av workeren orvelo-sekretar på /agenter?kunde=<id>&r=<rettekode> (hentes fra GitHub).
+     To agenter for kunden: oppfølging av leads (salg) og markedsføring. Ingenting sendes herfra: kunden kopierer og sender selv.
+     Samme rettekode som /rediger. Preben lager lenken på /lag («Lenke kunden kan rette selv»). -->
+<style>
+:root{--bg:#0f0e17;--card:#1a1928;--ink:#eeedf7;--muted:#a3a0bd;--line:#2e2c44;--acc:#8f78ff;--acc2:#2fd0ee;--ok:#5fd59a;--warn:#ffb547;--hot:#ff6b8b;--field:#13121e;color-scheme:dark}
+*{box-sizing:border-box}[hidden]{display:none!important}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:24px 16px 80px}
+.brand{font-weight:800;letter-spacing:.02em;color:var(--muted);font-size:13px;text-transform:uppercase}
+h1{font-size:clamp(24px,5vw,32px);line-height:1.2;margin:6px 0 6px}h1 span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-size:19px;margin:0 0 4px}h3{font-size:16px;margin:0}
+p.lead{color:var(--muted);margin:0 0 18px}
+p.hint{color:var(--muted);margin:0 0 14px;font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--muted)}
+input,textarea,select{font:inherit;font-size:16px;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%;min-width:0}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--acc);outline-offset:1px;border-color:transparent}
+textarea{min-height:90px;resize:vertical}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:620px){.g{grid-template-columns:1fr}}
+.full{grid-column:1/-1}
+button{font:inherit;font-weight:600;border-radius:10px;padding:10px 15px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:6px;min-height:44px}
+button.p{background:var(--acc);border-color:var(--acc);color:#0f0e17}
+button.liten{min-height:36px;padding:6px 11px;font-size:14px}
+button:disabled{opacity:.5;cursor:wait}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.faner{display:flex;gap:6px;margin:0 0 16px;border-bottom:1px solid var(--line)}
+.faner button{border:0;border-bottom:3px solid transparent;border-radius:0;background:none;color:var(--muted);padding:10px 14px}
+.faner button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--acc)}
+.msg{font-size:14px}.err{color:var(--warn)}.ok{color:var(--ok)}
+.lead-k{border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px;background:rgba(255,255,255,.015)}
+.topp{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.score{font-weight:800;font-size:18px;min-width:52px;text-align:center;border-radius:10px;padding:4px 8px;background:var(--field);border:1px solid var(--line)}
+.t-varm{color:var(--hot)}.t-lunken{color:var(--warn)}.t-kald{color:var(--acc2)}
+.liten-t{font-size:14px;color:var(--muted);margin:2px 0}
+.melding{white-space:pre-wrap;background:var(--field);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0;font-size:15px}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;padding:8px 6px;border-top:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-weight:600;border-top:0}
+td select{min-width:120px;padding:6px 8px;font-size:14px}
+@media(max-width:620px){thead{display:none}tr{display:block;border-top:1px solid var(--line);padding:8px 0}td{display:block;border:0;padding:3px 0}}
+.res h3{margin-top:14px}.res ul{margin:6px 0;padding-left:20px}
+details{border-top:1px solid var(--line);padding:10px 0}details summary{cursor:pointer;font-weight:600}
+.merk{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:2px 8px;color:var(--muted)}
+.feil{padding:30px 0;color:var(--warn)}
+</style></head><body><div class="wrap">
+<div class="brand">Orvelo · KI-agenter</div>
+<h1>Agentene til <span id="navn">bedriften din</span></h1>
+<p class="lead">To KI-agenter som jobber med samme informasjon som sekretæren: én som hjelper dere å følge opp folk som har tatt kontakt, og én som skriver markedsføring. De sender ingenting selv. Dere ser over, kopierer og sender.</p>
+<div id="laster" class="card">Henter …</div>
+
+<div id="app" hidden>
+<div class="faner" role="tablist">
+  <button role="tab" aria-selected="true" data-fane="opp">Oppfølging</button>
+  <button role="tab" aria-selected="false" data-fane="mark">Markedsføring</button>
+</div>
+
+<div id="fane-opp">
+  <section class="card">
+    <h2>Hvem bør dere ta kontakt med i dag?</h2>
+    <p class="hint">Beskjeder og timeforespørsler fra sekretæren havner her av seg selv. Agenten rangerer dem fra 0 til 100 og skriver en ferdig melding til hver. Send bare til folk som selv har tatt kontakt med dere.</p>
+    <div class="row"><button class="p" id="kjorOpp">Kjør oppfølgingsagenten</button><span class="msg" id="oppMsg"></span></div>
+    <div id="analyse"></div>
+  </section>
+
+  <section class="card">
+    <h2>Alle leads</h2>
+    <p class="hint">Flytt dem videre når noe skjer, så vet agenten hvem som er fulgt opp.</p>
+    <div id="leads"></div>
+    <details id="nyLeadBoks"><summary>+ Legg til en som har tatt kontakt på annen måte</summary>
+      <form id="nyLead" class="g" style="margin-top:12px">
+        <label class="f">Navn<input name="navn" autocomplete="off"></label>
+        <label class="f">Mobil eller e-post<input name="kontakt" autocomplete="off"></label>
+        <label class="f full">Hva gjelder det?<textarea name="interesse" placeholder="F.eks. vil ha tilbud på nytt bad, ringte mandag"></textarea></label>
+        <label class="f">Omtrentlig verdi (kr, valgfritt)<input name="verdi" inputmode="numeric"></label>
+        <label class="f">Notat (valgfritt)<input name="notat"></label>
+        <div class="row full"><button class="p" type="submit">Legg til</button><span class="msg" id="leadMsg"></span></div>
+      </form>
+    </details>
+  </section>
+</div>
+
+<div id="fane-mark" hidden>
+  <section class="card">
+    <h2>Lag markedsføring</h2>
+    <p class="hint">Agenten bruker bare priser og fakta fra sekretæren. Den finner ikke på tilbud, rabatter eller anmeldelser.</p>
+    <form id="markForm" class="g">
+      <label class="f">Hva vil du ha?<select name="type" id="mType">
+        <option value="innlegg">Innlegg til sosiale medier</option>
+        <option value="kampanje">Kampanjeplan uke for uke</option>
+        <option value="landingsside">Tekst til en landingsside</option></select></label>
+      <label class="f" data-for="innlegg">Hvor?<select name="plattform">
+        <option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="google">Google Bedriftsprofil</option>
+        <option value="linkedin">LinkedIn</option><option value="tiktok">TikTok</option></select></label>
+      <label class="f" data-for="innlegg">Antall innlegg<select name="antall"><option>2</option><option>3</option><option selected>4</option><option>6</option><option>8</option></select></label>
+      <label class="f" data-for="kampanje">Antall uker<select name="uker"><option>2</option><option selected>4</option><option>6</option><option>8</option></select></label>
+      <label class="f" data-for="kampanje">Budsjett (valgfritt)<input name="budsjett" placeholder="F.eks. 2 000 kr til annonser"></label>
+      <label class="f full">Tema eller tjeneste (valgfritt)<input name="tema" placeholder="F.eks. vinterklargjøring, bryllupsfrisyrer, nytt bad"></label>
+      <label class="f full">Mål (valgfritt)<input name="maal" placeholder="F.eks. flere befaringer i januar"></label>
+      <div class="row full"><button class="p" type="submit" id="markBtn">Lag forslag</button><span class="msg" id="markMsg"></span></div>
+    </form>
+    <div id="markRes" class="res"></div>
+  </section>
+  <section class="card"><h2>Tidligere forslag</h2><div id="markHist"><p class="hint">Ingen ennå.</p></div></section>
+</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const q=new URLSearchParams(location.search);const KUNDE=q.get("kunde")||"",R=q.get("r")||"";
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let D={leads:[],stadier:[],marked:[]};
+async function post(sti,body={}){const r=await fetch(sti,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({kunde:KUNDE,r:R,...body})});
+  const d=await r.json().catch(()=>({feil:"Uventet svar ("+r.status+")"}));if(!r.ok)throw new Error(d.feil||r.status);return d;}
+function kopi(t,el){navigator.clipboard.writeText(t).then(()=>{const o=el.textContent;el.textContent="Kopiert!";setTimeout(()=>el.textContent=o,1600);}).catch(()=>{});}
+const dato=iso=>iso?new Date(iso).toLocaleDateString("nb-NO",{day:"numeric",month:"short"}):"";
+
+document.querySelectorAll(".faner button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll(".faner button").forEach(x=>x.setAttribute("aria-selected",x===b));
+  $("fane-opp").hidden=b.dataset.fane!=="opp";$("fane-mark").hidden=b.dataset.fane!=="mark";}));
+
+function visLeads(){
+  const l=D.leads||[];
+  if(!l.length){$("leads").innerHTML='<p class="hint">Ingen leads ennå. Når noen legger igjen en beskjed eller ber om time i chatten, dukker de opp her.</p>';return;}
+  $("leads").innerHTML='<table><thead><tr><th>Navn</th><th>Hva gjelder det</th><th>Stadie</th><th></th></tr></thead><tbody>'+l.map(x=>
+    `<tr data-id="${esc(x.id)}"><td><b>${esc(x.navn||"(uten navn)")}</b><div class="liten-t">${esc(x.kontakt)}</div><div class="liten-t">${dato(x.opprettet)} · ${x.kilde==="chat"?"fra chatten":"lagt inn"}</div></td>
+     <td>${esc(x.interesse)}${x.notat?`<div class="liten-t">${esc(x.notat)}</div>`:""}</td>
+     <td><select class="stadie" aria-label="Stadie">${D.stadier.map(s=>`<option${s===x.stadie?" selected":""}>${esc(s)}</option>`).join("")}</select></td>
+     <td><button class="liten slett" aria-label="Slett">Slett</button></td></tr>`).join("")+'</tbody></table>';
+}
+$("leads").addEventListener("change",async e=>{if(!e.target.classList.contains("stadie"))return;const id=e.target.closest("tr").dataset.id;
+  try{const d=await post("/agenter/lead",{lead:{id,stadie:e.target.value}});D.leads=d.leads;}catch(err){alert(err.message);}});
+$("leads").addEventListener("click",async e=>{if(!e.target.classList.contains("slett"))return;const id=e.target.closest("tr").dataset.id;
+  if(!confirm("Slette dette leadet?"))return;try{const d=await post("/agenter/lead/slett",{id});D.leads=d.leads;visLeads();}catch(err){alert(err.message);}});
+$("nyLead").addEventListener("submit",async e=>{e.preventDefault();const f=new FormData(e.target);const lead=Object.fromEntries(f);
+  try{const d=await post("/agenter/lead",{lead});D.leads=d.leads;visLeads();e.target.reset();$("leadMsg").className="msg ok";$("leadMsg").textContent="Lagt til.";}
+  catch(err){$("leadMsg").className="msg err";$("leadMsg").textContent=err.message;}});
+
+function visAnalyse(a){
+  if(!a){$("analyse").innerHTML="";return;}
+  $("analyse").innerHTML=`<p style="margin:14px 0 0">${esc(a.oppsummering)}</p>${a.tid?`<p class="liten-t">Kjørt ${dato(a.tid)}</p>`:""}`+(a.leads||[]).map((x,i)=>
+    `<div class="lead-k"><div class="topp"><span class="score t-${esc(x.temperatur)}">${x.score}</span><h3>${esc(x.navn||"(uten navn)")}</h3><span class="merk t-${esc(x.temperatur)}">${esc(x.temperatur)}</span><span class="merk">${esc(x.kanal)}</span></div>
+     <p class="liten-t">${esc(x.hvorfor)}</p><p style="margin:6px 0 0"><b>Neste steg:</b> ${esc(x.neste_steg)}</p>
+     ${x.emne?`<p class="liten-t" style="margin-top:8px">Emne: ${esc(x.emne)}</p>`:""}<div class="melding">${esc(x.melding)}</div>
+     <div class="row"><button class="liten kopierM" data-i="${i}">Kopier melding</button><button class="liten kontaktet" data-id="${esc(x.id)}">Merk som kontaktet</button></div></div>`).join("");
+}
+$("analyse").addEventListener("click",async e=>{const b=e.target;
+  if(b.classList.contains("kopierM")){const x=D.analyse.leads[+b.dataset.i];kopi((x.emne?"Emne: "+x.emne+"\n\n":"")+x.melding,b);}
+  if(b.classList.contains("kontaktet")){try{const d=await post("/agenter/lead",{lead:{id:b.dataset.id,stadie:"kontaktet"}});D.leads=d.leads;visLeads();b.textContent="Merket ✓";b.disabled=true;}catch(err){alert(err.message);}}});
+$("kjorOpp").addEventListener("click",async()=>{const b=$("kjorOpp");b.disabled=true;$("oppMsg").className="msg";$("oppMsg").textContent="Agenten jobber (10–30 sek) …";
+  try{const d=await post("/agenter/oppfolging");D.analyse=d.analyse;visAnalyse(d.analyse);$("oppMsg").textContent="";}
+  catch(err){$("oppMsg").className="msg err";$("oppMsg").textContent=err.message;}finally{b.disabled=false;}});
+
+// Markedsføring
+function oppdaterFelt(){const t=$("mType").value;document.querySelectorAll("[data-for]").forEach(el=>el.hidden=el.dataset.for!==t);}
+$("mType").addEventListener("change",oppdaterFelt);
+const liste=a=>Array.isArray(a)&&a.length?"<ul>"+a.map(x=>"<li>"+esc(x)+"</li>").join("")+"</ul>":"";
+function tekstAv(r){const c=r.innhold||{};
+  if(r.type==="innlegg")return(c.innlegg||[]).map(p=>[p.tekst,(p.emneknagger||[]).join(" ")].filter(Boolean).join("\n\n")).join("\n\n———\n\n");
+  if(r.type==="kampanje")return[c.navn,c.oppsummering,"Målgruppe: "+(c.malgruppe||""),"Budskap: "+(c.budskap||""),...(c.uker||[]).map(u=>`Uke ${u.uke}: ${u.tema}\n`+(u.tiltak||[]).map(t=>"- "+t).join("\n"))].join("\n\n");
+  return[c.overskrift,c.underoverskrift,...(c.fordeler||[]).map(f=>f.tittel+"\n"+f.tekst),...(c.sporsmal||[]).map(s=>s.sporsmal+"\n"+s.svar),c.oppfordring].filter(Boolean).join("\n\n");}
+function visMarked(r){const c=r.innhold||{};let h="";
+  if(r.type==="innlegg")h=(c.innlegg||[]).map((p,i)=>`<div class="lead-k"><h3>${i+1}. ${esc(p.krok)}</h3><div class="melding">${esc(p.tekst)}${p.emneknagger&&p.emneknagger.length?"\n\n"+esc(p.emneknagger.join(" ")):""}</div>
+    <p class="liten-t"><b>Bilde:</b> ${esc(p.bilde)}</p><p class="liten-t"><b>Oppfordring:</b> ${esc(p.oppfordring)}${p.naar?` · <b>Når:</b> ${esc(p.naar)}`:""}</p>
+    <button class="liten kopierP" data-t="${esc([p.tekst,(p.emneknagger||[]).join(" ")].filter(Boolean).join("\n\n"))}">Kopier tekst</button></div>`).join("");
+  else if(r.type==="kampanje")h=`<h3>${esc(c.navn)}</h3><p>${esc(c.oppsummering)}</p><p class="liten-t"><b>Målgruppe:</b> ${esc(c.malgruppe)}</p><p class="liten-t"><b>Budskap:</b> ${esc(c.budskap)}</p><p class="liten-t"><b>Kanaler:</b> ${esc((c.kanaler||[]).join(", "))}</p>`
+    +(c.uker||[]).map(u=>`<h3>Uke ${esc(u.uke)}: ${esc(u.tema)}</h3>${liste(u.tiltak)}`).join("")+(c.budsjett&&c.budsjett.length?"<h3>Budsjett</h3>"+liste(c.budsjett):"")+(c.maal&&c.maal.length?"<h3>Følg med på</h3>"+liste(c.maal):"");
+  else h=`<h3 style="font-size:20px">${esc(c.overskrift)}</h3><p>${esc(c.underoverskrift)}</p>`+(c.fordeler||[]).map(f=>`<h3>${esc(f.tittel)}</h3><p>${esc(f.tekst)}</p>`).join("")
+    +(c.bevis?`<p class="liten-t"><b>Legg inn bevis:</b> ${esc(c.bevis)}</p>`:"")+(c.sporsmal&&c.sporsmal.length?"<h3>Spørsmål og svar</h3>"+c.sporsmal.map(s=>`<p><b>${esc(s.sporsmal)}</b><br>${esc(s.svar)}</p>`).join(""):"")
+    +`<p><b>Knapp:</b> ${esc(c.oppfordring)}</p><p class="liten-t"><b>SEO-tittel:</b> ${esc(c.seo_tittel)}<br><b>SEO-beskrivelse:</b> ${esc(c.seo_beskrivelse)}</p>`;
+  return h+`<div class="row" style="margin-top:10px"><button class="liten kopierP" data-t="${esc(tekstAv(r))}">Kopier alt</button></div>`;}
+function visHist(){const m=D.marked||[];$("markHist").innerHTML=m.length?m.map((r,i)=>`<details><summary>${esc(r.navn)}${r.valg&&r.valg.tema?" · "+esc(r.valg.tema):""} <span class="liten-t">(${dato(r.tid)})</span></summary><div class="res">${visMarked(r)}</div></details>`).join(""):'<p class="hint">Ingen ennå.</p>';}
+document.addEventListener("click",e=>{if(e.target.classList.contains("kopierP"))kopi(e.target.dataset.t,e.target);});
+$("markForm").addEventListener("submit",async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));const b=$("markBtn");b.disabled=true;
+  $("markMsg").className="msg";$("markMsg").textContent="Agenten skriver (10–40 sek) …";$("markRes").innerHTML="";
+  try{const d=await post("/agenter/marked",{type:f.type,valg:f});D.marked=d.marked;$("markRes").innerHTML=visMarked(d.resultat);visHist();$("markMsg").textContent="";}
+  catch(err){$("markMsg").className="msg err";$("markMsg").textContent=err.message;}finally{b.disabled=false;}});
+
+(async()=>{try{D=await post("/agenter/data");$("navn").textContent=D.firma.kortnavn||D.firma.navn;document.title="KI-agenter · "+(D.firma.kortnavn||D.firma.navn);
+  visLeads();visAnalyse(D.analyse);visHist();oppdaterFelt();$("laster").hidden=true;$("app").hidden=false;}
+  catch(err){$("laster").className="feil";$("laster").textContent=err.message;}})();
+</script>
+</div></body></html>
