@@ -56,7 +56,7 @@ details{border-top:1px solid var(--line);padding:10px 0}details summary{cursor:p
 </style></head><body><div class="wrap">
 <div class="brand">Orvelo · KI-agenter</div>
 <h1>Agentene til <span id="navn">bedriften din</span></h1>
-<p class="lead">KI-agenter som jobber med samme informasjon som sekretæren: oppfølging av henvendelser og tilbud, tilbud fra et bilde, faktura, innkjøpsliste, jobbrapport, ruteplan, svar på anmeldelser og markedsføring. De sender ingenting selv. Dere ser over, kopierer og sender.</p>
+<p class="lead">KI-agenter som jobber med samme informasjon som sekretæren: oppfølging av henvendelser og tilbud, tilbud fra et bilde, faktura og purring, innkjøpsliste, jobbrapport, ruteplan, svar på anmeldelser og markedsføring. De sender ingenting selv. Dere ser over, kopierer og sender.</p>
 <div id="laster" class="card">Henter …</div>
 
 <div id="app" hidden>
@@ -64,6 +64,7 @@ details{border-top:1px solid var(--line);padding:10px 0}details summary{cursor:p
   <button role="tab" aria-selected="true" data-fane="opp">Oppfølging</button>
   <button role="tab" aria-selected="false" data-fane="tilb">Tilbud</button>
   <button role="tab" aria-selected="false" data-fane="fakt">Faktura</button>
+  <button role="tab" aria-selected="false" data-fane="purr">Fakturapurring</button>
   <button role="tab" aria-selected="false" data-fane="innk">Innkjøp</button>
   <button role="tab" aria-selected="false" data-fane="rapp">Jobbrapport</button>
   <button role="tab" aria-selected="false" data-fane="rute">Ruteplan</button>
@@ -140,6 +141,45 @@ details{border-top:1px solid var(--line);padding:10px 0}details summary{cursor:p
   <section class="card"><h2>Tidligere utkast</h2><div class="hist" data-oppgave="faktura"></div></section>
 </div>
 
+<div id="fane-purr" hidden>
+  <section class="card">
+    <h2>Forfalte fakturaer</h2>
+    <p class="hint">Agenten finner fakturaer som er forfalt og skriver purringer i din tone, som blir tydeligere for hver runde: først en vennlig påminnelse, så en purring, til slutt et inkassovarsel. Du sender dem selv.</p>
+    <div class="row"><button id="faktHent">Oppdater listen</button><span class="msg" id="flMsg"></span></div>
+    <div id="faktListe" style="margin-top:10px"></div>
+    <div class="row"><button class="p" id="purrFaktBtn">Skriv purringer for de valgte</button><label class="f" style="width:auto">Trinn<select id="purrTrinn"><option value="">Neste trinn (automatisk)</option><option value="1">1: Vennlig påminnelse</option><option value="2">2: Purring</option><option value="3">3: Inkassovarsel</option></select></label></div>
+    <span class="msg" id="pfMsg"></span>
+    <div id="pfRes"></div>
+    <details><summary>+ Legg inn en faktura for hånd</summary>
+      <form id="nyFakt" class="g" style="margin-top:12px">
+        <label class="f">Fakturanummer<input name="nr" autocomplete="off"></label>
+        <label class="f">Kunde<input name="kunde" required autocomplete="off"></label>
+        <label class="f">Kundens e-post eller mobil<input name="kontakt" autocomplete="off"></label>
+        <label class="f">Beløp å betale (kr)<input name="belop" inputmode="decimal" required></label>
+        <label class="f">Forfallsdato<input name="forfall" type="date" required></label>
+        <div class="row full"><button class="p" type="submit">Legg til</button><span class="msg" id="nfMsg"></span></div>
+      </form>
+    </details>
+  </section>
+  <section class="card">
+    <h2>Innstillinger</h2>
+    <p class="hint">Koble til regnskapsprogrammet, så hentes ubetalte fakturaer av seg selv. Agenten leser bare, den endrer ingenting i regnskapet. Nøklene vises aldri igjen etter at de er lagret.</p>
+    <form id="regnForm" class="g">
+      <label class="f">Regnskapsprogram<select name="system" id="rSystem"><option value="">Ingen (legg inn for hånd)</option><option value="fiken">Fiken</option><option value="tripletex">Tripletex</option></select></label>
+      <label class="f" data-sys="fiken">Fiken API-nøkkel (krever API-tillegget i Fiken)<input name="token" type="password" autocomplete="off" placeholder="Lim inn for å lagre eller bytte"></label>
+      <label class="f" data-sys="fiken">Firmaets navn i Fiken-adressen (valgfritt)<input name="slug" placeholder="f.eks. ror-og-bad-as"></label>
+      <label class="f" data-sys="tripletex">Tripletex consumer token<input name="consumer" type="password" autocomplete="off"></label>
+      <label class="f" data-sys="tripletex">Tripletex employee token<input name="employee" type="password" autocomplete="off"></label>
+      <label class="f">Purregebyr på trinn 2 og 3 (kr, 0 = ingen)<input name="gebyr" inputmode="numeric" placeholder="0"></label>
+      <label class="f">Kontonummer for betaling (valgfritt)<input name="kontonr" inputmode="numeric"></label>
+      <label class="f full">Slik skriver du (lim inn en e-post eller SMS du har skrevet selv, så etterligner agenten tonen)<textarea name="stemme" placeholder="Hei! Takk for sist. Bare en kjapp påminnelse om ..."></textarea></label>
+      <div class="row full"><button class="p" type="submit">Lagre</button><span class="msg" id="regnMsg"></span><button type="button" class="liten" id="fjernNokler">Fjern nøklene</button></div>
+    </form>
+    <p class="hint" style="margin-top:10px">Purregebyr: lovlig maksimum er fastsatt i inkassoforskriften, og gebyr kan tidligst kreves 14 dager etter forfall. Inkassovarselet gir alltid minst 14 dagers frist.</p>
+  </section>
+  <section class="card"><h2>Tidligere purringer</h2><div class="hist" data-oppgave="fakturapurring"></div></section>
+</div>
+
 <div id="fane-innk" hidden>
   <section class="card">
     <h2>Lag innkjøpsliste</h2>
@@ -189,6 +229,16 @@ details{border-top:1px solid var(--line);padding:10px 0}details summary{cursor:p
 </div>
 
 <div id="fane-anm" hidden>
+  <section class="card" id="gKort">
+    <h2>Nye anmeldelser fra Google</h2>
+    <p class="hint">Agenten henter de nyeste anmeldelsene og skriver tre svarforslag til hver ny en. Den sjekker også hver morgen og sender e-post når det kommer noe nytt. Du kopierer svaret inn i Google selv. Be om flere anmeldelser? Det gjør SMS-tillegget etter hvert besøk.</p>
+    <div id="gIkke" class="hint" hidden>Henting fra Google er ikke slått på ennå. Spør Preben, eller lim inn anmeldelsen under.</div>
+    <div id="gVelg" hidden>
+      <div class="row"><input id="gSok" placeholder="Bedriftens navn og sted, f.eks. Rør og Bad Bergen" style="flex:1;min-width:220px"><button id="gFinn">Finn i Google</button></div>
+      <div id="gSteder"></div>
+    </div>
+    <div id="gKlar" hidden><div class="row"><button class="p" id="gHent">Hent nye anmeldelser</button><button class="liten" id="gBytt">Bytt bedrift</button><span class="msg" id="gMsg"></span></div><div id="gRes"></div></div>
+  </section>
   <section class="card">
     <h2>Svar på en Google-anmeldelse</h2>
     <p class="hint">Lim inn anmeldelsen, så får du tre forslag til svar. Ved dårlige anmeldelser holder agenten seg rolig og lover ikke kompensasjon.</p>
@@ -240,7 +290,8 @@ const dato=iso=>iso?new Date(iso).toLocaleDateString("nb-NO",{day:"numeric",mont
 
 document.querySelectorAll(".faner button").forEach(b=>b.addEventListener("click",()=>{
   document.querySelectorAll(".faner button").forEach(x=>x.setAttribute("aria-selected",x===b));
-  ["opp","tilb","fakt","innk","rapp","rute","anm","mark"].forEach(f=>$("fane-"+f).hidden=b.dataset.fane!==f);if(b.dataset.fane==="fakt"||b.dataset.fane==="innk")fyllTilbudValg();}));
+  ["opp","tilb","fakt","purr","innk","rapp","rute","anm","mark"].forEach(f=>$("fane-"+f).hidden=b.dataset.fane!==f);if(b.dataset.fane==="fakt"||b.dataset.fane==="innk")fyllTilbudValg();if(b.dataset.fane==="purr"&&!FL)hentFakt();}));
+function velgFane(f){const b=document.querySelector(`.faner button[data-fane="${f}"]`);if(b)b.click();}
 
 function visLeads(){
   const l=D.leads||[];
@@ -414,12 +465,56 @@ $("ruteForm").addEventListener("submit",async e=>{e.preventDefault();const f=Obj
   const r=await kjor("rute",{start:f.start,starttid:f.starttid,oppdrag},"ruteMsg");b.disabled=false;if(r)$("ruteRes").innerHTML=VIS.rute(r);});
 
 // Anmeldelser
-VIS.anmeldelse=r=>`<p class="liten-t">${"★".repeat(r.stjerner)}${"☆".repeat(5-r.stjerner)}${r.navn?" · "+esc(r.navn):""}${r.anmeldelse?" · «"+esc(r.anmeldelse.slice(0,120))+"»":""}</p>`+(r.forslag||[]).map(f=>`<div class="lead-k"><span class="merk">${esc(f.tone)}</span><div class="melding">${esc(f.svar)}</div><button class="liten kopierP" data-t="${esc(f.svar)}">Kopier</button></div>`).join("")+(r.tips?`<p class="liten-t" style="margin-top:8px"><b>Tips:</b> ${esc(r.tips)}</p>`:"");
+VIS.anmeldelse=r=>`<p class="liten-t">${r.kilde==="google"?'<span class="merk">fra Google</span> ':""}${"★".repeat(r.stjerner)}${"☆".repeat(5-r.stjerner)}${r.navn?" · "+esc(r.navn):""}${r.anmeldelse?" · «"+esc(r.anmeldelse.slice(0,120))+"»":""}</p>`+(r.forslag||[]).map(f=>`<div class="lead-k"><span class="merk">${esc(f.tone)}</span><div class="melding">${esc(f.svar)}</div><button class="liten kopierP" data-t="${esc(f.svar)}">Kopier</button></div>`).join("")+(r.tips?`<p class="liten-t" style="margin-top:8px"><b>Tips:</b> ${esc(r.tips)}</p>`:"");
 $("anmForm").addEventListener("submit",async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));const b=e.submitter;b.disabled=true;
   const r=await kjor("anmeldelse",f,"anmMsg");b.disabled=false;if(r)$("anmRes").innerHTML=VIS.anmeldelse(r);});
 
+function visGoogle(){const g=D.google||{};$("gIkke").hidden=!!g.klar;$("gVelg").hidden=!g.klar||!!g.placeId;$("gKlar").hidden=!g.klar||!g.placeId;}
+$("gFinn").addEventListener("click",async()=>{$("gSteder").innerHTML='<p class="hint">Søker …</p>';
+  try{const d=await post("/agenter/anmeldelser/finn",{sok:$("gSok").value});$("gSteder").innerHTML=d.steder.length?d.steder.map(x=>`<div class="lead-k"><b>${esc(x.navn)}</b><p class="liten-t">${esc(x.adresse||"")}${x.rating?` · ${x.rating} ★ (${x.antall})`:""}</p><button class="liten p" data-place="${esc(x.placeId)}">Dette er oss</button></div>`).join(""):'<p class="hint">Fant ingen. Prøv med sted.</p>';}
+  catch(err){$("gSteder").innerHTML=`<p class="msg err">${esc(err.message)}</p>`;}});
+$("gSteder").addEventListener("click",async e=>{const id=e.target.dataset.place;if(!id)return;try{const d=await post("/agenter/anmeldelser/sted",{placeId:id});D.google.placeId=d.placeId;visGoogle();$("gHent").click();}catch(err){alert(err.message);}});
+$("gBytt").addEventListener("click",()=>{D.google.placeId="";visGoogle();});
+$("gHent").addEventListener("click",async()=>{const b=$("gHent");b.disabled=true;$("gMsg").className="msg";$("gMsg").textContent="Henter og skriver svar (opptil ett minutt) …";
+  try{const d=await post("/agenter/anmeldelser/hent");$("gMsg").textContent=`${d.sted.navn||""}: ${d.sted.rating||"?"} ★ av ${d.sted.antall} anmeldelser. ${d.nye.length?d.nye.length+" nye med svarforslag.":"Ingen nye siden sist."}`;
+    $("gRes").innerHTML=d.nye.map(r=>`<div class="lead-k">${VIS.anmeldelse(r)}</div>`).join("")+(d.sted.url?`<p class="liten-t"><a href="${esc(d.sted.url)}" target="_blank" rel="noopener" style="color:var(--acc2)">Åpne bedriften i Google Maps for å svare</a></p>`:"");
+    const x=await post("/agenter/data");D.logg=x.logg;visLogg("anmeldelse");}
+  catch(err){$("gMsg").className="msg err";$("gMsg").textContent=err.message;}finally{b.disabled=false;}});
+
+// Fakturapurring
+let FL=null;const kr2=n=>Math.round(n||0).toLocaleString("nb-NO")+" kr";const TRINN={0:"ikke purret",1:"påminnelse sendt",2:"purring sendt",3:"inkassovarsel sendt"};
+function visRegn(){const r=D.regnskap||{};const f=$("regnForm");f.system.value=r.system||"";f.slug.value=r.slug||"";f.gebyr.value=r.gebyr||"";f.kontonr.value=r.kontonr||"";f.stemme.value=r.stemme||"";
+  f.token.placeholder=r.harFiken?"Lagret ✓ (lim inn for å bytte)":"Lim inn nøkkelen";f.consumer.placeholder=f.employee.placeholder=r.harTripletex?"Lagret ✓":"";visSys();}
+function visSys(){const v=$("rSystem").value;document.querySelectorAll("[data-sys]").forEach(el=>el.hidden=el.dataset.sys!==v);}
+$("rSystem").addEventListener("change",visSys);
+function visFakt(){const l=(FL&&FL.fakturaer)||[];
+  $("faktListe").innerHTML=(FL&&FL.feil?`<p class="msg err">${esc(FL.feil)}</p>`:"")+(l.length?`<table><thead><tr><th></th><th>Faktura</th><th>Beløp</th><th>Forfalt</th><th>Status</th><th></th></tr></thead><tbody>${l.map(f=>`<tr data-k="${esc(f.nokkel)}">
+    <td><input type="checkbox" class="fvelg" style="width:22px;height:22px" ${f.dagerForfalt>=1?"checked":"disabled"}></td>
+    <td><b>${esc(f.kunde)}</b><div class="liten-t">${f.nr?"nr. "+esc(f.nr)+" · ":""}${esc(f.kilde)}${f.kontakt?" · "+esc(f.kontakt):""}</div></td><td>${kr2(f.belop)}</td>
+    <td>${f.dagerForfalt>0?`<b class="${f.dagerForfalt>=30?"t-varm":f.dagerForfalt>=14?"t-lunken":""}">${f.dagerForfalt} dager</b>`:"ikke forfalt"}<div class="liten-t">${esc(f.forfall)}</div></td>
+    <td>${esc(TRINN[f.trinn]||"")}${f.sistPurret?`<div class="liten-t">${dato(f.sistPurret)}</div>`:""}</td><td><button class="liten fbetalt">Betalt</button></td></tr>`).join("")}</tbody></table>`:'<p class="hint">Ingen ubetalte fakturaer. Koble til regnskapet under, eller legg inn en for hånd.</p>');}
+async function hentFakt(){$("flMsg").className="msg";$("flMsg").textContent="Henter …";try{FL=await post("/agenter/fakturaer");visFakt();$("flMsg").textContent="";}catch(err){$("flMsg").className="msg err";$("flMsg").textContent=err.message;}}
+$("faktHent").addEventListener("click",hentFakt);
+$("faktListe").addEventListener("click",async e=>{if(!e.target.classList.contains("fbetalt"))return;const k=e.target.closest("tr").dataset.k;
+  try{FL=await post("/agenter/fakturaer",{nokkel:k,handling:"betalt"});visFakt();}catch(err){alert(err.message);}});
+$("nyFakt").addEventListener("submit",async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));
+  try{FL=await post("/agenter/fakturaer",{ny:f});visFakt();e.target.reset();$("nfMsg").className="msg ok";$("nfMsg").textContent="Lagt til.";}catch(err){$("nfMsg").className="msg err";$("nfMsg").textContent=err.message;}});
+$("regnForm").addEventListener("submit",async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));
+  try{const d=await post("/agenter/regnskap",{lagre:f});D.regnskap=d.regnskap;e.target.token.value=e.target.consumer.value=e.target.employee.value="";visRegn();$("regnMsg").className="msg ok";$("regnMsg").textContent="Lagret.";hentFakt();}
+  catch(err){$("regnMsg").className="msg err";$("regnMsg").textContent=err.message;}});
+$("fjernNokler").addEventListener("click",async()=>{if(!confirm("Fjerne nøklene til regnskapsprogrammet?"))return;try{const d=await post("/agenter/regnskap",{lagre:{fjernNokler:true}});D.regnskap=d.regnskap;visRegn();hentFakt();}catch(err){alert(err.message);}});
+VIS.fakturapurring=r=>`<div class="advarsel">${esc(r.advarsel||"")}</div>`+(r.purringer||[]).map(p=>`<div class="lead-k"><div class="topp"><h3>${esc(p.kunde)}</h3><span class="merk">trinn ${p.trinn}: ${esc(["","påminnelse","purring","inkassovarsel"][p.trinn])}</span><span class="merk">${esc(p.kanal)}</span></div>
+  <p class="liten-t">${p.nr?"Faktura "+esc(p.nr)+" · ":""}${kr2(p.belop)} · ${p.dagerForfalt} dager forfalt · ny frist ${esc(p.frist)}${p.gebyr?" · gebyr "+kr2(p.gebyr):""}${p.kontakt?" · "+esc(p.kontakt):""}</p>
+  ${p.emne?`<p class="liten-t">Emne: ${esc(p.emne)}</p>`:""}<div class="melding">${esc(p.melding)}</div>
+  <div class="row"><button class="liten kopierP" data-t="${esc((p.emne?"Emne: "+p.emne+"\n\n":"")+p.melding)}">Kopier</button><button class="liten fpurret" data-k="${esc(p.nokkel)}" data-trinn="${p.trinn}">Merk som sendt</button></div></div>`).join("");
+document.addEventListener("click",async e=>{const b=e.target;if(!b.classList.contains("fpurret"))return;
+  try{FL=await post("/agenter/fakturaer",{nokkel:b.dataset.k,handling:"purret",trinn:+b.dataset.trinn});visFakt();b.textContent="Merket ✓";b.disabled=true;}catch(err){alert(err.message);}});
+$("purrFaktBtn").addEventListener("click",async()=>{const b=$("purrFaktBtn");const nokler=[...document.querySelectorAll(".fvelg:checked")].map(x=>x.closest("tr").dataset.k);
+  if(!nokler.length){$("pfMsg").className="msg err";$("pfMsg").textContent="Velg minst én forfalt faktura.";return;}b.disabled=true;
+  const r=await kjor("fakturapurring",{nokler,trinn:$("purrTrinn").value||undefined},"pfMsg");b.disabled=false;if(r)$("pfRes").innerHTML=VIS.fakturapurring(r);});
+
 (async()=>{try{D=await post("/agenter/data");$("navn").textContent=D.firma.kortnavn||D.firma.navn;document.title="KI-agenter · "+(D.firma.kortnavn||D.firma.navn);
-  visLeads();visAnalyse(D.analyse);visHist();visTilbHist();Object.keys(VIS).forEach(visLogg);oppdaterFelt();if(!$("ruteListe").children.length){oppdragRad();oppdragRad();}$("ruteStart").value=D.adresse||"";$("laster").hidden=true;$("app").hidden=false;}
+  visLeads();visAnalyse(D.analyse);visHist();visTilbHist();Object.keys(VIS).forEach(visLogg);oppdaterFelt();visGoogle();visRegn();if(location.hash)velgFane(location.hash.slice(1));if(!$("ruteListe").children.length){oppdragRad();oppdragRad();}$("ruteStart").value=D.adresse||"";$("laster").hidden=true;$("app").hidden=false;}
   catch(err){$("laster").className="feil";$("laster").textContent=err.message;}})();
 </script>
 </div></body></html>

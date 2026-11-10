@@ -94,12 +94,16 @@ details summary{cursor:pointer;color:var(--muted);font-weight:600;margin-top:6px
     <div class="g" style="margin-top:10px">
       <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="tPam" style="width:auto"> Bekreftelse + påminnelse før timen</label>
       <label>Timer før<input id="tPamT" type="number" min="2" max="72" value="24"></label>
+      <label>Ny påminnelse samme dag<select id="tPam2"><option value="0">Nei</option><option value="1">1 time før</option><option value="2">2 timer før</option><option value="3">3 timer før</option><option value="4">4 timer før</option></select></label>
+      <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="tVent" style="width:auto"> Venteliste: avbestilte timer tilbys ventelisten på SMS (førstemann får timen)</label>
+      <label>Hvor mange får tilbudet samtidig<input id="tVentN" type="number" min="1" max="5" value="3"></label>
       <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="tKal" style="width:auto"> Booking med kalender: sekretæren booker timen selv, kunden får SMS-bekreftelse</label>
       <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="tTapt" style="width:auto"> SMS ved tapt anrop</label>
       <label>Bestillingslenke i SMS (valgfri)<input id="tTaptL" placeholder="https://..."></label>
       <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;font-size:14px;color:var(--ink)"><input type="checkbox" id="tAnm" style="width:auto"> Be om Google-anmeldelse</label>
       <label>Timer etter<input id="tAnmT" type="number" min="1" max="72" value="3"></label>
       <label>Google-anmeldelseslenke<input id="tAnmL" placeholder="https://g.page/r/.../review"></label>
+      <label>Google Place ID (for å hente nye anmeldelser, valgfri)<input id="tAnmP" placeholder="ChIJ..."></label>
       <label>Avsendernavn (maks 11 tegn)<input id="tAvs" maxlength="11" placeholder="DejaVu"></label>
       <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;font-size:14px;color:var(--warn)"><input type="checkbox" id="tLive" style="width:auto"> Ekte utsending til kundens kunder</label>
     </div>
@@ -108,7 +112,7 @@ details summary{cursor:pointer;color:var(--muted);font-weight:600;margin-top:6px
       <div id="tTekster"></div>
     </details>
     <div class="row"><button type="button" class="p" id="tLagre">Lagre tillegg</button>
-      <select id="tType" style="width:auto"><option value="bekreftelse">Bekreftelse</option><option value="paminnelse">Påminnelse</option><option value="tapt">Tapt anrop</option><option value="anmeldelse">Anmeldelse</option></select>
+      <select id="tType" style="width:auto"><option value="bekreftelse">Bekreftelse</option><option value="paminnelse">Påminnelse</option><option value="tapt">Tapt anrop</option><option value="anmeldelse">Anmeldelse</option><option value="sammedag">Påminnelse samme dag</option><option value="venteliste">Venteliste</option></select>
       <button type="button" id="tTest">Send test-SMS til meg</button><span class="msg" id="msg6"></span></div>
     <div id="tLenker" hidden style="margin-top:12px">
       <p class="lead" style="margin:0 0 6px">Kundens side for timer, tapte anrop og SMS (send den til kunden):</p>
@@ -124,7 +128,7 @@ const FRA="hilleren.bedrift@gmail.com", BOOK="https://calendar.app.google/24niGv
 const PAKKER=[
   ["Starter","790 kr/mnd, 50 minutter med stemme","KI-sekretæren i chat og med stemme på nettsiden, Google og sosiale medier."],
   ["Pro","1 490 kr/mnd, 200 minutter","Alt i Starter, pluss booking i kalenderen og SMS til kundene: bekreftelse, påminnelse, tapt anrop og Google-anmeldelse (200 SMS)."],
-  ["Komplett","2 990 kr/mnd, 500 minutter","Alt i Pro med 500 SMS, pluss 9 KI-agenter som lager utkast til tilbud, faktura, purring, jobbrapport og mer."]];
+  ["Komplett","2 990 kr/mnd, 500 minutter","Alt i Pro med 500 SMS, pluss 10 KI-agenter som lager utkast til tilbud, faktura, fakturapurring, jobbrapport og mer."]];
 const q=new URLSearchParams(location.search);
 ["firma","nettside","bransje","kontaktperson","til","variant"].forEach(k=>{if(q.get(k))$(k).value=q.get(k);});
 try{$("kode").value=localStorage.getItem("orvelo-admin")||"";}catch{}
@@ -238,9 +242,10 @@ $("kopierChat").addEventListener("click",()=>kopi($("chatKode").textContent,$("k
 $("kopierTekst").addEventListener("click",()=>kopi($("tekst").textContent,$("kopierTekst"),"Kopiert!"));
 if(q.get("auto")==="1"&&$("firma").value){if($("kode").value)lag();else{$("msg").className="msg err";$("msg").textContent="Skriv inn admin-koden én gang og trykk «Lag sekretær». Etter det husker nettleseren den.";$("kode").focus();}}
 // ===== Tilleggstjenester på SMS =====
-let tData=null;const TT=["bekreftelse","paminnelse","tapt","anmeldelse"];
+let tData=null;const TT=["bekreftelse","paminnelse","tapt","anmeldelse","sammedag","venteliste"];
 function tVis(d){tData=d;const t=d.tillegg;
   $("tPam").checked=t.paminnelse.pa;$("tPamT").value=t.paminnelse.timerFor;$("tTapt").checked=t.tapt.pa;$("tTaptL").value=t.tapt.lenke;$("tKal").checked=!!(t.kalender&&t.kalender.pa);
+  $("tPam2").value=String(t.paminnelse.sammeDag||0);$("tVent").checked=!!(t.venteliste&&t.venteliste.pa);$("tVentN").value=(t.venteliste&&t.venteliste.antall)||3;$("tAnmP").value=t.anmeldelse.placeId||"";
   $("tAnm").checked=t.anmeldelse.pa;$("tAnmT").value=t.anmeldelse.timerEtter;$("tAnmL").value=t.anmeldelse.lenke;$("tAvs").value=t.avsender;$("tLive").checked=t.live;
   $("tTekster").innerHTML=TT.map(k=>`<label style="margin-top:8px">${k}<input data-tk="${k}" placeholder="${d.standardTekster[k].replace(/"/g,"&quot;")}"></label>`).join("");
   TT.forEach(k=>{document.querySelector(`[data-tk="${k}"]`).value=t.tekster[k]||"";});
@@ -256,8 +261,8 @@ $("tLagre").addEventListener("click",async()=>{
   const tekster={};TT.forEach(k=>tekster[k]=document.querySelector(`[data-tk="${k}"]`).value.trim());
   if($("tAnm").checked&&tekster.anmeldelse&&!tekster.anmeldelse.includes("{stopp}")){$("msg6").className="msg err";$("msg6").textContent="Anmeldelses-teksten må ha med {stopp}.";return;}
   $("msg6").className="msg";$("msg6").textContent="Lagrer …";
-  try{tVis(await post("/tillegg/admin",{kode:$("kode").value,id,tillegg:{paminnelse:{pa:$("tPam").checked,timerFor:+$("tPamT").value,bekreftelse:true},tapt:{pa:$("tTapt").checked,lenke:$("tTaptL").value.trim()},kalender:{pa:$("tKal").checked},
-    anmeldelse:{pa:$("tAnm").checked,lenke:$("tAnmL").value.trim(),timerEtter:+$("tAnmT").value},avsender:$("tAvs").value.trim(),live:$("tLive").checked,tekster}}));
+  try{tVis(await post("/tillegg/admin",{kode:$("kode").value,id,tillegg:{paminnelse:{pa:$("tPam").checked,timerFor:+$("tPamT").value,bekreftelse:true,sammeDag:+$("tPam2").value},venteliste:{pa:$("tVent").checked,antall:+$("tVentN").value},tapt:{pa:$("tTapt").checked,lenke:$("tTaptL").value.trim()},kalender:{pa:$("tKal").checked},
+    anmeldelse:{pa:$("tAnm").checked,lenke:$("tAnmL").value.trim(),timerEtter:+$("tAnmT").value,placeId:$("tAnmP").value.trim()},avsender:$("tAvs").value.trim(),live:$("tLive").checked,tekster}}));
     $("msg6").className="msg ok";$("msg6").textContent="Lagret.";}
   catch(err){$("msg6").className="msg err";$("msg6").textContent=err.message;}});
 $("tTest").addEventListener("click",async()=>{$("msg6").className="msg";$("msg6").textContent="Sender …";

@@ -252,3 +252,17 @@ Signerte avtaler og kostnadstall beholdes. Endrer du en frist i koden (`SPOR_DAG
 Før salg og etter hver endring i instruksjonene: kjør testene mot ekte Grok:
 `RUNDER=3 node tools/test-sekretar.mjs`, `node tools/test-agenter.mjs`, `node tools/test-innboks.mjs ekte` og
 `node tools/test-liora.mjs` (alle trenger `XAI_API_KEY`, ingenting sendes).
+
+## Agentene fra lista i november 2026
+
+**Påminnelse samme dag og venteliste** (tillegg på `/lag` seksjon 4). «Ny påminnelse samme dag» sender en SMS 1–4 timer før timen (ikke hvis forrige SMS kom for under 3 timer siden). Med «Venteliste» på: når en time avbestilles (kunden via `/t/`-lenken, eller bedriften på `/sms`), får inntil 1–5 personer på ventelisten som passer (dato og behandling) en SMS med lenke `/v/<kode>`. Førstemann som trykker får timen (bekreftelse på SMS), de andre får «timen er tatt», og bedriften får e-post. Ingen tilbud for timer som starter om under 2 timer, og ingen SMS mellom 21 og 08 (venter til morgenen). Folk settes på ventelisten på `/sms`, eller av chatten (verktøyet `sett_pa_venteliste`, bare når tillegget er på). Samme SMS-sikring som før: testnummer til kunden er «live».
+
+**Anmeldelser fra Google** (fanen Anmeldelser på `/agenter`). Krever Secret `GOOGLE_PLACES_KEY` (Google Cloud, Places API (New) slått på). Kunden finner bedriften sin én gang, så hentes de nyeste anmeldelsene og hver ny får tre svarforslag. Cron sjekker hver morgen 07:00–07:15 og sender e-post (til bedriften bare når kunden er «live», ellers til Preben). Google gir bare de 5 nyeste per kall, og svar må limes inn i Google selv (publisering krever Business Profile API). Uten nøkkelen virker «lim inn anmeldelsen» som før.
+
+**Fakturapurring** (fanen Fakturapurring på `/agenter`). Fakturaer hentes fra Fiken (API-tillegget, personlig nøkkel) eller Tripletex (consumer + employee token), eller legges inn for hånd. Nøklene ligger i KV `regnskap:<id>` og sendes aldri tilbake til nettleseren; vi leser bare. Trinn 1 påminnelse (7 dagers frist), 2 purring (10 dager, gebyr hvis eieren har satt et og fakturaen er 14+ dager forfalt), 3 inkassovarsel (14 dager, nevner inkasso). Eieren kopierer og sender selv, og trykker «Merk som sendt» så neste runde går ett trinn opp. Fiken/Tripletex er ikke testet mot ekte kontoer ennå.
+
+**Lead-finner** (fanen på `/drift`, bare Preben). Søker i Enhetsregisteret på bransje (næringskode-prefiks) og kommune, henter daglig leder for de 25 beste, scorer 0–100 og skriver første melding til de 10 beste: e-post bare til AS med rolleadresse, ellers ringemanus. Ingenting lagres, last ned CSV.
+
+**Agent-revisor** (fanen på `/drift`). Leser alle samtalene (ikke agentkall og prøver) til én kunde for en uke, gir karakter, funn og forslag. Forslag til «dette bør sekretæren vite» og åpningstidsteksten kan brukes med ett trykk (må ikke ha `[fyll inn]`; forrige versjon lagres i `historikk:`). Kjører av seg selv hver mandag for de 8 kundene med flest samtaler (minst 3), og står i kvalitets-e-posten. KV `revisjon:<id>:<uke>` slettes etter 30 dager.
+
+Test: `XAI_API_KEY=... node tools/test-nye-agenter.mjs` (Twilio, Google, Fiken og Brønnøysund er etterlignet; Grok er ekte).

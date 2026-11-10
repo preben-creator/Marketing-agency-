@@ -81,6 +81,20 @@ button:disabled{opacity:.5;cursor:wait}
     <div class="liste" id="timer"></div>
   </section>
 
+  <section class="card" id="venteKort" hidden>
+    <h2>Venteliste</h2>
+    <p class="hint">Når noen avbestiller, får de på ventelisten som passer en SMS med lenke. Førstemann som trykker får timen, og dere får e-post. Sekretæren i chatten kan også sette folk på listen når det er fullt.</p>
+    <div class="g3" id="hullTall" style="margin-bottom:12px"></div>
+    <div class="liste" id="vente"></div>
+    <details style="margin-top:10px"><summary style="cursor:pointer;color:var(--acc2);font-weight:600">+ Sett noen på venteliste</summary>
+    <form id="nyVent" style="margin-top:10px">
+      <div class="g"><label class="f">Navn<input id="vNavn" autocomplete="off"></label><label class="f">Mobil<input id="vMobil" inputmode="tel" required placeholder="987 65 432"></label></div>
+      <label class="f" style="margin-top:12px">Hva vil de ha (valgfritt)<input id="vHva" placeholder="f.eks. Herreklipp"></label>
+      <div class="g" style="margin-top:12px"><label class="f">Passer fra<input id="vFra" type="date"></label><label class="f">Passer til<input id="vTil" type="date"></label></div>
+      <div class="row"><button class="p">Sett på venteliste</button><span class="msg" id="msgVent" role="status" aria-live="polite"></span></div>
+    </form></details>
+  </section>
+
   <section class="card" id="taptKort" hidden>
     <h2>Tapte anrop: ring tilbake</h2>
     <p class="hint">De som ringte uten å komme gjennom. De har fått en SMS om at dere ringer tilbake. Trykk «Ringt» når det er gjort.</p>
@@ -110,7 +124,7 @@ const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&g
 const DAG=["søn","man","tir","ons","tor","fre","lør"];
 const dagTekst=d=>{const x=new Date(d+"T12:00:00Z");return DAG[x.getUTCDay()]+" "+x.getUTCDate()+"."+(x.getUTCMonth()+1)+".";};
 const pent=n=>n?n.replace(/^\+47(\d{3})(\d{2})(\d{3})$/,"$1 $2 $3"):"ukjent nummer";
-const TYPE={bekreftelse:"Bekreftelse",paminnelse:"Påminnelse",tapt:"Tapt anrop",anmeldelse:"Anmeldelse",stopp:"Sa nei takk"};
+const TYPE={bekreftelse:"Bekreftelse",paminnelse:"Påminnelse",sammedag:"Påminnelse samme dag",venteliste:"Tilbud fra venteliste",tapt:"Tapt anrop",anmeldelse:"Anmeldelse",stopp:"Sa nei takk"};
 const STATUS={sendt:"sendt",test:"sendt til Orvelo (test)",av:"ikke sendt (SMS er av)",feil:"feilet",stopp:""};
 for(let m=15;m<=480;m+=15){const o=document.createElement("option");o.value=m;o.textContent=m<60?m+" min":(Math.floor(m/60)+" t"+(m%60?" "+m%60+" min":""));if(m===60)o.selected=true;$("tVar").append(o);}
 $("tDato").value=new Date(Date.now()+864e5).toISOString().slice(0,10);
@@ -123,11 +137,12 @@ function vis(d){
   const t=d.tillegg;const kal=!!(t.kalender&&t.kalender.pa);
   $("chips").innerHTML=[
     [kal,"Sekretæren booker timer selv, og kunden får SMS med bekreftelse og kalenderlenke"],
-    [t.paminnelse.pa,`Bekreftelse og påminnelse ${t.paminnelse.timerFor} timer før timen`],
+    [t.paminnelse.pa,`Bekreftelse og påminnelse ${t.paminnelse.timerFor} timer før timen`+(t.paminnelse.sammeDag?`, og igjen ${t.paminnelse.sammeDag} t før samme dag`:"")],
+    [t.venteliste&&t.venteliste.pa,"Avbestilte timer tilbys ventelisten på SMS"],
     [t.tapt.pa,"SMS til de som ringer uten å komme gjennom"],
     [t.anmeldelse.pa,`Be om Google-anmeldelse ${t.anmeldelse.timerEtter} timer etter timen`]
   ].map(([pa,tx])=>`<span class="chip ${pa?"on":"off"}">${pa?"✓":"○"} ${esc(tx)}</span>`).join("")+
-  ((kal||t.paminnelse.pa||t.tapt.pa||t.anmeldelse.pa)?"":`<p class="hint" style="margin:8px 0 0">Ingenting er slått på ennå. Snakk med Preben om hvilke tjenester som passer dere.</p>`);
+  ((kal||t.paminnelse.pa||t.tapt.pa||t.anmeldelse.pa||(t.venteliste&&t.venteliste.pa))?"":`<p class="hint" style="margin:8px 0 0">Ingenting er slått på ennå. Snakk med Preben om hvilke tjenester som passer dere.</p>`);
   const timerPa=kal||t.paminnelse.pa||t.anmeldelse.pa;
   $("kalKort").hidden=!d.kalender;
   if(d.kalender){$("kalLenke").value=d.kalender;const w=d.kalender.replace(/^https:/,"webcal:");
@@ -138,10 +153,16 @@ function vis(d){
   if(t.anmeldelse.pa&&!t.anmeldelse.lenke){$("msgLenke").className="msg err";$("msgLenke").textContent="Legg inn lenken, ellers sendes ingen anmeldelses-SMS.";}
 
   $("timer").innerHTML=d.timer.length?d.timer.map(x=>{
-    const st=[x.kilde==="chat"?"booket i chatten":x.kilde==="telefon"?"booket på telefon":"",x.bv?"bekreftelse sendes kl. 08":"",x.xk==="kunde"?"kunden avbestilte selv":"",x.p?"påminnelse sendt":"",x.a?"anmeldelse spurt":"",x.ok&&t.anmeldelse.pa&&!x.a?"får anmeldelses-SMS":""].filter(Boolean).join(" · ");
+    const st=[x.kilde==="chat"?"booket i chatten":x.kilde==="telefon"?"booket på telefon":"",x.bv?"bekreftelse sendes kl. 08":"",x.xk==="kunde"?"kunden avbestilte selv":"",x.p?"påminnelse sendt":"",x.fylt?"fylt fra ventelisten":x.tilb?x.tilb+" på ventelisten har fått tilbud":"",x.kilde==="venteliste"?"fra ventelisten":"",x.a?"anmeldelse spurt":"",x.ok&&t.anmeldelse.pa&&!x.a?"får anmeldelses-SMS":""].filter(Boolean).join(" · ");
     return `<div class="rad ${x.x?"avlyst":""}"><div class="naar"><b>${esc(dagTekst(x.dato))} ${esc(x.tid)}</b></div>
       <div>${esc(x.navn||"(uten navn)")} · ${esc(pent(x.mobil))}<small>${esc(x.hva||"")}${st?" · "+esc(st):""}${x.x?" · avlyst":""}</small></div>
       <div>${x.x||!x.kommer?"":`<button class="liten" data-avlys="${esc(x.id)}">Avlys</button>`}</div></div>`;}).join(""):`<div class="tom">Ingen timer lagt inn.</div>`;
+
+  const vl=!!(t.venteliste&&t.venteliste.pa);$("venteKort").hidden=!vl&&!(d.venteliste||[]).length;
+  const h=d.hull||{};$("hullTall").innerHTML=[["Avbestilt i måneden",h.avbestilt||0],["Fylt fra ventelisten",h.fylt||0],["Står på listen",(d.venteliste||[]).length]].map(([a,b])=>`<div><div class="tall">${b}</div><small style="color:var(--muted)">${a}</small></div>`).join("");
+  $("vente").innerHTML=(d.venteliste||[]).length?d.venteliste.map(v=>`<div class="rad"><div class="naar"><small>${v.fra?esc(dagTekst(v.fra)):"nå"} – ${v.til?esc(dagTekst(v.til)):"…"}</small></div>
+    <div>${esc(v.navn||"(uten navn)")} · ${esc(pent(v.mobil))}<small>${esc(v.hva||"hva som helst")}${v.kilde==="chat"?" · fra chatten":""}${v.tilbudt?" · har fått tilbud":""}</small></div>
+    <div><button class="liten" data-fjernvent="${esc(v.id)}">Fjern</button></div></div>`).join(""):`<div class="tom">Ingen på ventelisten.</div>`;
 
   $("tapt").innerHTML=d.tapt.length?d.tapt.map(a=>`<div class="rad" style="${a.ferdig?"opacity:.55":""}"><div class="naar"><b>${esc(dagTekst(a.dato))} ${esc(a.tid)}</b></div>
       <div><a href="tel:${esc(a.nr)}" style="color:var(--acc2)">${esc(pent(a.nr))}</a>${a.antall>1?" · ringte "+a.antall+" ganger":""}
@@ -165,11 +186,16 @@ $("nyTime").addEventListener("submit",async e=>{e.preventDefault();const b=$("le
     $("tNavn").value="";$("tMobil").value="";$("tHva").value="";$("tOk").checked=false;}
   catch(err){$("msgTime").className="msg err";$("msgTime").textContent=err.message;}finally{b.disabled=false;}});
 document.addEventListener("click",async e=>{
-  const a=e.target.closest("[data-avlys]"),f=e.target.closest("[data-ferdig]");
-  try{if(a){a.disabled=true;vis((await post("/tillegg/time/avlys",{tid:a.dataset.avlys})).data);}
+  const a=e.target.closest("[data-avlys]"),f=e.target.closest("[data-ferdig]"),fv=e.target.closest("[data-fjernvent]");
+  try{if(a){a.disabled=true;const d=await post("/tillegg/time/avlys",{tid:a.dataset.avlys});vis(d.data);if(d.venteliste&&d.venteliste.tilbudt)alert(d.venteliste.tilbudt+" på ventelisten har fått tilbud om timen på SMS.");}
+    if(fv){fv.disabled=true;vis((await post("/tillegg/venteliste",{fjern:fv.dataset.fjernvent})).data);}
     if(f){f.disabled=true;vis((await post("/tillegg/tapt/ferdig",{tid:f.dataset.ferdig})).data);}}
   catch(err){alert(err.message);}
 });
+$("nyVent").addEventListener("submit",async e=>{e.preventDefault();$("msgVent").className="msg";$("msgVent").textContent="Lagrer …";
+  try{const d=await post("/tillegg/venteliste",{vent:{navn:$("vNavn").value,mobil:$("vMobil").value,hva:$("vHva").value,fra:$("vFra").value,til:$("vTil").value}});vis(d.data);
+    $("msgVent").className="msg ok";$("msgVent").textContent="Satt på venteliste.";["vNavn","vMobil","vHva","vFra","vTil"].forEach(i=>$(i).value="");}
+  catch(err){$("msgVent").className="msg err";$("msgVent").textContent=err.message;}});
 $("kopierKal").addEventListener("click",async()=>{try{await navigator.clipboard.writeText($("kalLenke").value);$("kopierKal").textContent="Kopiert!";}catch{$("kalLenke").select();}});
 $("lagreLenke").addEventListener("click",async()=>{$("msgLenke").className="msg";$("msgLenke").textContent="Lagrer …";
   try{const d=await post("/tillegg/lenke",{lenke:$("gLenke").value.trim()});vis(d.data);$("msgLenke").className="msg ok";$("msgLenke").textContent="Lagret.";}
