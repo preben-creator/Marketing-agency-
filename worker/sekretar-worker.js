@@ -313,6 +313,8 @@ async function grokJson(env, system, bruker, temperatur = 0.2) {
   });
   let model = env.TEKST_MODELL || "grok-4-fast-non-reasoning";
   let r = await kall(model);
+  // Grok er av og til fullt opptatt (429) eller har en kort feil (5xx): prøv én gang til etter en liten pause
+  if (r.status === 429 || r.status >= 500) { await new Promise((ok) => setTimeout(ok, 2500)); r = await kall(model); }
   if (!r.ok && (r.status === 400 || r.status === 404)) {
     const t = await r.text();
     if (/model/i.test(t)) {
@@ -2292,6 +2294,12 @@ async function chatRute(request, env, ctx, url) {
 //   POST /agenter/tilbud         -> tilbudsagent: { beskrivelse (tre linjer), bilder: [data:image/jpeg;base64,...] (maks 3, krympet i nettleseren),
 //                                   kunde_navn?, adresse?, timepris? } -> tilbudsutkast med arbeid, materialer og forbehold.
 //                                   Bildene lagres ikke. Utkastet sier alltid at timer og priser må sjekkes.
+//   POST /agenter/tilbud/status  -> { tilbudId, status: utkast|sendt|godtatt|avslatt, kontakt? } (for oppfølging av tilbud)
+//   POST /agenter/dagens         -> { dato } timene i kalenderen den dagen (til ruteplanen), uten KI
+//   POST /agenter/kjor           -> { oppgave, ... } de andre agentene, se AGENT_OPPGAVER:
+//        purring (påminnelse om ubesvarte tilbud), faktura (fakturautkast), anmeldelse (svar på Google-anmeldelser),
+//        jobbrapport (bilder + stikkord -> rapport), rute (rekkefølge på dagens oppdrag), innkjop (innkjøpsliste)
+//      De siste 10 resultatene per oppgave lagres i agentlogg:<id>:<oppgave> (aldri bilder).
 // Innstilling (valgfri): AGENT_MAKS_DAG = maks antall agentkjøringer per kunde per døgn (standard 25).
 // KV: leads:<id> (maks 300), agentanalyse:<id>, marked:<id> (siste 20), tilbudsutkast:<id> (siste 20), agentbruk:<id>:<dato> (teller, 2 døgn)
 // ======================================================================
@@ -2510,6 +2518,165 @@ Svar bare med JSON i dette formatet:
   };
 }
 
+// ---- De andre agentene (én rute: /agenter/kjor) ----
+const BILDE_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
+const rensBilder = (v, n) => (Array.isArray(v) ? v : []).filter((b) => typeof b === "string" && BILDE_RE.test(b) && b.length < 1_500_000).slice(0, n);
+const tListe = (v, n, l = 300) => (Array.isArray(v) ? v : []).map((x) => tekst(typeof x === "string" ? x : String(x ?? ""), l)).filter(Boolean).slice(0, n);
+const IKKE_FINN_PA = "Finn ALDRI på priser, tall, mengder, datoer, navn eller løfter som ikke står i informasjonen du har fått. Mangler noe, skriv [fyll inn] eller la tallet være 0.";
+
+// Tilbudet slik klienten har det (eieren kan ha rettet tall), renset til det agentene trenger
+function rensTilbudInn(t) {
+  if (!t || typeof t !== "object") return null;
+  return {
+    tittel: tekst(t.tittel, 120), kunde_navn: tekst(t.kunde_navn, 80), adresse: tekst(t.adresse, 160), sammendrag: tekst(t.sammendrag, 600),
+    arbeid: (Array.isArray(t.arbeid) ? t.arbeid : []).slice(0, 20).map((a) => ({ post: tekst(a.post, 160), timer: tilbudTall(a.timer, 500), timepris: kr(tilbudTall(a.timepris, 5000)), fastpris: kr(tilbudTall(a.fastpris, 1e7)) })).filter((a) => a.post),
+    materialer: (Array.isArray(t.materialer) ? t.materialer : []).slice(0, 30).map((m) => ({ vare: tekst(m.vare, 160), antall: tilbudTall(m.antall, 1e5), enhet: tekst(m.enhet, 12) || "stk", enhetspris: kr(tilbudTall(m.enhetspris, 1e6)) })).filter((m) => m.vare),
+    forbehold: tListe(t.forbehold, 12),
+  };
+}
+
+const AGENT_OPPGAVER = {
+  purring: {
+    async lag(env, profil, body, kx) {
+      const alle = (await env.KUNDER.get("tilbudsutkast:" + kx.id, "json")) || [];
+      const dager = tilTall(body.dager, 0, 60, 3);
+      const apne = alle.filter((t) => t.status === "sendt" && t.sendt && dagerSiden(t.sendt) >= dager).slice(0, 15);
+      if (!apne.length) throw Object.assign(new Error(`Ingen tilbud er merket «sendt» for mer enn ${dager} dager siden. Merk tilbudene du har sendt under «Tidligere utkast».`), { status: 400 });
+      kx.apne = apne;
+      return {
+        system: `Du hjelper ${profil.navn} å følge opp tilbud kunden ikke har svart på.\n\n${profilFakta(profil)}\n\n# Regler\n- Én kort, vennlig påminnelse per tilbud (2–4 setninger). Nevn hva tilbudet gjaldt og når det ble sendt. Spør om de har spørsmål, og gi ett enkelt neste steg (svare ja, ringe, eller avtale tid).\n- Ikke mas, ikke press, ikke lov rabatt. Nevn at tilbudet gjelder i 30 dager bare hvis det står i forbeholdene.\n- Kanal: "sms" hvis kontakten er et mobilnummer, "e-post" hvis det er en e-post (skriv da emne), ellers "sms".\n- ${IKKE_FINN_PA}\n- Signer med ${profil.kortnavn || profil.navn}. Norsk bokmål, ingen emojier.\n\nSvar bare med JSON: {"purringer":[{"tilbudId":"","kanal":"sms|e-post","emne":"","melding":""}]}`,
+        bruker: "Ubesvarte tilbud:\n" + JSON.stringify(apne.map((t) => ({ tilbudId: t.id, tittel: t.tittel, kunde: t.kunde_navn, kontakt: t.kontakt || "", sendt: t.sendt.slice(0, 10), dager_siden: dagerSiden(t.sendt), sum_inkl_mva: t.sum && t.sum.inklMva, forbehold: t.forbehold })), null, 1),
+      };
+    },
+    rens(svar, body, kx) {
+      const kjent = new Map(kx.apne.map((t) => [t.id, t]));
+      return { purringer: (Array.isArray(svar.purringer) ? svar.purringer : []).filter((p) => p && kjent.has(p.tilbudId)).map((p) => ({
+        tilbudId: p.tilbudId, tittel: kjent.get(p.tilbudId).tittel, kunde: kjent.get(p.tilbudId).kunde_navn, kontakt: kjent.get(p.tilbudId).kontakt || "",
+        kanal: p.kanal === "e-post" ? "e-post" : "sms", emne: tekst(p.emne, 120), melding: tekst(p.melding, 1000) })) };
+    },
+  },
+
+  faktura: {
+    lag(env, profil, body) {
+      const tilbud = rensTilbudInn(body.tilbud);
+      const notat = tekst(body.notat, 1500);
+      if (!tilbud && notat.length < 10) throw Object.assign(new Error("Velg et tilbud eller skriv hva som ble gjort (timer og materialer)."), { status: 400 });
+      return {
+        system: `Du lager et UTKAST til faktura for ${profil.navn}. Eieren legger fakturaen inn i regnskapsprogrammet (f.eks. Fiken) selv.\n\n${profilFakta(profil)}\n\n# Regler\n- Lag fakturalinjer ut fra tilbudet${tilbud ? "" : " (det finnes ikke noe tilbud)"} og eierens notat om hva som faktisk ble gjort. Notatet går foran tilbudet: faktiske timer, ekstraarbeid og endringer.\n- Hver linje: tekst, antall, enhet (t, stk, m, m2, sett) og pris per enhet eks. mva. Bruk prisene fra tilbudet, notatet eller prislisten. ${IKKE_FINN_PA}\n- Ekstraarbeid som ikke var i tilbudet skal stå som egen linje og nevnes i "merknader", så eieren kan sjekke at kunden har godkjent det.\n- "tekst_til_kunden": 1–2 setninger som kan stå på fakturaen.\n\nSvar bare med JSON: {"linjer":[{"tekst":"","antall":0,"enhet":"t","pris":0}],"tekst_til_kunden":"","merknader":["ting eieren må sjekke"]}`,
+        bruker: (tilbud ? "Tilbudet:\n" + JSON.stringify(tilbud, null, 1) + "\n\n" : "") + "Eierens notat om jobben:\n" + (notat || "(ingen endringer, fakturer som tilbudet)"),
+      };
+    },
+    rens(svar, body) {
+      const mvaPliktig = body.mva !== false;
+      const linjer = (Array.isArray(svar.linjer) ? svar.linjer : []).slice(0, 40).map((l) => {
+        const antall = tilbudTall(l.antall, 1e5), pris = kr(tilbudTall(l.pris, 1e7));
+        return { tekst: tekst(l.tekst, 160), antall, enhet: tekst(l.enhet, 10) || "stk", pris, sum: kr(antall * pris) };
+      }).filter((l) => l.tekst);
+      const eks = linjer.reduce((s, l) => s + l.sum, 0);
+      const forfall = tilTall(body.forfallDager, 7, 60, 14);
+      return { kunde_navn: tekst(body.tilbud && body.tilbud.kunde_navn, 80), adresse: tekst(body.tilbud && body.tilbud.adresse, 160), linjer,
+        tekst_til_kunden: tekst(svar.tekst_til_kunden, 400), merknader: tListe(svar.merknader, 10), mvaPliktig, forfallDager: forfall,
+        sum: { eksMva: eks, mva: mvaPliktig ? kr(eks * 0.25) : 0, total: mvaPliktig ? kr(eks * 1.25) : eks },
+        mangler: linjer.some((l) => !l.pris) ? ["priser på noen linjer"] : [],
+        advarsel: "Utkast laget av KI. Sjekk timer, mengder og priser mot det som faktisk ble gjort før du lager fakturaen i regnskapsprogrammet." };
+    },
+  },
+
+  anmeldelse: {
+    lag(env, profil, body) {
+      const t = tekst(body.tekst, 2000);
+      const stjerner = tilTall(body.stjerner, 1, 5, 5);
+      if (t.length < 2 && !body.stjerner) throw Object.assign(new Error("Lim inn anmeldelsen."), { status: 400 });
+      return {
+        system: `Du skriver forslag til offentlige svar på Google-anmeldelser for ${profil.navn}.\n\n${profilFakta(profil)}\n\n# Regler\n- Lag tre forslag med ulik tone: "kort", "varm" og "grundig". Maks 80 ord hver.\n- Takk alltid. Bruk fornavnet til den som skrev, hvis det er oppgitt.\n- Ved kritikk: vær rolig og ærlig, beklag opplevelsen uten å innrømme skyld eller juridisk ansvar, ikke krangle, og inviter til å ta kontakt direkte${profil.telefon ? ` på ${profil.telefon}` : ""}${profil.epost ? ` eller ${profil.epost}` : ""}.\n- Ikke lov kompensasjon, rabatt eller gratis arbeid. Ikke finn på rutiner, tiltak eller endringer firmaet har gjort.\n- Ikke nevn helseopplysninger, priser kunden betalte eller andre personlige detaljer om kunden, selv om de står i anmeldelsen.\n- ${IKKE_FINN_PA}\n- Norsk bokmål (svar på samme språk som anmeldelsen hvis den er på et annet språk). Ingen emojier.\n\nSvar bare med JSON: {"forslag":[{"tone":"kort","svar":""},{"tone":"varm","svar":""},{"tone":"grundig","svar":""}],"tips":"én setning til eieren, f.eks. om saken bør følges opp på telefon"}`,
+        bruker: `Anmeldelse (${stjerner} av 5 stjerner)${body.navn ? ` fra ${tekst(body.navn, 60)}` : ""}:\n${t || "(bare stjerner, ingen tekst)"}`,
+      };
+    },
+    rens(svar, body) {
+      return { stjerner: tilTall(body.stjerner, 1, 5, 5), navn: tekst(body.navn, 60), anmeldelse: tekst(body.tekst, 400),
+        forslag: (Array.isArray(svar.forslag) ? svar.forslag : []).slice(0, 3).map((f) => ({ tone: tekst(f.tone, 20), svar: tekst(f.svar, 800) })).filter((f) => f.svar),
+        tips: tekst(svar.tips, 300) };
+    },
+  },
+
+  jobbrapport: {
+    lag(env, profil, body) {
+      const stikkord = tekst(body.stikkord, 1500);
+      const bilder = rensBilder(body.bilder, 4);
+      if (stikkord.length < 5 && !bilder.length) throw Object.assign(new Error("Skriv noen stikkord om jobben eller legg ved bilder."), { status: 400 });
+      return {
+        system: `Du skriver en kort, ryddig jobbrapport fra ${profil.navn} til kunden etter utført jobb.\n\n${profilFakta(profil)}\n\n# Regler\n- Bygg rapporten på stikkordene fra fagpersonen og det du faktisk ser på bildene. Ikke beskriv arbeid som ikke er nevnt eller synlig.\n- Skriv så kunden forstår det, uten fagsjargong. Kort og saklig.\n- "funn": ting fagpersonen la merke til (bare hvis nevnt eller tydelig synlig). "anbefalinger": hva kunden bør gjøre eller følge med på. Ikke selg inn ekstra jobber som ikke er nevnt.\n- Ikke gi garantier eller løfter utover det som står i bedriftens informasjon.\n- ${IKKE_FINN_PA}\n\nSvar bare med JSON: {"tittel":"","sammendrag":"2–3 setninger","utfort":["punkt"],"funn":["punkt"],"anbefalinger":["punkt"],"neste_service":"eller tom tekst","bildetekster":["én kort tekst per bilde, i samme rekkefølge"]}`,
+        bruker: [
+          ...bilder.map((url) => ({ type: "image_url", image_url: { url, detail: "high" } })),
+          { type: "text", text: `Stikkord fra fagpersonen:\n${stikkord || "(ingen, se bildene)"}${body.kunde_navn ? `\nKunde: ${tekst(body.kunde_navn, 80)}` : ""}${body.adresse ? `\nAdresse: ${tekst(body.adresse, 160)}` : ""}\nDato: ${datoStr(body.dato) || osloNaa().iso}\n${bilder.length} bilde(r).` },
+        ],
+      };
+    },
+    rens(svar, body) {
+      return { kunde_navn: tekst(body.kunde_navn, 80), adresse: tekst(body.adresse, 160), dato: datoStr(body.dato) || osloNaa().iso,
+        tittel: tekst(svar.tittel, 120) || "Jobbrapport", sammendrag: tekst(svar.sammendrag, 600), utfort: tListe(svar.utfort, 15), funn: tListe(svar.funn, 10),
+        anbefalinger: tListe(svar.anbefalinger, 10), neste_service: tekst(svar.neste_service, 200), bildetekster: tListe(svar.bildetekster, 4, 160) };
+    },
+  },
+
+  rute: {
+    lag(env, profil, body) {
+      const oppdrag = (Array.isArray(body.oppdrag) ? body.oppdrag : []).slice(0, 15).map((o, i) => ({ nr: i + 1, navn: tekst(o.navn, 60), adresse: tekst(o.adresse, 160),
+        tidsvindu: tekst(o.tidsvindu, 40), varighet_min: tilTall(o.varighet, 15, 600, 60), hva: tekst(o.hva, 100) })).filter((o) => o.adresse);
+      if (oppdrag.length < 2) throw Object.assign(new Error("Legg inn minst to oppdrag med adresse."), { status: 400 });
+      const start = tekst(body.start, 160) || profil.adresse || "";
+      return {
+        system: `Du planlegger rekkefølgen på dagens oppdrag for en fagperson i ${profil.navn}${profil.omraade ? ` (${profil.omraade})` : ""}.\n\n# Regler\n- Finn en rekkefølge som gir kort kjøring, ut fra hvor adressene ligger (bydel, sted, postnummer), og som overholder tidsvinduene.\n- Regn med reisetid mellom oppdragene og varigheten på hvert oppdrag. Start ${tekst(body.starttid, 5) || "07:30"}${start ? ` fra ${start}` : ""}.\n- Du har ikke kart. Er du usikker på hvor en adresse ligger, si det i "usikkert". Ikke lat som du vet nøyaktige kjøretider.\n- Alle oppdragsnumrene skal være med nøyaktig én gang.\n\nSvar bare med JSON: {"rekkefolge":[{"nr":1,"ankomst_ca":"08:00","hvorfor":"kort"}],"oppsummering":"1–2 setninger","usikkert":["..."]}`,
+        bruker: "Oppdrag:\n" + JSON.stringify(oppdrag, null, 1), oppdrag, start,
+      };
+    },
+    rens(svar, body, kx) {
+      const oppdrag = kx.oppgave.oppdrag;
+      const sett = new Set();
+      const rekke = (Array.isArray(svar.rekkefolge) ? svar.rekkefolge : []).map((r) => ({ nr: Math.round(Number(r.nr)), ankomst_ca: tekst(r.ankomst_ca, 10), hvorfor: tekst(r.hvorfor, 200) }))
+        .filter((r) => r.nr >= 1 && r.nr <= oppdrag.length && !sett.has(r.nr) && sett.add(r.nr));
+      for (const o of oppdrag) if (!sett.has(o.nr)) rekke.push({ nr: o.nr, ankomst_ca: "", hvorfor: "Ikke plassert av agenten, lagt sist." });
+      const stopp = rekke.map((r) => ({ ...oppdrag[r.nr - 1], ankomst_ca: r.ankomst_ca, hvorfor: r.hvorfor }));
+      const steder = [kx.oppgave.start, ...stopp.map((x) => x.adresse)].filter(Boolean).map((a) => encodeURIComponent(a));
+      return { start: kx.oppgave.start, stopp, oppsummering: tekst(svar.oppsummering, 400), usikkert: tListe(svar.usikkert, 8),
+        kart: "https://www.google.com/maps/dir/" + steder.join("/"),
+        advarsel: "Rekkefølgen er et forslag uten kartdata. Sjekk kjøretidene i kartet før du gir tider til kundene." };
+    },
+  },
+
+  innkjop: {
+    lag(env, profil, body) {
+      const tilbud = rensTilbudInn(body.tilbud);
+      const fritt = tekst(body.tekst, 1500);
+      if (!tilbud && fritt.length < 5) throw Object.assign(new Error("Velg et tilbud eller skriv hva som skal kjøpes inn."), { status: 400 });
+      return {
+        system: `Du lager en innkjøpsliste til grossisten for en ${profil.bransje || "håndverker"} i ${profil.navn}.\n\n# Regler\n- Ta med alle materialene fra tilbudet/teksten med antall og enhet, gruppert etter kategori (f.eks. rør og deler, elektro, festemidler, forbruk).\n- Du kan foreslå småting som ofte glemmes for akkurat denne jobben (pakninger, koblinger, tetningsmasse, skruer). Merk dem med "forslag": true så eieren kan stryke dem.\n- Ikke sett priser. Ikke endre antall fra tilbudet. Ikke finn på merker eller varenummer.\n\nSvar bare med JSON: {"grupper":[{"kategori":"","varer":[{"vare":"","antall":0,"enhet":"stk","merknad":"","forslag":false}]}],"husk":["ting å sjekke før bestilling, f.eks. mål eller dimensjoner"]}`,
+        bruker: (tilbud ? `Tilbud: ${tilbud.tittel}\nMaterialer:\n` + tilbud.materialer.map((m) => `- ${m.vare}: ${m.antall} ${m.enhet}`).join("\n") + `\nArbeid:\n` + tilbud.arbeid.map((a) => "- " + a.post).join("\n") : "") + (fritt ? `\n\nEierens liste/notat:\n${fritt}` : ""),
+      };
+    },
+    rens(svar, body) {
+      const grupper = (Array.isArray(svar.grupper) ? svar.grupper : []).slice(0, 12).map((g) => ({ kategori: tekst(g.kategori, 60) || "Annet",
+        varer: (Array.isArray(g.varer) ? g.varer : []).slice(0, 40).map((v) => ({ vare: tekst(v.vare, 160), antall: tilbudTall(v.antall, 1e5), enhet: tekst(v.enhet, 12) || "stk", merknad: tekst(v.merknad, 160), forslag: !!v.forslag })).filter((v) => v.vare) }))
+        .filter((g) => g.varer.length);
+      return { tittel: tekst(body.tilbud && body.tilbud.tittel, 120) || "Innkjøpsliste", grupper, husk: tListe(svar.husk, 8) };
+    },
+  },
+};
+
+async function kjorOppgave(env, profil, id, navn, body) {
+  const o = AGENT_OPPGAVER[navn];
+  const kx = { id };
+  const opp = await o.lag(env, profil, body, kx);
+  kx.oppgave = opp;
+  const svar = await grokJson(env, opp.system, opp.bruker, navn === "anmeldelse" ? 0.6 : 0.2);
+  const res = { id: "a" + tilfeldig(8), tid: new Date().toISOString(), oppgave: navn, ...o.rens(svar, body, kx) };
+  const key = `agentlogg:${id}:${navn}`;
+  const hist = (await env.KUNDER.get(key, "json")) || [];
+  hist.unshift(res);
+  await env.KUNDER.put(key, JSON.stringify(hist.slice(0, 10)));
+  return { resultat: res, logg: hist.slice(0, 10) };
+}
+
 async function agentRute(request, env, ctx, url) {
   const p = url.pathname;
   if (request.method === "GET" && (p === "/agenter" || p === "/agenter/")) {
@@ -2551,7 +2718,9 @@ async function agentRute(request, env, ctx, url) {
     return json({ firma: { navn: profil.navn, kortnavn: profil.kortnavn, bransje: profil.bransje },
       leads: (await hentLeads()).filter((l) => !l.skjult), analyse: await env.KUNDER.get("agentanalyse:" + id, "json"),
       marked: (await env.KUNDER.get("marked:" + id, "json")) || [],
-      tilbudsutkast: (await env.KUNDER.get("tilbudsutkast:" + id, "json")) || [], stadier: LEAD_STADIER, plattformer: MARKED_PLATTFORMER }, 200);
+      tilbudsutkast: (await env.KUNDER.get("tilbudsutkast:" + id, "json")) || [],
+      logg: Object.fromEntries(await Promise.all(Object.keys(AGENT_OPPGAVER).map(async (k) => [k, (await env.KUNDER.get(`agentlogg:${id}:${k}`, "json")) || []]))),
+      adresse: profil.adresse || "", stadier: LEAD_STADIER, plattformer: MARKED_PLATTFORMER }, 200);
   }
 
   if (p === "/agenter/lead") {
@@ -2574,7 +2743,32 @@ async function agentRute(request, env, ctx, url) {
     return json({ leads: leads.filter((l) => !l.skjult) }, 200);
   }
 
-  if (p === "/agenter/oppfolging" || p === "/agenter/marked" || p === "/agenter/tilbud") {
+  if (p === "/agenter/tilbud/status") {
+    const hist = (await env.KUNDER.get("tilbudsutkast:" + id, "json")) || [];
+    const t = hist.find((x) => x.id === String(body.tilbudId || ""));
+    if (!t) return json({ feil: "Fant ikke tilbudet." }, 404);
+    if (["utkast", "sendt", "godtatt", "avslatt"].includes(body.status)) {
+      if (body.status === "sendt" && t.status !== "sendt") t.sendt = datoStr(body.sendt) ? new Date(body.sendt + "T12:00:00Z").toISOString() : new Date().toISOString();
+      t.status = body.status;
+    }
+    if ("kontakt" in body) t.kontakt = tekst(body.kontakt, 120);
+    if (body.tilbud && typeof body.tilbud === "object") { // eieren har rettet tall: lagre de rettede
+      const r = rensTilbudInn(body.tilbud);
+      if (r) { t.arbeid = r.arbeid.map((a) => ({ ...a, sum: a.fastpris + kr(a.timer * a.timepris) })); t.materialer = r.materialer.map((m) => ({ ...m, sum: kr(m.antall * m.enhetspris) }));
+        const a = t.arbeid.reduce((s, x) => s + x.sum, 0), m = t.materialer.reduce((s, x) => s + x.sum, 0);
+        t.sum = { arbeid: a, materialer: m, eksMva: a + m, mva: kr((a + m) * 0.25), inklMva: kr((a + m) * 1.25) }; }
+    }
+    await env.KUNDER.put("tilbudsutkast:" + id, JSON.stringify(hist));
+    return json({ tilbud: t, tilbudsutkast: hist }, 200);
+  }
+
+  if (p === "/agenter/dagens") {
+    const dato = datoStr(body.dato) || osloNaa().iso;
+    const timer = ((await env.KUNDER.get("timer:" + id, "json")) || []).filter((t) => !t.x && osloDeler(t.s).dato === dato);
+    return json({ dato, oppdrag: timer.map((t) => ({ navn: t.navn || "", adresse: t.adresse || "", tidsvindu: osloDeler(t.s).tid, varighet: t.v || 60, hva: t.hva || "" })) }, 200);
+  }
+
+  if (p === "/agenter/oppfolging" || p === "/agenter/marked" || p === "/agenter/tilbud" || p === "/agenter/kjor") {
     if (!env.XAI_API_KEY) return json({ feil: "XAI_API_KEY mangler." }, 500);
     if (!(await agentBruk(env, id))) return json({ feil: "Dagens kvote for agentene er brukt opp. Prøv igjen i morgen." }, 429);
     try {
@@ -2583,8 +2777,14 @@ async function agentRute(request, env, ctx, url) {
         await env.KUNDER.put("agentanalyse:" + id, JSON.stringify(analyse));
         return json({ analyse }, 200);
       }
+      if (p === "/agenter/kjor") {
+        const navn = String(body.oppgave || "");
+        if (!AGENT_OPPGAVER[navn]) return json({ feil: "Ukjent agent." }, 400);
+        return json(await kjorOppgave(env, profil, id, navn, body), 200);
+      }
       if (p === "/agenter/tilbud") {
         const t = await lagTilbud(env, profil, body);
+        t.status = "utkast"; t.kontakt = tekst(body.kontakt, 120);
         const hist = (await env.KUNDER.get("tilbudsutkast:" + id, "json")) || [];
         hist.unshift(t);
         await env.KUNDER.put("tilbudsutkast:" + id, JSON.stringify(hist.slice(0, 20)));
