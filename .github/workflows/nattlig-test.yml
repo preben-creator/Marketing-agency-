@@ -1,0 +1,94 @@
+# Nattlig test av KI-sekretæren og agentene, kl. 03:00 norsk vintertid (02:00 UTC).
+#  1. Nettet akkurat nå: workeren, nettsiden, chat.js, låsene, og noen ekte samtaler med en demo-sekretær (prøvemodus).
+#  2. Nettleseren: åpner forsiden (mobil og PC) og chatten i en ekte Chrome, slik en kunde ville gjort.
+#  3. Kvaliteten på svarene: alle agentene og 20+ chatsamtaler med ekte Grok, der en annen Grok-modell vurderer hvert svar.
+# Ingenting sendes til ekte kunder: chatten kjører i prøvemodus, og agent-testene bruker et lager i minnet.
+# Feiler noe, sender GitHub e-post til Preben. Rapporten og skjermbildene ligger under «Summary» i kjøringen.
+#
+# Hemmeligheter (GitHub -> Settings -> Secrets and variables -> Actions):
+#   XAI_API_KEY  samme Grok-nøkkel som i Cloudflare. Uten den hoppes del 3 over.
+#   LIVE_KODE    demokoden til demo-rorlegger (k= i demolenken). Uten den hoppes de ekte samtalene over.
+name: Nattlig agenttest
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  nett:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Nettet akkurat nå
+        env:
+          LIVE_KUNDE: demo-rorlegger
+          LIVE_KODE: ${{ secrets.LIVE_KODE }}
+        run: node tools/nattlig-test.mjs
+
+  nettleser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Installer Chrome for testen
+        run: npm i --no-save playwright@1.49.1 && npx playwright install --with-deps chromium
+      - name: Forsiden og chatten i nettleseren
+        env:
+          LIVE_KUNDE: demo-rorlegger
+          LIVE_KODE: ${{ secrets.LIVE_KODE }}
+        run: node tools/nettleser-test.mjs
+      - name: Skjermbilder
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skjermbilder
+          path: testbilder/
+          retention-days: 14
+
+  kvalitet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Svarene til sekretæren og agentene (ekte Grok)
+        env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+        run: |
+          if [ -z "$XAI_API_KEY" ]; then
+            echo "## Kvalitet: hoppet over (XAI_API_KEY mangler som hemmelighet i GitHub)" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          feil=0
+          echo "## Kvaliteten på svarene (ekte Grok)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          for t in sekretar agenter nye-agenter; do
+            echo "::group::test-$t"
+            if node tools/test-$t.mjs > "ut-$t.txt" 2>&1; then status="✅"; else status="❌"; feil=1; fi
+            cat "ut-$t.txt"
+            echo "::endgroup::"
+            siste=$(grep -E "bestått|Alt OK|feil$" "ut-$t.txt" | tail -1)
+            echo "- $status **$t**: ${siste:-se loggen}" >> "$GITHUB_STEP_SUMMARY"
+            grep -E "^(✗|FEIL)" "ut-$t.txt" | head -10 | sed 's/^/    - /' >> "$GITHUB_STEP_SUMMARY" || true
+          done
+          exit $feil
+      - name: Fullstendige svar
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentsvar
+          path: ut-*.txt
+          retention-days: 14
