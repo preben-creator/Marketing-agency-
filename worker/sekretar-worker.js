@@ -2320,7 +2320,7 @@ Eksempel for et firma med døgnvakt: «Steng hovedkranen med en gang. Vi har dø
 Send aldri hastebeskjeden før du har mobilnummeret.
 4. Bruk legg_igjen_beskjed. Beskjeden skal begynne med «HASTER:» og ha med hva som har skjedd, adressen og om det renner nå.
 5. Si hva som skjer videre, slik firmaet har beskrevet det. Lov aldri et tidspunkt for oppmøte.${profil.telefon ? ` Kunden kan også ringe ${profil.telefon} direkte.` : ""}`
-  : `Er det akutt (sterke smerter, hevelse, skade), følg firmaets egne regler for akutte saker. Ved hevelse med feber, pustevansker eller kraftig blødning: be kunden ringe legevakt på 116 117 (eller 113 ved livsfare) først. Si aldri hva det kan være (ingen diagnose). Tilby deretter det firmaet sier, for eksempel første ledige akutt-time, eller send beskjed som begynner med «HASTER:».`}
+  : `Er det akutt (sterke smerter, hevelse, skade), følg firmaets egne regler for akutte saker. Ved hevelse med feber, pustevansker eller kraftig blødning: be kunden ringe legevakten på 116 117 først, og si hvorfor (hevelse med feber kan være alvorlig). Nevn 113 bare som eget råd: «Ved livsfare, ring 113.» 113 er ikke legevakten. Si aldri hva det kan være (ingen diagnose). Tilby deretter det firmaet sier, for eksempel første ledige akutt-time, eller send beskjed som begynner med «HASTER:».`}
 
 # Slik tar du imot ${befaring ? "en befaring" : "en time"}
 ${steg}
