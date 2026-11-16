@@ -201,7 +201,7 @@ $("hentBtn").addEventListener("click",async()=>{$("msg").className="msg";$("msg"
   catch(err){$("msg").className="msg err";$("msg").textContent=err.message;}});
 $("kopier").addEventListener("click",()=>kopi($("lenke").textContent,$("kopier"),"Kopiert!"));
 // Oppstartsskjema: lenke til orvelo.no/oppstart/ med profilen i #p (base64url, sendes aldri til en server)
-const OPPSTART_URL="https://preben-creator.github.io/Marketing-agency-/oppstart/";
+const OPPSTART_URL="https://orvelo.no/oppstart/";
 function b64url(o){const b=new TextEncoder().encode(JSON.stringify(o));let s="";b.forEach(x=>s+=String.fromCharCode(x));return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");}
 function oppstartLenke(){let p=profil||{};try{p=JSON.parse($("json").value);}catch{}
   const {navn,bransje,type,adresse,omraade,telefon,epost,nettside,kontaktperson,apent,ansatte,tjenester,stikkord}=p;

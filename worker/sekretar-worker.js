@@ -3887,7 +3887,7 @@ const LEAD_KOMMUNER = { bergen: "4601", oslo: "0301", askøy: "4627", bjørnafjo
   stord: "4613", kvinnherad: "4617", sunnfjord: "4647", kinn: "4602", stavanger: "1103", sandnes: "1108", trondheim: "5001",
   bærum: "3201", asker: "3203", lillestrøm: "3205", drammen: "3301", kristiansand: "4204", tromsø: "5501" };
 const ROLLEADRESSE = /^(post|firmapost|kontakt|info|mail|epost|e-post|salong|booking|bestilling|resepsjon|kundeservice|service|admin|firma|hei|hallo|timebestilling)@/i;
-const DEMO_BASE = "https://preben-creator.github.io/Marketing-agency-/demo/";
+const DEMO_BASE = "https://orvelo.no/demo/";
 
 function scoreLead(e, naa = Date.now()) {
   let s = 0; const hvorfor = [];
@@ -4390,7 +4390,7 @@ async function salgSkriv(env, f) {
 async function salgFullEpost(env, f, i) {
   const e = f.eposter[i];
   const avmeld = await avmeldLenke(env, f.orgnr);
-  const fot = `\n\nHilsen\nPreben Hilleren\nOrvelo · 412 32 557\n${env.SALG_NETTSIDE || "https://preben-creator.github.io/Marketing-agency-/"}\n\n--\nDu får denne e-posten fordi ${f.navn} er et aksjeselskap, og adressen står i Enhetsregisteret. Avsender: Orvelo (Hilleren Markedsføring, org.nr 938 720 673). Vil du ikke ha flere e-poster? Meld av her: ${avmeld} (eller svar «stopp»).`;
+  const fot = `\n\nHilsen\nPreben Hilleren\nOrvelo · 412 32 557\n${env.SALG_NETTSIDE || "https://orvelo.no/"}\n\n--\nDu får denne e-posten fordi ${f.navn} er et aksjeselskap, og adressen står i Enhetsregisteret. Avsender: Orvelo (Hilleren Markedsføring, org.nr 938 720 673). Vil du ikke ha flere e-poster? Meld av her: ${avmeld} (eller svar «stopp»).`;
   const tekstUt = e.tekst + fot;
   const html = `<div style="font:15px/1.55 Arial,sans-serif;color:#1d1b2b;max-width:600px">${esc(tekstUt).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>').replace(/\n/g, "<br>")}</div>`;
   return { emne: e.emne, tekst: tekstUt, html, avmeld };

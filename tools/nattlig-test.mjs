@@ -5,14 +5,14 @@
 //
 // Miljøvariabler (alle valgfrie):
 //   SEKRETAR_URL   standard https://orvelo-sekretar.preben-m-hilleren.workers.dev
-//   NETTSIDE_URL   standard https://preben-creator.github.io/Marketing-agency-/
+//   NETTSIDE_URL   standard https://orvelo.no/
 //   LIVE_KUNDE     demo-sekretær å chatte med, f.eks. demo-rorlegger
 //   LIVE_KODE      demokoden (k=) til den sekretæren. Uten den hoppes chat-delen over.
 // Skriver en kort rapport til GITHUB_STEP_SUMMARY når den kjører i GitHub Actions.
 import { appendFileSync } from "node:fs";
 
 const SEK = (process.env.SEKRETAR_URL || "https://orvelo-sekretar.preben-m-hilleren.workers.dev").replace(/\/$/, "");
-const SIDE = process.env.NETTSIDE_URL || "https://preben-creator.github.io/Marketing-agency-/";
+const SIDE = process.env.NETTSIDE_URL || "https://orvelo.no/";
 const KUNDE = process.env.LIVE_KUNDE || "demo-rorlegger";
 const KODE = process.env.LIVE_KODE || "";
 
