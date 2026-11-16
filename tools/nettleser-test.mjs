@@ -8,7 +8,7 @@ import { mkdirSync, appendFileSync } from "node:fs";
 import { chromium } from "playwright";
 
 const SEK = (process.env.SEKRETAR_URL || "https://orvelo-sekretar.preben-m-hilleren.workers.dev").replace(/\/$/, "");
-const SIDE = process.env.NETTSIDE_URL || "https://preben-creator.github.io/Marketing-agency-/";
+const SIDE = process.env.NETTSIDE_URL || "https://orvelo.no/";
 const KUNDE = process.env.LIVE_KUNDE || "demo-rorlegger";
 const KODE = process.env.LIVE_KODE || "";
 mkdirSync("testbilder", { recursive: true });
