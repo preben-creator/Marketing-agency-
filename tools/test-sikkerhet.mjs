@@ -21,6 +21,7 @@ await KV.put("kunde:firma-b", profil("Firma B"));
 await KV.put("kunde:deja-vu-frisor-089t", profil("Deja Vu"));
 await KV.put("demokode:firma-a", "akode12345"); await KV.put("dkode:akode12345", "firma-a");
 await KV.put("demokode:firma-b", "bkode12345"); await KV.put("dkode:bkode12345", "firma-b");
+await KV.put("kunde:demo-rorlegger", profil("Lia Rør")); await KV.put("demokode:demo-rorlegger", "dkode12345"); await KV.put("dkode:dkode12345", "demo-rorlegger");
 
 const env = { XAI_API_KEY: "x", ADMIN_KODE: "admin", DEMO_KODE: "felles", KUNDER: KV, DEMO_TALE_DAG: "3", DEMO_TALE_ALLE: "5", DEMO_CHAT_DAG: "2" };
 
@@ -68,6 +69,9 @@ sjekk(utlopt.status === 401 && /utløpt/.test(utlopt.d.feil), "utløpt firmakode
 let r = await kall("/rediger/lenke", { body: { kode: "admin", id: "firma-a" } });
 sjekk(r.status === 200 && r.d.lenke.includes("k=akode12345"), "Preben lager lenken på nytt: samme kode");
 sjekk((await kall("/kunde?id=firma-a&k=akode12345")).status === 200, "... og den virker igjen i 30 nye dager");
+await KV.put("demoutl:demo-rorlegger", new Date(Date.now() - 1000).toISOString());
+sjekk((await kall("/kunde?id=demo-rorlegger&k=dkode12345")).status === 200, "Orvelos egne demofirma (demo-*) utløper ikke (lenkene står i salgs-e-poster)");
+sjekk((await kall("/kunde?id=firma-a&k=dkode12345")).status === 401, "... men demokoden åpner ikke andre firma");
 
 // 4. Kvote på stemme: 3 per demo, 5 til sammen (i testen)
 lager.forEach((_, k) => k.startsWith("kvote:") && lager.delete(k));

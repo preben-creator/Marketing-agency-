@@ -113,7 +113,7 @@ if (!utenKi) {
   sjekk(/google\.com\/maps\/dir\//.test(ru.kart || ""), "rute: Google Maps-lenke");
   console.log(ru.stopp?.map((x) => `${x.ankomst_ca} ${x.navn} ${x.adresse}`).join(" | "), ru.kart);
   r = await kall("/agenter/data", { kunde: "demo-rorlegger", r: "rkode12345" });
-  sjekk(Object.keys(r.d.logg).length === 6 && r.d.logg.anmeldelse.length === 1, "data gir logg for alle seks");
+  sjekk(Object.keys(r.d.logg).length >= 6 && r.d.logg.anmeldelse.length === 1, "data gir logg for alle agentene");
 }
 console.log(feil ? `\n${feil} feil` : "\nAlt OK");
 process.exit(feil ? 1 : 0);
