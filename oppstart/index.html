@@ -256,7 +256,7 @@ button:disabled{opacity:.5;cursor:wait}
 
 <div class="card" id="reserve" hidden>
   <h2>Det gikk ikke å sende</h2>
-  <p class="hint">Ingenting er tapt. Send svarene på e-post i stedet, eller last ned en kopi og send den til hilleren.bedrift@gmail.com.</p>
+  <p class="hint">Ingenting er tapt. Send svarene på e-post i stedet, eller last ned en kopi og send den til orvelo@epost.no.</p>
   <div class="row"><a class="btn p" id="mailto">Send på e-post</a><button type="button" id="lastNed2">Last ned en kopi</button></div>
 </div>
 </div>
@@ -268,7 +268,7 @@ button:disabled{opacity:.5;cursor:wait}
 
 <script>
 const $=id=>document.getElementById(id);
-const TIL="hilleren.bedrift@gmail.com";
+const TIL="orvelo@epost.no";
 const q=new URLSearchParams(location.search);
 const KUNDE=(q.get("kunde")||"").replace(/[^a-z0-9-]/g,"").slice(0,60);
 const NOKKEL="orvelo-oppstart:"+(KUNDE||"ny");
