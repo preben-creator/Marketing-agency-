@@ -94,6 +94,7 @@ header img{height:34px;width:auto}
 .pill{display:inline-block;font-size:.75rem;font-weight:600;padding:2px 9px;border-radius:999px}
 .pill.hi{background:rgba(255,181,71,.15);color:var(--warn)}
 .pill.kommer{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+.pill.beta{background:rgba(181,101,29,.12);color:var(--warn)}
 .roi .note{margin:16px 0 0;font-size:.8rem;color:var(--muted)}
 .form .status{margin:0;padding:12px 14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--border);font-weight:600}
 .form .status.feil{border-color:var(--accent-2);color:var(--accent-2)}
@@ -260,7 +261,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
   </section>
 
   <section id="demo" class="demo" aria-label="Demo">
-  <p class="demo-note">Demoen viser hvordan en samtale med sekretæren kan gå. I dag svarer sekretæren via en lenke eller knapp på nettsiden din, i chat og med stemme. Med Pro kan sekretæren booke rett i kalenderen og sende SMS til kundene. Svar på ditt eget telefonnummer er under utvikling.</p>
+  <p class="demo-note"><b>Dette virker i dag:</b> kunden trykker på en knapp på nettsiden din og snakker eller chatter med sekretæren, slik som i demoen. Med Pro booker den rett i kalenderen og sender SMS til kunden. <b>Svar når kundene ringer ditt vanlige telefonnummer er ikke klart ennå</b> <span class="pill kommer">Kommer</span>. Du får det uten ekstra kostnad når det er klart.</p>
   <div class="controls">
     <div class="firm">
       <label for="cat">Fagområde:</label>
@@ -284,12 +285,12 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       <div class="screen">
         <div class="callbar" id="callbar">
           <div class="who" id="who">Hansen Rør AS</div>
-          <div class="sub">Besvart av Orvelo KI-sekretær</div>
-          <div class="status"><span class="dot"></span><span id="statusText">Venter på anrop</span> <span id="timer"></span></div>
+          <div class="sub">Stemmesamtale på nettsiden · Orvelo KI-sekretær</div>
+          <div class="status"><span class="dot"></span><span id="statusText">Venter på kunde</span> <span id="timer"></span></div>
           <div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
         </div>
         <div class="chat" id="chat" aria-live="polite">
-          <div class="empty"><div class="big">📞</div>Trykk «Spill av samtalen» for å høre en kunde ringe inn.</div>
+          <div class="empty"><div class="big">💬</div>Trykk «Spill av samtalen» for å høre en kunde snakke med sekretæren på nettsiden.</div>
         </div>
       </div>
     </div>
@@ -354,7 +355,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
     <h3 class="ag-gruppe">Sekretæren som svarer kundene</h3>
     <div class="svcs svcs--ag">
       <div class="svc"><div class="i">💬</div><b>Chat- og stemmesekretær <span class="pill ok">Klar</span></b><p>Svarer kundene døgnet rundt i chat og med stemme, på nettsiden din, Google og sosiale medier.</p><span class="tier">Starter, Pro og Komplett</span></div>
-      <div class="svc"><div class="i">🔍</div><b>Kvalitetskontroll hver uke <span class="pill ok">Klar</span></b><p>En revisor-agent leser samtalene hver uke, finner svar som var feil eller vage, og foreslår rettelser, så sekretæren blir bedre over tid. Vi retter ingenting uten at du har sett det.</p><span class="tier">Alle pakker</span></div>
+      <div class="svc"><div class="i">🔍</div><b>Kvalitetskontroll hver uke <span class="pill beta">Beta</span></b><p>En revisor-agent leser samtalene hver uke, finner svar som var feil eller vage, og foreslår rettelser, så sekretæren blir bedre over tid. Vi retter ingenting uten at du har sett det.</p><span class="tier">Alle pakker</span></div>
       <div class="svc"><div class="i">📞</div><b>Liora på telefonen <span class="pill kommer">Kommer</span></b><p>Svarer når kundene ringer ditt eget telefonnummer, tar imot beskjeder og booker tid.</p><span class="tier">Pro og Komplett, uten ekstra kostnad</span></div>
     </div>
     <h3 class="ag-gruppe">Booking og oppfølging av kundene</h3>
@@ -367,18 +368,18 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
     </div>
     <h3 class="ag-gruppe">10 KI-agenter for kontorarbeidet</h3>
     <div class="svcs svcs--ag svcs--ag3">
-      <div class="svc"><div class="i">🤝</div><b>Salg <span class="pill ok">Klar</span></b><p>Samler henvendelser fra sekretæren og foreslår hvem du bør følge opp, og hva du kan skrive.</p><span class="tier">Komplett</span></div>
-      <div class="svc"><div class="i">📣</div><b>Markedsføring <span class="pill ok">Klar</span></b><p>Skriver innlegg til Facebook og Instagram og tekster til nettsiden din.</p><span class="tier">Komplett</span></div>
-      <div class="svc"><div class="i">🧾</div><b>Tilbud <span class="pill ok">Klar</span></b><p>Ta et bilde av jobben og skriv tre linjer, så får du et tilbudsutkast med arbeid, materialer og forbehold.</p><span class="tier">Komplett</span></div>
-      <div class="svc"><div class="i">⏰</div><b>Påminnelse om tilbud <span class="pill ok">Klar</span></b><p>Holder oversikt over tilbud du har sendt, og skriver en vennlig påminnelse til kunder som ikke har svart.</p><span class="tier">Komplett</span></div>
-      <div class="svc"><div class="i">💳</div><b>Faktura <span class="pill ok">Klar</span></b><p>Lager et fakturautkast ut fra tilbudet eller det du skriver om jobben. Du legger det inn i regnskapsprogrammet ditt, for eksempel Fiken.</p><span class="tier">Komplett</span></div>
-      <div class="svc"><div class="i">💰</div><b>Fakturapurring <span class="pill ok">Klar</span></b><p>Finner forfalte fakturaer i Fiken eller Tripletex og skriver purringer i din egen tone, fra vennlig påminnelse til inkassovarsel. Du sender dem selv.</p><span class="tier">Komplett</span></div>
-      <div class="svc"><div class="i">🛒</div><b>Innkjøp <span class="pill ok">Klar</span></b><p>Lager innkjøpsliste til grossisten ut fra tilbudet, med antall og enhet, sortert etter kategori.</p><span class="tier">Komplett</span></div>
-      <div class="svc"><div class="i">📝</div><b>Jobbrapport <span class="pill ok">Klar</span></b><p>Gjør stikkord og bilder om til en ryddig rapport til kunden, klar til å lagre som PDF.</p><span class="tier">Komplett</span></div>
-      <div class="svc"><div class="i">🗺️</div><b>Ruteplan <span class="pill ok">Klar</span></b><p>Setter opp dagens rute ut fra timene i kalenderen, med lenke til Google Maps.</p><span class="tier">Komplett</span></div>
-      <div class="svc"><div class="i">⭐</div><b>Anmeldelser <span class="pill ok">Klar</span></b><p>Fanger opp nye anmeldelser på Google og skriver forslag til svar, så du svarer alle raskt. Flere svar og anmeldelser gir bedre plassering i Google Maps.</p><span class="tier">Komplett</span></div>
+      <div class="svc"><div class="i">🤝</div><b>Salg <span class="pill beta">Beta</span></b><p>Samler henvendelser fra sekretæren og foreslår hvem du bør følge opp, og hva du kan skrive.</p><span class="tier">Komplett</span></div>
+      <div class="svc"><div class="i">📣</div><b>Markedsføring <span class="pill beta">Beta</span></b><p>Skriver innlegg til Facebook og Instagram og tekster til nettsiden din.</p><span class="tier">Komplett</span></div>
+      <div class="svc"><div class="i">🧾</div><b>Tilbud <span class="pill beta">Beta</span></b><p>Ta et bilde av jobben og skriv tre linjer, så får du et tilbudsutkast med arbeid, materialer og forbehold.</p><span class="tier">Komplett</span></div>
+      <div class="svc"><div class="i">⏰</div><b>Påminnelse om tilbud <span class="pill beta">Beta</span></b><p>Holder oversikt over tilbud du har sendt, og skriver en vennlig påminnelse til kunder som ikke har svart.</p><span class="tier">Komplett</span></div>
+      <div class="svc"><div class="i">💳</div><b>Faktura <span class="pill beta">Beta</span></b><p>Lager et fakturautkast ut fra tilbudet eller det du skriver om jobben. Du legger det inn i regnskapsprogrammet ditt, for eksempel Fiken.</p><span class="tier">Komplett</span></div>
+      <div class="svc"><div class="i">💰</div><b>Fakturapurring <span class="pill beta">Beta</span></b><p>Finner forfalte fakturaer i Fiken eller Tripletex og skriver purringer i din egen tone, fra vennlig påminnelse til inkassovarsel. Du sender dem selv.</p><span class="tier">Komplett</span></div>
+      <div class="svc"><div class="i">🛒</div><b>Innkjøp <span class="pill beta">Beta</span></b><p>Lager innkjøpsliste til grossisten ut fra tilbudet, med antall og enhet, sortert etter kategori.</p><span class="tier">Komplett</span></div>
+      <div class="svc"><div class="i">📝</div><b>Jobbrapport <span class="pill beta">Beta</span></b><p>Gjør stikkord og bilder om til en ryddig rapport til kunden, klar til å lagre som PDF.</p><span class="tier">Komplett</span></div>
+      <div class="svc"><div class="i">🗺️</div><b>Ruteplan <span class="pill beta">Beta</span></b><p>Setter opp dagens rute ut fra timene i kalenderen, med lenke til Google Maps.</p><span class="tier">Komplett</span></div>
+      <div class="svc"><div class="i">⭐</div><b>Anmeldelser <span class="pill beta">Beta</span></b><p>Fanger opp nye anmeldelser på Google og skriver forslag til svar, så du svarer alle raskt. Flere svar og anmeldelser gir bedre plassering i Google Maps.</p><span class="tier">Komplett</span></div>
     </div>
-    <p class="vat">«Kommer» betyr at løsningen er under utvikling og ikke kan brukes ennå. Når den er klar, får du den uten ekstra kostnad i pakken som står på kortet.</p>
+    <p class="vat">«Beta» betyr at løsningen virker, men er ny og ikke prøvd av kunder over tid ennå. Si fra om noe ikke fungerer, så retter vi det. «Kommer» betyr at løsningen er under utvikling og ikke kan brukes ennå. Når den er klar, får du den uten ekstra kostnad i pakken som står på kortet.</p>
   </section>
 
   <section class="sec" id="pris" aria-labelledby="prisH">
@@ -502,7 +503,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"🚿 Rørlegger", firm:"Hansen Rør AS", caller:"Kari Nilsen",
       prio:"hi", prioText:"Haster",
       steps:[
-        ["sys","Innkommende anrop · 912 34 567"],
+        ["sys","Kunden starter en samtale på nettsiden"],
         ["ai","Hei, du har kommet til {firm}. Jeg er den digitale assistenten deres. Hva kan jeg hjelpe deg med?"],
         ["cust","Hei! Det lekker vann under kjøkkenvasken, og det renner ut på gulvet."],
         ["ai","Det høres plagsomt ut. Har du fått stengt hovedkranen, eller renner det fortsatt?"],
@@ -529,7 +530,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"⚡ Elektriker", firm:"Berg Elektro AS", caller:"Ola Johansen",
       prio:"ok", prioText:"Vanlig",
       steps:[
-        ["sys","Innkommende anrop · 984 55 210"],
+        ["sys","Kunden starter en samtale på nettsiden"],
         ["ai","Hei, du har kommet til {firm}. Alle elektrikerne er ute på oppdrag, men jeg kan hjelpe deg. Hva gjelder det?"],
         ["cust","Hei. Vi vil ha lader til elbilen i garasjen. Kan dere ta det?"],
         ["ai","Ja, det gjør vi ofte. Vet du omtrent hvor langt det er fra sikringsskapet til der laderen skal stå?"],
@@ -554,7 +555,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"🪚 Snekker / tømrer", firm:"Larsen Bygg AS", caller:"Anne Eriksen",
       prio:"ok", prioText:"Tilbud",
       steps:[
-        ["sys","Innkommende anrop · 476 12 909 · kl. 21:40"],
+        ["sys","Kunden starter en samtale på nettsiden · kl. 21:40"],
         ["ai","Hei, du har kommet til {firm}. Kontoret er stengt, men jeg kan ta imot forespørselen din. Hva tenker du på?"],
         ["cust","Hei, vi vurderer å bygge ny terrasse, rundt 30 kvadrat. Hva koster sånt?"],
         ["ai","Prisen avhenger av materialer og underlag, så snekkeren vil ta en titt før han gir pris. Er det på bakkeplan eller i høyden?"],
@@ -579,7 +580,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"🎨 Maler", firm:"Pedersen Maling AS", caller:"Hilde Jensen",
       prio:"ok", prioText:"Tilbud",
       steps:[
-        ["sys","Innkommende anrop · 932 41 778"],
+        ["sys","Kunden starter en samtale på nettsiden"],
         ["ai","Hei, du har kommet til {firm}. Malerne står på oppdrag nå, men jeg kan hjelpe deg. Hva gjelder det?"],
         ["cust","Hei! Vi skal male huset utvendig til våren. Det er en enebolig i to etasjer."],
         ["ai","Så fint. Vet du omtrent hvor stort huset er, og om det trengs skraping først?"],
@@ -604,7 +605,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"🏠 Taktekker", firm:"Andersen Tak AS", caller:"Per Halvorsen",
       prio:"hi", prioText:"Haster",
       steps:[
-        ["sys","Innkommende anrop · 905 67 314 · lørdag"],
+        ["sys","Kunden starter en samtale på nettsiden · lørdag"],
         ["ai","Hei, du har kommet til {firm}. Vi har helgestengt, men jeg kan ta imot saken din. Hva har skjedd?"],
         ["cust","Det har blåst av noen takstein i natt, og det drypper inn på loftet."],
         ["ai","Det er viktig å få tettet fort. Har du fått satt en bøtte under, og er det mye vann?"],
@@ -629,7 +630,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"🧱 Murer / flislegger", firm:"Solberg Flis og Mur AS", caller:"Maria Haugen",
       prio:"ok", prioText:"Tilbud",
       steps:[
-        ["sys","Innkommende anrop · 948 20 156"],
+        ["sys","Kunden starter en samtale på nettsiden"],
         ["ai","Hei, du har kommet til {firm}. Hva kan jeg hjelpe deg med i dag?"],
         ["cust","Hei. Vi vil pusse opp badet, nye fliser på gulv og vegg."],
         ["ai","Så spennende. Omtrent hvor stort er badet, og skal det inn varmekabler?"],
@@ -654,7 +655,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"❄️ Varmepumpe / ventilasjon", firm:"Karlsen Varme AS", caller:"Jon Kristiansen",
       prio:"ok", prioText:"Service",
       steps:[
-        ["sys","Innkommende anrop · 461 83 220"],
+        ["sys","Kunden starter en samtale på nettsiden"],
         ["ai","Hei, du har kommet til {firm}. Teknikerne er ute, men jeg kan hjelpe deg. Hva gjelder det?"],
         ["cust","Varmepumpa blinker med et rødt lys og blåser bare kald luft."],
         ["ai","Det kan være filteret eller en feilkode. Vet du hvilket merke det er, og når den sist hadde service?"],
@@ -679,7 +680,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"🚗 Bilverksted", firm:"Nilsen Bil AS", caller:"Morten Olsen",
       prio:"ok", prioText:"Vanlig",
       steps:[
-        ["sys","Innkommende anrop · 948 22 615"],
+        ["sys","Kunden starter en samtale på nettsiden"],
         ["ai","Hei, du har kommet til {firm}. Mekanikerne står i verkstedet, men jeg kan hjelpe deg. Hva gjelder det?"],
         ["cust","Hei. Motorlampa lyser på bilen, og den går litt ujevnt på tomgang."],
         ["ai","Det bør vi se på snart. Hvilken bil er det, og omtrent hvor langt har den gått?"],
@@ -704,7 +705,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"✂️ Frisør", firm:"Salong Lien", caller:"Camilla Bakke",
       prio:"ok", prioText:"Timebestilling",
       steps:[
-        ["sys","Innkommende anrop · 917 30 442"],
+        ["sys","Kunden starter en samtale på nettsiden"],
         ["ai","Hei, du har kommet til {firm}. Frisørene er opptatt med kunder, men jeg kan booke time for deg. Hva ønsker du?"],
         ["cust","Hei! Jeg vil gjerne klippe meg og farge håret. Har dere noe ledig neste uke?"],
         ["ai","Det har vi. Klipp og farge tar rundt to timer. Har du en fast frisør du ønsker?"],
@@ -729,7 +730,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"🎂 Baker, konditor og mat", firm:"Holm Bakeri AS", caller:"Silje Moen",
       prio:"ok", prioText:"Bestilling",
       steps:[
-        ["sys","Innkommende anrop · 934 18 270"],
+        ["sys","Kunden starter en samtale på nettsiden"],
         ["ai","Hei, du har kommet til {firm}. Vi står i bakeriet, men jeg tar gjerne imot bestillingen din. Hva kan jeg hjelpe med?"],
         ["cust","Hei! Jeg skal ha konfirmasjon om tre uker og trenger kake til rundt 40 personer."],
         ["ai","Så hyggelig! Ønsker du bløtkake, marsipankake eller noe annet? Og er det allergier vi må ta hensyn til?"],
@@ -754,7 +755,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"🔑 Låsesmed", firm:"Lund Lås AS", caller:"Thomas Lie",
       prio:"hi", prioText:"Haster",
       steps:[
-        ["sys","Innkommende anrop · 452 77 109 · kl. 22:15"],
+        ["sys","Kunden starter en samtale på nettsiden · kl. 22:15"],
         ["ai","Hei, du har kommet til {firm}. Jeg er den digitale assistenten deres. Hva har skjedd?"],
         ["cust","Jeg har låst meg ute! Nøkkelen ligger inne, og det er kaldt ute."],
         ["ai","Det ordner vi. Er det en vanlig ytterdør med nøkkellås, eller en kodelås?"],
@@ -779,7 +780,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"🧹 Rengjøring / vaskebyrå", firm:"Fjell Renhold AS", caller:"Ingrid Sæther",
       prio:"ok", prioText:"Tilbud",
       steps:[
-        ["sys","Innkommende anrop · 941 52 377"],
+        ["sys","Kunden starter en samtale på nettsiden"],
         ["ai","Hei, du har kommet til {firm}. Alle er ute på oppdrag nå, men jeg kan hjelpe deg. Hva gjelder det?"],
         ["cust","Hei! Vi skal flytte ut av leiligheten og trenger flyttevask før overtakelsen."],
         ["ai","Det fikser vi. Hvor stor er leiligheten, og når er overtakelsen?"],
@@ -804,7 +805,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"🚚 Flytting / transport", firm:"Vest Flytt AS", caller:"Anders Brekke",
       prio:"ok", prioText:"Tilbud",
       steps:[
-        ["sys","Innkommende anrop · 928 64 103"],
+        ["sys","Kunden starter en samtale på nettsiden"],
         ["ai","Hei, du har kommet til {firm}. Bilene er ute nå, men jeg kan ta imot forespørselen din. Hva skal flyttes?"],
         ["cust","Vi flytter fra en treroms på Laksevåg til et hus i Fana. Trenger hjelp med bæring og bil."],
         ["ai","Så bra. Er det heis der dere bor nå, og har dere en dato i tankene?"],
@@ -829,7 +830,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"🛞 Dekkhotell / dekkskift", firm:"Åsane Dekk AS", caller:"Kjetil Rong",
       prio:"ok", prioText:"Timebestilling",
       steps:[
-        ["sys","Innkommende anrop · 979 41 228"],
+        ["sys","Kunden starter en samtale på nettsiden"],
         ["ai","Hei, du har kommet til {firm}. Vi står midt i dekksesongen, men jeg kan booke time for deg. Hva gjelder det?"],
         ["cust","Hei. Jeg skal skifte til vinterdekk. Dekkene står på hotellet hos dere."],
         ["ai","Det ordner vi. Hva er registreringsnummeret, så finner jeg dekkene dine?"],
@@ -854,7 +855,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"🐶 Hundefrisør / dyrepass", firm:"Pelsstell Bergen", caller:"Hanne Vik",
       prio:"ok", prioText:"Timebestilling",
       steps:[
-        ["sys","Innkommende anrop · 466 20 914"],
+        ["sys","Kunden starter en samtale på nettsiden"],
         ["ai","Hei, du har kommet til {firm}. Vi står med en hund på bordet nå, men jeg kan booke time. Hva slags hund har du?"],
         ["cust","Hei! En cockapoo på to år. Han trenger klipp, pelsen er helt floket."],
         ["ai","Det er vanlig hos cockapoo. Er han vant til klipp, og er det noe vi bør vite om ham?"],
@@ -879,7 +880,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"💅 Negl, vipper og hudpleie", firm:"Studio Glans", caller:"Sofie Lunde",
       prio:"ok", prioText:"Timebestilling",
       steps:[
-        ["sys","Innkommende anrop · 951 73 482"],
+        ["sys","Kunden starter en samtale på nettsiden"],
         ["ai","Hei, du har kommet til {firm}. Vi har kunder i stolen nå, men jeg kan booke time for deg. Hva ønsker du?"],
         ["cust","Hei! Jeg vil gjerne bestille gelénegler og vippeløft samme dag."],
         ["ai","Det får vi til. Har du gelé på neglene nå som må fjernes først?"],
@@ -904,7 +905,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"💪 Treningssenter / PT", firm:"Kraft PT Bergen", caller:"Martin Eide",
       prio:"ok", prioText:"Ny kunde",
       steps:[
-        ["sys","Innkommende anrop · 913 08 645"],
+        ["sys","Kunden starter en samtale på nettsiden"],
         ["ai","Hei, du har kommet til {firm}. Trenerne er midt i en økt, men jeg kan hjelpe deg. Hva er du ute etter?"],
         ["cust","Hei. Jeg vil komme i form igjen etter en kneskade, og tenker på personlig trener."],
         ["ai","Så bra at du vil i gang. Er kneet ferdig behandlet, og har du trent før?"],
@@ -929,7 +930,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"🐭 Skadedyrkontroll", firm:"Vest Skadedyr AS", caller:"Nina Hauge",
       prio:"hi", prioText:"Haster",
       steps:[
-        ["sys","Innkommende anrop · 482 19 556"],
+        ["sys","Kunden starter en samtale på nettsiden"],
         ["ai","Hei, du har kommet til {firm}. Teknikerne er ute, men jeg kan hjelpe deg. Hva har du oppdaget?"],
         ["cust","Vi har hørt krafsing i veggen og funnet museskitt på kjøkkenet."],
         ["ai","Det høres ut som mus. Har dere små barn eller dyr i huset vi må ta hensyn til?"],
@@ -954,7 +955,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"💍 Design og bestillingsarbeid", firm:"Aas Atelier", caller:"Hanne Lund",
       prio:"ok", prioText:"Bestilling",
       steps:[
-        ["sys","Innkommende anrop · 922 61 380"],
+        ["sys","Kunden starter en samtale på nettsiden"],
         ["ai","Hei, du har kommet til {firm}. Vi er i verkstedet nå, men jeg kan hjelpe deg. Hva tenker du på?"],
         ["cust","Hei! Jeg vil gjerne bestille noe spesiallaget som gave, og lurer på hva som er mulig."],
         ["ai","Så fint! Det beste er en kort prat i verkstedet, så kan dere se på ideer og materialer sammen. Når trenger du det ferdig?"],
@@ -979,7 +980,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"🛠️ Reparasjon og verksted", firm:"Strand Verksted AS", caller:"Geir Hagen",
       prio:"ok", prioText:"Reparasjon",
       steps:[
-        ["sys","Innkommende anrop · 941 55 027"],
+        ["sys","Kunden starter en samtale på nettsiden"],
         ["ai","Hei, du har kommet til {firm}. Vi sitter i verkstedet, men jeg hjelper deg gjerne. Hva gjelder det?"],
         ["cust","Hei. Jeg har noe som har gått i stykker og trenger reparasjon. Tar dere imot sånt?"],
         ["ai","Ja, det gjør vi. Haster det, eller kan det vente noen dager?"],
@@ -1004,7 +1005,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       label:"🖨️ Trykk og grafisk", firm:"Dahl Trykk AS", caller:"Kristin Aune",
       prio:"ok", prioText:"Tilbud",
       steps:[
-        ["sys","Innkommende anrop · 905 13 846"],
+        ["sys","Kunden starter en samtale på nettsiden"],
         ["ai","Hei, du har kommet til {firm}. Alle er opptatt i produksjonen, men jeg kan hjelpe deg. Hva trenger du?"],
         ["cust","Hei! Vi trenger 500 brosjyrer og et par roll-ups til en messe om to uker."],
         ["ai","Det rekker vi fint. Har dere ferdige trykkfiler, eller trenger dere hjelp med design også?"],
@@ -1188,8 +1189,8 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
     run++; if("speechSynthesis" in window) speechSynthesis.cancel();
     if(curAudio){ curAudio.pause(); curAudio=null; }
     clearInterval(timerId); timerEl.textContent="";
-    chat.innerHTML='<div class="empty"><div class="big">📞</div>Trykk «Spill av samtalen» for å høre en kunde ringe inn.</div>';
-    callbar.className="callbar"; statusText.textContent="Venter på anrop";
+    chat.innerHTML='<div class="empty"><div class="big">💬</div>Trykk «Spill av samtalen» for å høre en kunde snakke med sekretæren på nettsiden.</div>';
+    callbar.className="callbar"; statusText.textContent="Venter på kunde";
     document.querySelectorAll(".card").forEach(c=>c.classList.remove("on"));
     document.querySelectorAll("[data-f]").forEach(d=>d.textContent="");
     $("#prio").innerHTML=""; $("#smsText").textContent="…"; $("#custSms").textContent="…";
@@ -1215,7 +1216,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
   async function play(){
     reset(); const myRun=run; const s=SCENARIOS[key];
     playBtn.disabled=true; playBtn.textContent="Samtale pågår…";
-    callbar.classList.add("ringing"); statusText.textContent="Ringer…";
+    callbar.classList.add("ringing"); statusText.textContent="Kobler til…";
     await sleep(1400); if(myRun!==run) return;
     callbar.classList.remove("ringing"); callbar.classList.add("live"); statusText.textContent="Samtale";
     const t0=Date.now();

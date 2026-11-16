@@ -2,7 +2,7 @@
    Lim inn på nettsiden (rett før </body>):
      <script src="https://orvelo-sekretar.preben-m-hilleren.workers.dev/chat.js" data-kunde="<id>" async></script>
    Valgfritt: data-farge="#2f9e7a"  data-posisjon="venstre"  data-apen="1" (åpen med en gang)
-   Serveres av workeren på /chat.js (hentes fra GitHub), så endringer her trenger ikke Cloudflare. */
+   Serveres av workeren på /chat.js (hentes fra den deployede commiten i GitHub). Endringer her når kundene først når en deploy er godkjent. */
 (function () {
   "use strict";
   var s = document.currentScript || document.querySelector('script[src*="/chat.js"][data-kunde]');

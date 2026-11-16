@@ -1,0 +1,25 @@
+# Overvåking: hvert 30. minutt sjekkes nettsiden, workeren og chat.js.
+# Feiler en sjekk, sender GitHub e-post til Preben (Settings -> Notifications -> Actions: «Send notifications for failed workflows only»).
+name: Overvåking
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sjekk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: orvelo.no svarer med Orvelo-siden
+        run: curl -fsSL --retry 2 https://orvelo.no/ | grep -qi "orvelo"
+      - name: GitHub Pages-adressen svarer
+        run: curl -fsSL --retry 2 -o /dev/null https://preben-creator.github.io/Marketing-agency-/
+      - name: Workeren er frisk (nøkler og KV koblet til)
+        run: curl -fsS --retry 2 https://orvelo-sekretar.preben-m-hilleren.workers.dev/helse | tee /dev/stderr | grep -q '"ok":true'
+      - name: chat.js på kundenes nettsider lastes
+        run: curl -fsS --retry 2 https://orvelo-sekretar.preben-m-hilleren.workers.dev/chat.js | grep -q "Orvelo"
