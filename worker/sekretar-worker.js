@@ -26,6 +26,7 @@
 //   GET  /chat/prov     -> en prøveside som viser chatten på en tenkt nettside (krever demokode)
 //   POST /chat/innstillinger -> Prebens side: slå chatten av/på, farge, hilsen, domener, varsel-e-post (ADMIN_KODE)
 //   POST /chat/innboks  -> timeforespørsler, beskjeder og tall for chatten (ADMIN_KODE)
+//   POST /telefon/*     -> telefonlinjen: orvelo-ring henter sekretæren og kjører verktøyene når noen ringer kundens linje (signert)
 //   /sms, /tillegg/*, /s/* -> tilleggstjenester på SMS (påminnelse, tapt anrop, anmeldelse). Se nederst i filen.
 //   /agenter, /agenter/* -> KI-agenter for kunden: oppfølging av leads (salg) og markedsføring. Se nederst i filen.
 //   POST /logg          -> sekretærsiden sender et kort sammendrag når en samtale er ferdig (til ukesrapporten)
@@ -247,6 +248,10 @@ async function hovedFetch(request, env, ctx) {
 
     if (url.pathname === "/chat.js" || url.pathname.startsWith("/chat/")) {
       return chatRute(request, env, ctx, url);
+    }
+
+    if (url.pathname.startsWith("/telefon/")) {
+      return telefonRute(request, env, ctx, url);
     }
 
     if (url.pathname === "/rediger" || url.pathname.startsWith("/rediger/")) {
@@ -1021,6 +1026,7 @@ const TILLEGG_STD = {
   tapt: { pa: false, lenke: "" },
   anmeldelse: { pa: false, lenke: "", timerEtter: 3, placeId: "" },
   kalender: { pa: false },
+  telefon: { nummer: "" },
   avsender: "",
   live: false,
   tekster: { bekreftelse: "", paminnelse: "", tapt: "", anmeldelse: "", sammedag: "", venteliste: "" },
@@ -1050,6 +1056,7 @@ function rensTillegg(t = {}, profil = {}) {
       auto: a.auto && a.placeId ? { navn: tekst(a.auto.navn, 120), adresse: tekst(a.auto.adresse, 160), tid: tekst(a.auto.tid, 30) } : null,
       sokt: /^\d{4}-\d{2}-\d{2}$/.test(a.sokt || "") ? a.sokt : "" },
     kalender: { pa: !!ka.pa },
+    telefon: { nummer: linjeNr((t.telefon || {}).nummer) },
     avsender: /[A-Za-z]/.test(avsender) ? avsender : "",
     live: !!t.live,
     tekster: Object.fromEntries(SMS_TYPER.map((k) => {
@@ -1058,6 +1065,14 @@ function rensTillegg(t = {}, profil = {}) {
       return [k, v];
     })),
   };
+}
+
+// Telefonlinjen: nummeret Liora svarer på for kunden (norsk, 8 siffer, også fasttelefon) -> +47XXXXXXXX
+function linjeNr(v) {
+  let s = String(v || "").replace(/[\s().-]/g, "");
+  if (s.startsWith("0047")) s = "+" + s.slice(2);
+  if (/^\d{8}$/.test(s)) s = "+47" + s;
+  return /^\+47\d{8}$/.test(s) ? s : "";
 }
 
 async function hentTillegg(env, id, profil) {
@@ -1666,8 +1681,17 @@ async function tilleggRute(request, env, ctx, url) {
     }
     let cfg = await hentTillegg(env, id, profil);
     if (body.tillegg) {
-      const gammel = cfg.anmeldelse;
+      const gammel = cfg.anmeldelse, gammelLinje = cfg.telefon.nummer;
       cfg = rensTillegg(body.tillegg, profil);
+      // Telefonlinjen: linje:<nummer> -> kunde-id, så orvelo-ring vet hvem Liora svarer for
+      if (cfg.telefon.nummer !== gammelLinje) {
+        if (cfg.telefon.nummer) {
+          const eier = await env.KUNDER.get("linje:" + cfg.telefon.nummer);
+          if (eier && eier !== id) return json({ feil: `Nummeret ${cfg.telefon.nummer} brukes allerede av «${eier}».` }, 409);
+          await env.KUNDER.put("linje:" + cfg.telefon.nummer, id);
+        }
+        if (gammelLinje && (await env.KUNDER.get("linje:" + gammelLinje)) === id) await env.KUNDER.delete("linje:" + gammelLinje);
+      }
       if (cfg.anmeldelse.placeId === gammel.placeId) { cfg.anmeldelse.auto = gammel.auto; cfg.anmeldelse.sokt = gammel.sokt; }
       await env.KUNDER.put("tillegg:" + id, JSON.stringify(cfg));
       await oppdaterAktive(env, id, cfg);
@@ -2436,6 +2460,8 @@ async function chatStat(env, id, felt, n = 1) {
 
 async function chatVerktoy(navn, a, kx) {
   const { env, id, profil, prov, ctx, url } = kx;
+  const kilde = kx.kilde === "telefon" ? "telefon" : "chat";
+  const fraKanal = kilde === "telefon" ? "telefonen" : "chatten", viaKanal = kilde === "telefon" ? "på telefonen (Liora svarte)" : "via chatten på nettsiden";
   const sted = profil.sted || (profil.type === "befaring" ? "firmaet" : "salongen");
   const idag = osloNaa().iso;
   if (!kx.innboks) kx.innboks = (await env.KUNDER.get("chatinnboks:" + id, "json")) || [];
@@ -2476,7 +2502,7 @@ async function chatVerktoy(navn, a, kx) {
     if (direkte) {
       try {
         const r = await leggInnTime(env, id, profil, kx.cfg, { navn: rad.navn, mobil: a.mobil, hva: rad.hva, dato: iso, klokkeslett: t, varighet: min,
-          epost: rad.epost, adresse: rad.adresse, ansatt: rad.ansatt, notat: rad.notat }, "chat");
+          epost: rad.epost, adresse: rad.adresse, ansatt: rad.ansatt, notat: rad.notat }, kilde);
         rad.status = "booket"; rad.timeId = r.time.id;
         kx.opptatt.push({ type: "time", dato: iso, klokkeslett: t, varighet: min });
         innboks.unshift(rad);
@@ -2484,8 +2510,8 @@ async function chatVerktoy(navn, a, kx) {
         await chatStat(env, id, "timer");
         kx.bookinger.push({ hva: rad.hva, dato: iso, kl: t, navn: rad.navn, mobil: rad.mobil });
         const sms = r.bekreftet ? r.bekreftet.status : "";
-        kx.varsler.push(varsle(env, `Ny time booket fra chatten: ${rad.hva}, ${chatDato(iso)} kl. ${t}`, [
-          `${profil.navn} har fått en ny time via chatten på nettsiden. Den ligger allerede i kalenderen:`, "",
+        kx.varsler.push(varsle(env, `Ny time booket fra ${fraKanal}: ${rad.hva}, ${chatDato(iso)} kl. ${t}`, [
+          `${profil.navn} har fått en ny time ${viaKanal}. Den ligger allerede i kalenderen:`, "",
           `Hva: ${rad.hva}`, `Når: ${chatDato(iso)} kl. ${t} (ca. ${min} min)`, `Navn: ${rad.navn}`, `Mobil: ${rad.mobil}`,
           rad.epost ? `E-post: ${rad.epost}` : null, rad.ansatt ? `Ønsker: ${rad.ansatt}` : null, rad.adresse ? `Adresse: ${rad.adresse}` : null, rad.notat ? `Notat: ${rad.notat}` : null, "",
           sms === "sendt" ? "Kunden har fått SMS med bekreftelse og lenke for å legge timen i kalenderen eller avbestille."
@@ -2503,8 +2529,8 @@ async function chatVerktoy(navn, a, kx) {
     await env.KUNDER.put("chatinnboks:" + id, JSON.stringify(innboks.slice(0, 300)));
     await chatStat(env, id, "timer");
     kx.bookinger.push({ hva: rad.hva, dato: iso, kl: t, navn: rad.navn, mobil: rad.mobil });
-    kx.varsler.push(varsle(env, `Ny timeforespørsel fra chatten: ${rad.hva}, ${chatDato(iso)} kl. ${t}`, [
-      `${profil.navn} har fått en ny forespørsel via chatten på nettsiden:`, "",
+    kx.varsler.push(varsle(env, `Ny timeforespørsel fra ${fraKanal}: ${rad.hva}, ${chatDato(iso)} kl. ${t}`, [
+      `${profil.navn} har fått en ny forespørsel ${viaKanal}:`, "",
       `Hva: ${rad.hva}`, `Når: ${chatDato(iso)} kl. ${t} (ca. ${min} min)`, `Navn: ${rad.navn}`, `Mobil: ${rad.mobil}`,
       rad.epost ? `E-post: ${rad.epost}` : null, rad.ansatt ? `Ønsker: ${rad.ansatt}` : null, rad.adresse ? `Adresse: ${rad.adresse}` : null, rad.notat ? `Notat: ${rad.notat}` : null, "",
       "Timen er IKKE bekreftet ennå. Legg den inn i kalenderen og send kunden en bekreftelse på SMS.",
@@ -2515,7 +2541,7 @@ async function chatVerktoy(navn, a, kx) {
 
   if (navn === "sett_pa_venteliste") {
     if (!(kx.cfg && kx.cfg.venteliste && kx.cfg.venteliste.pa)) return { feil: "Venteliste er ikke i bruk her. Tilby å legge igjen en beskjed i stedet." };
-    const v = rensVent({ navn: a.navn, mobil: a.mobil, hva: a.behandling, fra: a.fra || idag, til: a.til || leggTilDager(idag, 30), notat: a.notat, kilde: "chat" });
+    const v = rensVent({ navn: a.navn, mobil: a.mobil, hva: a.behandling, fra: a.fra || idag, til: a.til || leggTilDager(idag, 30), notat: a.notat, kilde });
     if (!v.mobil) return { feil: "Trenger et norsk mobilnummer (8 siffer, begynner på 4 eller 9) for å sende SMS. Spør kunden." };
     if (prov) return { ok: true, prov: true, info: "Kunden står på ventelisten og får SMS hvis noe blir ledig." };
     const liste = (await env.KUNDER.get("venteliste:" + id, "json")) || [];
@@ -2540,8 +2566,8 @@ async function chatVerktoy(navn, a, kx) {
     await chatStat(env, id, "beskjeder");
     kx.beskjeder.push({ tekst: rad.beskjed, navn: rad.navn, mobil: rad.mobil });
     const haster = /^\s*haster/i.test(rad.beskjed);
-    kx.varsler.push(varsle(env, `${haster ? "HASTER: " : ""}Beskjed fra chatten${rad.navn ? " fra " + rad.navn : ""}`, [
-      `${profil.navn} har fått en beskjed via chatten på nettsiden:`, "",
+    kx.varsler.push(varsle(env, `${haster ? "HASTER: " : ""}Beskjed fra ${fraKanal}${rad.navn ? " fra " + rad.navn : ""}`, [
+      `${profil.navn} har fått en beskjed ${viaKanal}:`, "",
       `«${rad.beskjed}»`, "",
       `Navn: ${rad.navn || "(ikke oppgitt)"}`, `Mobil: ${rad.mobil || "(ikke oppgitt)"}`, rad.epost ? `E-post: ${rad.epost}` : null, "",
       "Sendt av KI-sekretæren fra Orvelo.",
@@ -2594,6 +2620,101 @@ async function chatTilgang(env, url, origin, id, k) {
   else if (!domeneOk(chat, origin, url)) return { feil: "Chatten er ikke slått på for dette domenet.", status: 403 };
   const cfg = rensTillegg(tillegg || TILLEGG_STD, profilRaw);
   return { profil: normaliser(profilRaw), chat, prov, cfg, direkte: cfg.kalender.pa };
+}
+
+// ---------- Telefonlinje: Liora svarer kundens egen telefon ----------
+// Kunden viderekobler telefonen sin til et Orvelo-nummer (Telnyx). orvelo-ring svarer, finner kunden i
+// linje:<nummer> og kaller disse endepunktene for å få sekretærens instruksjoner og kjøre verktøyene:
+//   POST /telefon/oppsett {kunde, fra}                         -> instruksjoner, verktøy og første replikk
+//   POST /telefon/verktoy {kunde, fra, navn, args}             -> samme verktøy som chatten (ledige tider, booking, beskjed, venteliste)
+//   POST /telefon/slutt   {kunde, start, sek, utskrift, ...}   -> ukesrapport, kostnad og kvalitetssjekk
+// Kallene signeres med TWILIO_AUTH_TOKEN (begge workerne har den): X-Orvelo-Ts og
+// X-Orvelo-Sig = hmac("tlf|" + ts + "|" + body). Gyldig i 5 minutter.
+async function tlfSig(hemmelig, msg) {
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(hemmelig), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return [...new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(msg)))].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+const tlfNrTekst = (nr) => { const d = String(nr || "").replace(/^\+47/, ""); return d.length === 8 ? `${d.slice(0, 3)} ${d.slice(3, 5)} ${d.slice(5)}` : ""; };
+
+export function telefonInstruksjoner(profil, direkte, venteliste, fra) {
+  const nr = mobilnr(fra);
+  const grunn = chatInstruksjoner(profil, false, direkte, venteliste)
+    .replace("Du svarer i chatten på nettsiden deres, døgnet rundt.", "Du svarer telefonen deres når de ikke kan ta den selv.");
+  return grunn + `
+
+# Telefon (dette går foran «Stil» over)
+- Du snakker med kunden i telefonen. Svar muntlig og kort, én eller to setninger om gangen, og still ett spørsmål om gangen.
+- Ingen lister. Les aldri opp hele prislisten: nevn bare det kunden spør om, høyst to eller tre priser.
+- Si klokkeslett slik folk sier dem, for eksempel «halv elleve» eller «kvart over to».
+- ${nr ? `Kunden ringer fra ${tlfNrTekst(nr)}. Trenger du mobilnummeret, spør om du kan bruke nummeret de ringer fra. Sier de ja, bruk det.` : "Trenger du mobilnummeret, spør etter det."} Gjenta et nummer du har fått muntlig tilbake, to og to siffer, og la kunden bekrefte det.
+- Hørte du ikke noe sikkert, be kunden si det én gang til. Gjett aldri navn, nummer eller adresse.
+- Kunden får SMS med bekreftelse når en time er booket, så du trenger ikke lese opp lenker eller e-post.
+- Når kunden er ferdig: si en kort ha det, og bruk legg_paa. Legg aldri på midt i en samtale.`;
+}
+
+export function telefonVerktoy(venteliste) {
+  return CHAT_VERKTOY.filter((v) => venteliste || v.function.name !== "sett_pa_venteliste")
+    .map((v) => ({ type: "function", ...v.function }))
+    .concat([{ type: "function", name: "legg_paa", description: "Avslutt telefonsamtalen. Bruk bare etter at du har sagt ha det.", parameters: { type: "object", properties: {}, required: [] } }]);
+}
+
+async function telefonRute(request, env, ctx, url) {
+  const p = url.pathname;
+  if (request.method !== "POST") return json({ feil: "Bruk POST." }, 405);
+  if (!env.KUNDER || !env.TWILIO_AUTH_TOKEN) return json({ feil: "Telefonlinjen er ikke satt opp." }, 500);
+  const raa = await request.text();
+  const ts = request.headers.get("X-Orvelo-Ts") || "";
+  const sig = request.headers.get("X-Orvelo-Sig") || "";
+  if (!/^\d+$/.test(ts) || Math.abs(Date.now() - Number(ts)) > 5 * 60 * 1000 || sig !== (await tlfSig(env.TWILIO_AUTH_TOKEN, `tlf|${ts}|${raa}`)))
+    return json({ feil: "Ugyldig signatur." }, 401);
+  let b = {};
+  try { b = JSON.parse(raa); } catch {}
+  const id = rensId(b.kunde);
+  const [profilRaw, chatRaw, tillegg] = await Promise.all([
+    id ? env.KUNDER.get("kunde:" + id, "json") : null, id ? env.KUNDER.get("chat:" + id, "json") : null, id ? env.KUNDER.get("tillegg:" + id, "json") : null]);
+  if (!profilRaw) return json({ feil: "Fant ikke sekretæren." }, 404);
+  const cfg = rensTillegg(tillegg || TILLEGG_STD, profilRaw);
+  if (!cfg.telefon.nummer) return json({ feil: "Telefonlinjen er ikke slått på for denne kunden." }, 403);
+  const profil = normaliser(profilRaw);
+  const venteliste = !!(cfg.venteliste && cfg.venteliste.pa);
+  if (env._maal) env._maal.id = id;
+
+  if (p === "/telefon/oppsett") {
+    return json({
+      firma: profil.navn, kortnavn: profil.kortnavn || profil.navn,
+      instruksjoner: telefonInstruksjoner(profil, cfg.kalender.pa, venteliste, b.fra),
+      verktoy: telefonVerktoy(venteliste),
+      forste: `${profil.kortnavn || profil.navn}, hei! Du snakker med den digitale assistenten. Hva kan jeg hjelpe deg med?`,
+      keyterms: [profil.navn, profil.kortnavn, ...profil.ansatte].filter(Boolean).slice(0, 10),
+    }, 200);
+  }
+
+  if (p === "/telefon/verktoy") {
+    const navn = String(b.navn || "");
+    if (!CHAT_VERKTOY.some((v) => v.function.name === navn)) return json({ res: { feil: "Ukjent verktøy" } }, 200);
+    const kx = { env, id, profil, chat: rensChat(chatRaw || {}), prov: false, cfg, direkte: cfg.kalender.pa, ctx, url, kilde: "telefon",
+      varsler: [], handlinger: [], bookinger: [], beskjeder: [] };
+    const res = await chatVerktoy(navn, b.args && typeof b.args === "object" ? b.args : {}, kx);
+    if (kx.varsler.length) await Promise.all(kx.varsler);
+    return json({ res, bookinger: kx.bookinger, beskjeder: kx.beskjeder }, 200);
+  }
+
+  if (p === "/telefon/slutt") {
+    const sek = tall(b.sek, 4 * 3600);
+    if (env._maal) env._maal.talesek += sek;
+    const utskrift = (Array.isArray(b.utskrift) ? b.utskrift : []).slice(0, 120)
+      .map((x) => [x && x[0] === "kunde" ? "kunde" : "ai", tekst(x && x[1], 600)]).filter((x) => x[1]);
+    const jobb = (async () => {
+      const sam = utskrift.some((x) => x[0] === "kunde") ? await oppsummer(env, profil, utskrift) : { tema: "Ringte, men sa ingenting", kategori: "annet" };
+      await loggHendelse(env, id, { t: b.start, kanal: "telefon", sek, ...sam, bookinger: b.bookinger, beskjeder: b.beskjeder });
+      if (utskrift.length) await lagreSpor(env, { id, kanal: "telefon", t: b.start, prov: false, profil, meldinger: utskrift, verktoy: Array.isArray(b.verktoy) ? b.verktoy : [],
+        info: { sek, bookinger: (b.bookinger || []).length, beskjeder: (b.beskjeder || []).length } });
+    })().catch((e) => console.log("telefon-logg feilet", e && e.message));
+    if (env._maal) env._maal.vent.push(jobb);
+    if (ctx && ctx.waitUntil) ctx.waitUntil(jobb); else await jobb;
+    return json({ ok: true }, 200);
+  }
+  return json({ feil: "Ukjent adresse." }, 404);
 }
 
 async function chatRute(request, env, ctx, url) {

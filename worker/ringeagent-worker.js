@@ -25,6 +25,12 @@
 //   KUNDER               (KV-binding, valgfri) samme KV som orvelo-sekretar (orvelo-kunder). Uten den kan
 //                        innringere bare høre en eksempelsekretær, ikke sitt eget firma.
 //   INNRING              (Text,   valgfri)  «av» = ikke svar på innkommende anrop
+//   SEKRETAR             (Service-binding)   til orvelo-sekretar. Brukes av telefonlinjen (under).
+//
+// Telefonlinje for kunder: har Preben lagt inn et Telnyx-nummer for en kunde på /lag (del 4), står det i
+// KV som linje:<nummer> -> kunde-id. Ringer noen det nummeret (kunden viderekobler telefonen sin dit), svarer
+// Liora som kundens egen sekretær: instruksjonene og verktøyene (ledige tider, booking, SMS, beskjed) kommer
+// fra orvelo-sekretar via /telefon/*, så telefonen, chatten og stemmen på nettsiden svarer likt.
 //   TEST_NUMMER          (Text,   valgfri)  ditt eget nummer: hopper over SMS-koden (koden blir 0000) mens Twilio er prøvekonto
 
 const BOOKING_URL_DEFAULT = "https://calendar.app.google/24niGvpRRwPqNqr28";
@@ -287,7 +293,7 @@ Teksten under «Bedriften» er skrevet av ${p.kortnavn || p.navn} selv. Står de
 # Når noe haster
 ${befaring
     ? "Lekkasje, vannskade, strømbrudd, gasslukt eller fare: Si FØRST det trygge rådet i én setning (for eksempel «Steng hovedkranen med en gang» eller «Slå av sikringen»), også om kunden bare spør når noen kan komme. Si så hva som skjer videre slik firmaet har beskrevet det (for eksempel at vakthavende ringer tilbake). Spør om navn, mobilnummer og adresse, gjenta nummeret, og bruk legg_igjen_beskjed med «HASTER:» først. Lov aldri et tidspunkt for oppmøte."
-    : "Sterke smerter, hevelse eller skade: følg firmaets egne regler for akutte saker. Ved hevelse med feber, pustevansker eller kraftig blødning: be personen ringe legevakt på 116 117 (eller 113 ved livsfare) først. Si aldri hva det kan være (ingen diagnose). Tilby så det firmaet sier, eller send beskjed med «HASTER:» først."}
+    : "Sterke smerter, hevelse eller skade: følg firmaets egne regler for akutte saker. Ved hevelse med feber, pustevansker eller kraftig blødning: be personen ringe legevakten på 116 117 først, og si hvorfor. Nevn 113 bare som eget råd: «Ved livsfare, ring 113.» 113 er ikke legevakten. Si aldri hva det kan være (ingen diagnose). Tilby så det firmaet sier, eller send beskjed med «HASTER:» først."}
 
 # Slik ${befaring ? "booker du befaring" : "booker du time"}
 ${befaring
@@ -373,10 +379,11 @@ export const VERKTOY = [
 
 // Øktoppsettet for Grok. Eksportert så tools/test-liora.mjs tester det samme som telefonen bruker.
 export function sesjon(env, kunde) {
+  const o = kunde.oppsett; // telefonlinje for en kunde
   return {
     voice: env.STEMME || "liora",
-    instructions: kunde.inn ? innringInstruks() : instruksjoner(kunde.navn, kunde.firma),
-    tools: kunde.inn ? INN_VERKTOY() : VERKTOY,
+    instructions: o ? o.instruksjoner : kunde.inn ? innringInstruks() : instruksjoner(kunde.navn, kunde.firma),
+    tools: o ? o.verktoy : kunde.inn ? INN_VERKTOY() : VERKTOY,
     // Telefonlinjer har støy, og folk tar små pauser midt i setninger. Litt høyere terskel og lengre pause
     // før Liora svarer gir færre falske avbrytelser og færre ganger hun snakker i munnen på kunden.
     turn_detection: {
@@ -386,13 +393,14 @@ export function sesjon(env, kunde) {
       silence_duration_ms: Number(env.VAD_STILLE_MS) || 450,
     },
     audio: {
-      input: { format: { type: "audio/pcmu" }, transcription: { language_hint: "no", keyterms: ["Orvelo", "Preben", "Liora", "KI-sekretær", kunde.firma].filter(Boolean) } },
+      input: { format: { type: "audio/pcmu" }, transcription: { language_hint: "no", keyterms: (o ? o.keyterms || [] : ["Orvelo", "Preben", "Liora", "KI-sekretær", kunde.firma]).filter(Boolean) } },
       output: { format: { type: "audio/pcmu" } },
     },
   };
 }
 
 export function forsteReplikk(kunde) {
+  if (kunde.oppsett) return kunde.oppsett.forste;
   const hei = kunde.navn ? `Hei, ${kunde.navn.split(" ")[0]}!` : "Hei!";
   return kunde.inn
     ? "Hei, du har ringt Orvelo! Jeg er Liora, en KI-assistent. Hvilket firma ringer du fra?"
@@ -411,6 +419,7 @@ async function koblSamtale(env, tlfWs, urlParam) {
   let rapportSendt = false;
   const logg = []; // hele samtalen, som tekst
   const demoHendelser = []; // hva som skjedde i demoen ved innringing
+  const linjeData = { bookinger: [], beskjeder: [], verktoy: [] }; // telefonlinje: det som ble booket og sendt
   const tid = () => {
     const sek = Math.round((Date.now() - startet) / 1000);
     return `${Math.floor(sek / 60)}:${String(sek % 60).padStart(2, "0")}`;
@@ -470,6 +479,20 @@ async function koblSamtale(env, tlfWs, urlParam) {
   }
 
   async function kjorVerktoy(navn, args) {
+    if (kunde.linje && navn !== "legg_paa") {
+      // Kundens egen sekretær: verktøyet kjøres i orvelo-sekretar, likt med chatten.
+      try {
+        const d = await tilSekretar(env, "/telefon/verktoy", { kunde: kunde.linje, fra: kunde.til, navn, args });
+        const res = d.res || { feil: "Ingen svar." };
+        linjeData.bookinger.push(...(d.bookinger || []));
+        linjeData.beskjeder.push(...(d.beskjeder || []));
+        linjeData.verktoy.push({ tur: logg.filter((l) => / Kunde: /.test(l)).length, navn, args, res });
+        return res;
+      } catch (e) {
+        console.log("telefon-verktøy feilet", e && e.message);
+        return { feil: "Det gikk ikke akkurat nå. Si at du noterer det, og be kunden ringe igjen litt senere hvis det haster." };
+      }
+    }
     if (navn === "finn_firma") {
       const r = await finnFirma(env, args.navn);
       if (r.funnet) {
@@ -514,9 +537,14 @@ async function koblSamtale(env, tlfWs, urlParam) {
   }
 
   async function startGrok() {
-    const r = await fetch(`https://api.x.ai/v1/realtime?model=${MODEL}`, {
+    // Telefonlinje: hent sekretærens oppsett samtidig som vi kobler til Grok, så det ikke tar lenger før hun svarer.
+    const oppsett = kunde.linje && !kunde.oppsett
+      ? tilSekretar(env, "/telefon/oppsett", { kunde: kunde.linje, fra: kunde.til }).catch((e) => { console.log("telefon-oppsett feilet", e && e.message); return null; })
+      : null;
+    const [r, o] = await Promise.all([fetch(`https://api.x.ai/v1/realtime?model=${MODEL}`, {
       headers: { Upgrade: "websocket", Authorization: `Bearer ${env.XAI_API_KEY}` },
-    });
+    }), oppsett]);
+    if (o && o.instruksjoner) { kunde.oppsett = o; kunde.firma = o.firma || ""; }
     if (!r.webSocket) {
       console.log("Fikk ikke kontakt med xAI", r.status, (await r.text()).slice(0, 300));
       leggPaa(0);
@@ -524,6 +552,13 @@ async function koblSamtale(env, tlfWs, urlParam) {
     }
     xai = r.webSocket;
     xai.accept();
+    if (kunde.linje && !kunde.oppsett) {
+      // Fikk vi ikke hentet sekretæren: si det kort og legg på (bedre enn en sekretær som ikke vet noe).
+      kunde.oppsett = { instruksjoner: "Si bare replikken du har fått, ikke noe mer.", verktoy: [], keyterms: [],
+        forste: "Hei! Beklager, vi har et teknisk problem akkurat nå. Prøv å ringe igjen om litt." };
+      logg.push(`[${tid()}] (fikk ikke hentet sekretæren, la på)`);
+      leggPaa(9000);
+    }
     tilXai({ type: "session.update", session: sesjon(env, kunde) });
     const forste = forsteReplikk(kunde);
     tilXai({
@@ -621,9 +656,9 @@ async function koblSamtale(env, tlfWs, urlParam) {
   // Sjekker de signerte parameterne. Gir kunde-objektet, eller null hvis noe er galt.
   async function sjekkParam(p) {
     if (p.modus === "inn") {
-      const forventet = await hmac(env.TWILIO_AUTH_TOKEN, `inn|${p.cid}|${p.fra}|${p.ts}`);
+      const forventet = await hmac(env.TWILIO_AUTH_TOKEN, `inn|${p.cid}|${p.fra}|${p.ts}` + (p.kunde ? `|${p.kunde}` : ""));
       if (!likt(p.sig, forventet) || Date.now() - Number(p.ts) > 2 * 60 * 1000) { console.log("Ugyldig innringing-signatur"); return null; }
-      return { til: p.fra || "ukjent", navn: "", firma: "", inn: true };
+      return { til: p.fra || "ukjent", navn: "", firma: "", inn: true, linje: p.kunde || "" };
     }
     // Sjekk at samtalen faktisk ble startet av /ring (signert), ellers legg på.
     const forventet = await hmac(env.TWILIO_AUTH_TOKEN, `samtale|${p.til}|${p.ts}`);
@@ -647,6 +682,15 @@ async function koblSamtale(env, tlfWs, urlParam) {
   async function sendRapport() {
     if (rapportSendt || !kunde.til) return;
     rapportSendt = true;
+    if (kunde.linje) {
+      // Kundens egen linje: beskjeder og bookinger har allerede gått til firmaet. Her logges bare samtalen
+      // (ukesrapport, kostnad og kvalitetssjekk i orvelo-sekretar). Nummeret til den som ringte tas ikke med.
+      const utskrift = logg.map((l) => { const m = l.match(/^\[[^\]]*\] (Kunde|Liora): (.*)$/); return m ? [m[1] === "Kunde" ? "kunde" : "ai", m[2].replace(/\+?\d[\d ]{7,}/g, "[nummer]")] : null; }).filter(Boolean);
+      await tilSekretar(env, "/telefon/slutt", { kunde: kunde.linje, start: new Date(startet).toISOString(), sek: Math.round((Date.now() - startet) / 1000),
+        utskrift, bookinger: linjeData.bookinger, beskjeder: linjeData.beskjeder, verktoy: linjeData.verktoy })
+        .catch((e) => console.log("telefon-slutt feilet", e && e.message));
+      return;
+    }
     const n = notat || {};
     await varsle(env, `${kunde.inn ? "Innringing" : "Orvelo-samtale"}: ${kunde.firma || kunde.til} (interesse: ${n.interesse || "ukjent"})`, {
       Retning: kunde.inn ? "Kunden ringte demonummeret" : "Agenten ringte kunden",
@@ -758,19 +802,46 @@ function ringTwilio(env, til, wss, naa, samtaleSig, navn, firma) {
   return twilio(env, "Calls.json", { To: til, From: env.TWILIO_FROM, Twiml: twiml, TimeLimit: String(MAKS_SEK) });
 }
 
+// Telefonlinjen: linje:<+47nummer> i KV -> kunde-id (settes på /lag, del 4). "" = Orvelos eget demonummer.
+export async function finnLinje(env, til) {
+  if (!env.KUNDER) return "";
+  let s = String(til || "").replace(/[\s().-]/g, "");
+  if (s.startsWith("0047")) s = "+" + s.slice(2);
+  if (/^\d{8}$/.test(s)) s = "+47" + s;
+  if (!/^\+47\d{8}$/.test(s)) return "";
+  const id = await env.KUNDER.get("linje:" + s).catch(() => null);
+  return id && /^[a-z0-9-]{1,80}$/.test(id) ? id : "";
+}
+
+// Kall til orvelo-sekretar, signert med TWILIO_AUTH_TOKEN. Bruker service-bindingen SEKRETAR
+// (workers.dev-adresser kan ikke alltid kalle hverandre direkte), ellers SEKRETAR_URL.
+export async function tilSekretar(env, sti, data) {
+  const body = JSON.stringify(data);
+  const ts = String(Date.now());
+  const init = { method: "POST", headers: { "Content-Type": "application/json", "X-Orvelo-Ts": ts, "X-Orvelo-Sig": await hmac(env.TWILIO_AUTH_TOKEN, `tlf|${ts}|${body}`) }, body };
+  const base = (env.SEKRETAR_URL || "https://orvelo-sekretar.preben-m-hilleren.workers.dev").replace(/\/$/, "");
+  const r = env.SEKRETAR ? await env.SEKRETAR.fetch(new Request(base + sti, init)) : await fetch(base + sti, init);
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.feil || `HTTP ${r.status}`);
+  return d;
+}
+
 // Svarer et innkommende anrop og kobler det til /media med signerte parametere.
 async function svarInnringing(env, url, pl) {
   const cid = String(pl.call_control_id || "");
   if (!cid) return;
   const fra = String(pl.from || "").slice(0, 20);
   const id = `calls/${encodeURIComponent(cid)}/actions`;
-  if (forMange("inn:" + fra, 6, 60 * 60 * 1000) || forMange("inn:alle", 60, 60 * 60 * 1000)) {
+  // Er nummeret som ble ringt en kundes telefonlinje? Da svarer Liora som kundens sekretær.
+  const kunde = await finnLinje(env, pl.to);
+  const grense = kunde ? forMange("inn:" + kunde, 120, 60 * 60 * 1000) : forMange("inn:alle", 60, 60 * 60 * 1000);
+  if (forMange("inn:" + fra, 6, 60 * 60 * 1000) || grense) {
     await telnyx(env, `${id}/reject`, { cause: "USER_BUSY" });
     return;
   }
   const ts = String(Date.now());
-  const sig = await hmac(env.TWILIO_AUTH_TOKEN, `inn|${cid}|${fra}|${ts}`);
-  const q = new URLSearchParams({ modus: "inn", cid, fra, ts, sig });
+  const sig = await hmac(env.TWILIO_AUTH_TOKEN, `inn|${cid}|${fra}|${ts}` + (kunde ? `|${kunde}` : ""));
+  const q = new URLSearchParams({ modus: "inn", cid, fra, ts, sig, ...(kunde ? { kunde } : {}) });
   const r = await telnyx(env, `${id}/answer`, {
     stream_url: `wss://${url.host}/media?${q}`, stream_track: "inbound_track",
     stream_bidirectional_mode: "rtp", stream_bidirectional_codec: "PCMU",
