@@ -8,5 +8,8 @@ keep_vars = true
 
 kv_namespaces = [{ binding = "KUNDER", id = "694cc63a2de84ee1b952c509b842cebc" }]
 
+# Telefonlinjen for kunder henter sekretærens instruksjoner og verktøy fra orvelo-sekretar.
+services = [{ binding = "SEKRETAR", service = "orvelo-sekretar" }]
+
 [observability]
 enabled = true

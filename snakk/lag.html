@@ -88,7 +88,7 @@ details summary{cursor:pointer;color:var(--muted);font-weight:600;margin-top:6px
     <div class="row"><button type="button" id="flett">Flett inn og lagre</button><span class="msg" id="msg5"></span></div>
   </details>
   <details id="tilleggBoks">
-    <summary>4. Tilleggstjenester på SMS (booking med kalender, påminnelse, tapt anrop, anmeldelse)</summary>
+    <summary>4. Tilleggstjenester (booking med kalender, telefonlinje, påminnelse, tapt anrop, anmeldelse)</summary>
     <p class="lead" style="margin:10px 0 6px">Slå på det kunden har kjøpt. Så lenge «Ekte utsending» er av, går alle SMS-ene til testnummeret ditt i stedet for til kundens kunder.</p>
     <div id="tStatus" class="msg"></div>
     <div class="g" style="margin-top:10px">
@@ -104,6 +104,7 @@ details summary{cursor:pointer;color:var(--muted);font-weight:600;margin-top:6px
       <label>Timer etter<input id="tAnmT" type="number" min="1" max="72" value="3"></label>
       <label>Google-anmeldelseslenke<input id="tAnmL" placeholder="https://g.page/r/.../review"></label>
       <label>Google Place ID (for å hente nye anmeldelser, valgfri)<input id="tAnmP" placeholder="ChIJ..."></label>
+      <label>Telefonlinje: nummeret Liora svarer på for kunden (Telnyx, tomt = av)<input id="tTlf" inputmode="tel" placeholder="+47 56 99 40 25"></label>
       <label>Avsendernavn (maks 11 tegn)<input id="tAvs" maxlength="11" placeholder="DejaVu"></label>
       <label style="flex-direction:row;align-items:center;gap:8px;text-transform:none;font-size:14px;color:var(--warn)"><input type="checkbox" id="tLive" style="width:auto"> Ekte utsending til kundens kunder</label>
     </div>
@@ -244,7 +245,7 @@ if(q.get("auto")==="1"&&$("firma").value){if($("kode").value)lag();else{$("msg")
 // ===== Tilleggstjenester på SMS =====
 let tData=null;const TT=["bekreftelse","paminnelse","tapt","anmeldelse","sammedag","venteliste"];
 function tVis(d){tData=d;const t=d.tillegg;
-  $("tPam").checked=t.paminnelse.pa;$("tPamT").value=t.paminnelse.timerFor;$("tTapt").checked=t.tapt.pa;$("tTaptL").value=t.tapt.lenke;$("tKal").checked=!!(t.kalender&&t.kalender.pa);
+  $("tPam").checked=t.paminnelse.pa;$("tPamT").value=t.paminnelse.timerFor;$("tTapt").checked=t.tapt.pa;$("tTaptL").value=t.tapt.lenke;$("tKal").checked=!!(t.kalender&&t.kalender.pa);$("tTlf").value=(t.telefon&&t.telefon.nummer)||"";
   $("tPam2").value=String(t.paminnelse.sammeDag||0);$("tVent").checked=!!(t.venteliste&&t.venteliste.pa);$("tVentN").value=(t.venteliste&&t.venteliste.antall)||3;$("tAnmP").value=t.anmeldelse.placeId||"";
   $("tAnm").checked=t.anmeldelse.pa;$("tAnmT").value=t.anmeldelse.timerEtter;$("tAnmL").value=t.anmeldelse.lenke;$("tAvs").value=t.avsender;$("tLive").checked=t.live;
   $("tTekster").innerHTML=TT.map(k=>`<label style="margin-top:8px">${k}<input data-tk="${k}" placeholder="${d.standardTekster[k].replace(/"/g,"&quot;")}"></label>`).join("");
@@ -261,7 +262,7 @@ $("tLagre").addEventListener("click",async()=>{
   const tekster={};TT.forEach(k=>tekster[k]=document.querySelector(`[data-tk="${k}"]`).value.trim());
   if($("tAnm").checked&&tekster.anmeldelse&&!tekster.anmeldelse.includes("{stopp}")){$("msg6").className="msg err";$("msg6").textContent="Anmeldelses-teksten må ha med {stopp}.";return;}
   $("msg6").className="msg";$("msg6").textContent="Lagrer …";
-  try{tVis(await post("/tillegg/admin",{kode:$("kode").value,id,tillegg:{paminnelse:{pa:$("tPam").checked,timerFor:+$("tPamT").value,bekreftelse:true,sammeDag:+$("tPam2").value},venteliste:{pa:$("tVent").checked,antall:+$("tVentN").value},tapt:{pa:$("tTapt").checked,lenke:$("tTaptL").value.trim()},kalender:{pa:$("tKal").checked},
+  try{tVis(await post("/tillegg/admin",{kode:$("kode").value,id,tillegg:{paminnelse:{pa:$("tPam").checked,timerFor:+$("tPamT").value,bekreftelse:true,sammeDag:+$("tPam2").value},venteliste:{pa:$("tVent").checked,antall:+$("tVentN").value},tapt:{pa:$("tTapt").checked,lenke:$("tTaptL").value.trim()},kalender:{pa:$("tKal").checked},telefon:{nummer:$("tTlf").value.trim()},
     anmeldelse:{pa:$("tAnm").checked,lenke:$("tAnmL").value.trim(),timerEtter:+$("tAnmT").value,placeId:$("tAnmP").value.trim()},avsender:$("tAvs").value.trim(),live:$("tLive").checked,tekster}}));
     $("msg6").className="msg ok";$("msg6").textContent="Lagret.";}
   catch(err){$("msg6").className="msg err";$("msg6").textContent=err.message;}});
