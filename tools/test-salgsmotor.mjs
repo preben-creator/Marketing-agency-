@@ -11,7 +11,7 @@ const KV = {
   delete: async (k) => { lager.delete(k); },
   list: async ({ prefix = "" }) => ({ keys: [...lager.keys()].filter((k) => k.startsWith(prefix)).sort().map((name) => ({ name, metadata: lager.get(name).metadata })), list_complete: true }),
 };
-const env = { XAI_API_KEY: "x", ADMIN_KODE: "admin", KUNDER: KV, DEMO_KODE: "felles", SALG_FRA: "Preben i Orvelo <preben@orvelo.no>", SALG_PER_DAG: "10" };
+const env = { XAI_API_KEY: "x", ADMIN_KODE: "admin", KUNDER: KV, DEMO_KODE: "felles", SALG_FRA: "Preben i Orvelo <salg@orvelo.no>", SALG_PER_DAG: "10" };
 
 // 14 AS med rolleadresse, ett AS med personlig adresse, ett ENK med post@ (det skal aldri få noe)
 const enhet = (nr, navn, epost, form = "AS", hjemmeside = "") => ({ organisasjonsnummer: String(nr), navn, epostadresse: epost, organisasjonsform: { kode: form },
@@ -97,7 +97,7 @@ sjekk(tilFirma.length === 10, `10 nye firmaer fikk e-post 1 i dag (${tilFirma.le
 sjekk(!tilFirma.some((e) => ["post@frisor1.no", "post@frisor2.no"].includes(e.to[0])), "sperrede adresser fikk ingenting");
 sjekk((await firma(900000101)).status === "stopp", "sperret firma står som stoppet");
 const e1 = tilFirma.find((e) => e.to[0] === "post@frisor0.no");
-sjekk(e1 && e1.from === env.SALG_FRA && e1.reply_to === "hilleren.bedrift@gmail.com", "sendt fra SALG_FRA, svar går til Prebens innboks");
+sjekk(e1 && e1.from === env.SALG_FRA && e1.reply_to === "orvelo@epost.no", "sendt fra SALG_FRA, svar går til Prebens innboks");
 sjekk(e1 && /\/avmeld\?o=900000100&t=[0-9a-f]{16}/.test(e1.text) && e1.headers["List-Unsubscribe"].includes("/avmeld?o=900000100") && e1.headers["List-Unsubscribe-Post"], "avmeldingslenke i teksten og i List-Unsubscribe");
 sjekk(e1 && e1.text.includes("aksjeselskap") && e1.text.includes("938 720 673") && e1.html.includes("<a href="), "avsender med org.nr, klikkbare lenker i HTML");
 sjekk((await firma(900000100)).status === "sendt" && (await firma(900000100)).steg === 1, "firma står som i gang, steg 1");
@@ -168,7 +168,7 @@ sjekk(f7.status === f7foer.status && f7.neste === f7foer.neste && !eposter.slice
 const n = eposter.length;
 await epostInn(raaEpost("noe@ukjent.no", "Hei", "Hvem er dere?"));
 sjekk(eposter.length === n + 1 && eposter.at(-1).to[0] === "hilleren.bedrift@gmail.com", "ukjent avsender: bare beskjed til Preben");
-await epostInn(raaEpost("preben@orvelo.no", "loop", "test"));
+await epostInn(raaEpost("salg@orvelo.no", "loop", "test"));
 sjekk(eposter.length === n + 1, "e-post fra oss selv blir ignorert (ingen løkke)");
 for (let i = 0; i < 3; i++) await epostInn(raaEpost("post@frisor5.no", "Sv: Kunder", "Interessant, fortell mer " + i));
 const f5b = await firma(900000105);

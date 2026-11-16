@@ -4399,7 +4399,7 @@ async function salgSend(env, f, til) {
   const i = f.steg;
   const m = await salgFullEpost(env, f, i);
   return sendEpost(env, { til: til || f.epost, emne: m.emne, tekst: m.tekst, html: m.html,
-    fra: env.SALG_FRA || "Preben i Orvelo <preben@orvelo.no>", svarTil: env.SALG_SVAR_TIL || env.VARSEL_EPOST || "hilleren.bedrift@gmail.com",
+    fra: env.SALG_FRA || "Preben i Orvelo <salg@orvelo.no>", svarTil: env.SALG_SVAR_TIL || "orvelo@epost.no",
     hoder: { "List-Unsubscribe": `<${m.avmeld}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } });
 }
 
@@ -4514,7 +4514,7 @@ async function salgDrift(env, b) {
     const filter = SALG_STATUS.includes(b.status) ? b.status : "";
     const rader = alle.filter((r) => !filter || r.s === filter).sort((a, c) => (c.n || 0) - (a.n || 0)).slice(0, 300);
     return { cfg: { pause: cfg.pause, perDag: cfg.perDag, peker: cfg.peker }, av: salgAv(env), resend: !!env.RESEND_API_KEY,
-      fra: env.SALG_FRA || "Preben i Orvelo <preben@orvelo.no>", telling: await salgTelling(env), idag: await salgDagTall(env, dato), rader, bransjer: Object.keys(LEAD_BRANSJER) };
+      fra: env.SALG_FRA || "Preben i Orvelo <salg@orvelo.no>", telling: await salgTelling(env), idag: await salgDagTall(env, dato), rader, bransjer: Object.keys(LEAD_BRANSJER) };
   }
   if (h === "salg-firma") {
     const f = await env.KUNDER.get("salg:" + String(b.orgnr || "").replace(/\D/g, ""), "json");
@@ -4668,7 +4668,7 @@ async function salgEpostInn(message, env) {
 async function salgSvar(env, inn) {
   const fra = epostAdr(inn.fra);
   const rent = utenSitat(inn.tekst);
-  const egen = epostAdr(env.SALG_FRA || "preben@orvelo.no").split("@")[1];
+  const egen = epostAdr(env.SALG_FRA || "salg@orvelo.no").split("@")[1];
   if (!fra || fra.endsWith("@" + egen) || /^(mailer-daemon|postmaster|no-?reply|noreply|bounce)/i.test(fra)) return { hva: "ignorert", grunn: "avsender" };
   const orgnr = (await env.KUNDER.get("salgepost:" + fra)) || (await env.KUNDER.get("salgdomene:" + fra.split("@")[1]));
   const f = orgnr && (await env.KUNDER.get("salg:" + orgnr, "json"));
@@ -4729,7 +4729,7 @@ Svar bare med JSON: {"kategori":"","svar":"","trenger_preben":false,"oppsummerin
     const tekstUt = `${svarTekst}\n\nHilsen\nPreben Hilleren\nOrvelo · 412 32 557\n\n--\nDette svaret er skrevet av Orvelos KI-assistent. Preben leser med og tar over når det trengs.`;
     try {
       await sendEpost(env, { til: fra, emne, tekst: tekstUt, html: `<div style="font:15px/1.55 Arial,sans-serif;color:#1d1b2b;max-width:600px">${esc(tekstUt).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>').replace(/\n/g, "<br>")}</div>`,
-        fra: env.SALG_FRA || "Preben i Orvelo <preben@orvelo.no>", svarTil: env.SALG_SVAR_TIL || env.VARSEL_EPOST || "hilleren.bedrift@gmail.com",
+        fra: env.SALG_FRA || "Preben i Orvelo <salg@orvelo.no>", svarTil: env.SALG_SVAR_TIL || "orvelo@epost.no",
         bcc: env.VARSEL_EPOST || "hilleren.bedrift@gmail.com", hoder: inn.messageId ? { "In-Reply-To": inn.messageId, References: inn.messageId } : undefined });
       sendt = true;
       f.samtale.push({ tid: new Date().toISOString(), fra: "agent", tekst: svarTekst });
