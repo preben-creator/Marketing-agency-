@@ -146,7 +146,7 @@ h1,h2,h3{font-family:var(--font-head);line-height:1.15;margin:0 0 .4em;letter-sp
     </aside>
   </div>
 
-  <p class="foot">Dette er en demo laget av Orvelo. Timer som bestilles her lagres ikke og havner ikke i <span id="footSted">bedriftens</span> ekte system. Orvelo lagrer et kort sammendrag av samtalen (ikke lydopptak) i 62 dager, til bedriftens ukesrapport.<br>Spørsmål? Kontakt Preben på <a href="mailto:hilleren.bedrift@gmail.com">hilleren.bedrift@gmail.com</a>.</p>
+  <p class="foot">Dette er en demo laget av Orvelo. Timer som bestilles her lagres ikke og havner ikke i <span id="footSted">bedriftens</span> ekte system. Orvelo lagrer et kort sammendrag av samtalen (ikke lydopptak) i 62 dager, til bedriftens ukesrapport.<br>Spørsmål? Kontakt Preben på <a href="mailto:preben@orvelo.no">preben@orvelo.no</a>.</p>
 </div>
 
 <script>
@@ -195,7 +195,7 @@ settOrd();
 
 /* ================= Fakta om tjenesten (for spørsmål fra salongeieren) ================= */
 function produkt(){ return `
-Tjenesten heter KI-sekretær og leveres av Orvelo, ved Preben Hilleren (e-post hilleren.bedrift@gmail.com).
+Tjenesten heter KI-sekretær og leveres av Orvelo, ved Preben Hilleren (e-post preben@orvelo.no).
 Det personen opplever akkurat nå, er hvordan sekretæren kan ta telefonen for ${STED}.
 
 Hva den gjør i dag: Orvelo lager en egen KI-sekretær for bedriften ut fra nettsiden, med tjenestene, prisene og åpningstidene deres. Den snakker og skriver norsk og svarer kundene døgnet rundt. Den svarer på spørsmål om tjenester, priser og åpningstider og foreslår ledige tider. Kundene når den via en lenke eller knapp på nettsiden, Google-profilen og sosiale medier. Bedriften får en egen side der de selv retter tjenester, priser, varighet og åpningstider, og endringene gjelder med en gang. Den sier alltid fra at den er en digital assistent.
@@ -645,7 +645,7 @@ async function oppstart(){
       const b=$("banner");b.style.display="block";b.textContent=(e.message||"Fant ikke sekretæren")+" Spør Preben om en ny lenke.";
       $("who").textContent="Fant ikke sekretæren";
       $("hTitle").textContent="Lenken virker ikke";
-      $("hLead").textContent="Kontakt Preben på hilleren.bedrift@gmail.com, så får du en ny lenke.";
+      $("hLead").textContent="Kontakt Preben på preben@orvelo.no, så får du en ny lenke.";
       $("chips").innerHTML=""; $("compose").hidden=true;
       return;
     }
