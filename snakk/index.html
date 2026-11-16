@@ -475,10 +475,15 @@ async function kobleTil(medMikrofon){
       analyser=ctx.createAnalyser();analyser.fftSize=512;outGain.connect(analyser);}
     await ctx.resume();
     let inRate=RATES.includes(ctx.sampleRate)?ctx.sampleRate:48000;
+    // Er mikrofonen alt tillatt (eller brukes den ikke), hentes nøkkelen samtidig med mikrofonen, så samtalen starter raskere.
+    // Spør nettleseren om lov, hentes nøkkelen først etterpå (den varer bare 60 sekunder, og avslag skal ikke bruke av dagskvoten).
+    let tokenP=null;
+    const tidlig=!medMikrofon || await navigator.permissions?.query({name:"microphone"}).then(x=>x.state==="granted").catch(()=>false);
+    if(tidlig){tokenP=hentToken();tokenP.catch(()=>{});}
     if(medMikrofon){
       micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
     }
-    const token=await hentToken();
+    const token=await (tokenP||hentToken());
     ws=new WebSocket(`wss://api.x.ai/v1/realtime?model=${MODEL}`,[`xai-client-secret.${token}`]);
     await new Promise((ok,feil)=>{ws.onopen=ok;ws.onerror=()=>feil(new Error("Fikk ikke kontakt med sekretæren"));setTimeout(()=>feil(new Error("Tidsavbrudd")),12000);});
     connected=true; startTid=Date.now(); sisteAktivitet=Date.now();

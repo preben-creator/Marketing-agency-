@@ -136,27 +136,56 @@
       logg.appendChild(sk); rull();
       // Hilsenen (første melding) er ikke fra Grok, så den sendes ikke med
       var historikk = meldinger.slice(meldinger[0] && meldinger[0].role === "assistant" ? 1 : 0);
-      hent(API + "/chat/melding", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kunde: KUNDE, k: K || undefined, okt: OKT, meldinger: historikk }) })
-        .then(function (d) {
-          sk.remove();
-          if (d.svar) {
-            var svar = { role: "assistant", content: d.svar };
-            meldinger.push(svar); lagre(); boble(svar);
-            (d.handlinger || []).forEach(function (h) {
-              merknad("info", h === "booket" ? (c.prov ? "Timen er booket (prøvemodus, ingen SMS sendt)." : "Timen er booket. Du får en SMS med bekreftelse.")
-                : h === "time" ? (c.prov ? "Timeforespørsel registrert (prøvemodus, ikke sendt)." : "Forespørselen er sendt til " + (c.kortnavn || c.navn) + ".")
-                : (c.prov ? "Beskjed registrert (prøvemodus, ikke sendt)." : "Beskjeden er sendt til " + (c.kortnavn || c.navn) + "."));
-            });
-          } else {
-            meldinger.pop(); lagre(); mEl.remove();
-            merknad("feil", d.feil || "Noe gikk galt. Prøv igjen.");
-            felt.value = t;
+      function ferdig(d) {
+        sk.remove();
+        if (d.svar) {
+          var svar = { role: "assistant", content: d.svar };
+          meldinger.push(svar); lagre();
+          if (aEl) aEl.innerHTML = format(d.svar); else boble(svar);
+          (d.handlinger || []).forEach(function (h) {
+            merknad("info", h === "booket" ? (c.prov ? "Timen er booket (prøvemodus, ingen SMS sendt)." : "Timen er booket. Du får en SMS med bekreftelse.")
+              : h === "time" ? (c.prov ? "Timeforespørsel registrert (prøvemodus, ikke sendt)." : "Forespørselen er sendt til " + (c.kortnavn || c.navn) + ".")
+              : (c.prov ? "Beskjed registrert (prøvemodus, ikke sendt)." : "Beskjeden er sendt til " + (c.kortnavn || c.navn) + "."));
+          });
+        } else {
+          if (aEl) aEl.remove();
+          meldinger.pop(); lagre(); mEl.remove();
+          merknad("feil", d.feil || "Noe gikk galt. Prøv igjen.");
+          felt.value = t;
+        }
+        rull();
+      }
+      // Svaret strømmes: teksten vises mens sekretæren skriver. Svarer workeren med vanlig JSON (eldre versjon), brukes det.
+      var aEl = null, vist = "";
+      fetch(API + "/chat/melding", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kunde: KUNDE, k: K || undefined, okt: OKT, meldinger: historikk, strom: true }) })
+        .then(function (r) {
+          var type = r.headers.get("Content-Type") || "";
+          if (type.indexOf("text/event-stream") < 0 || !r.body || !r.body.getReader) return r.json().catch(function () { return {}; }).then(ferdig);
+          var rd = r.body.getReader(), dec = new TextDecoder(), buf = "", slutt = null;
+          function hendelse(l) {
+            if (l.indexOf("data:") !== 0) return;
+            var d; try { d = JSON.parse(l.slice(5)); } catch (e) { return; }
+            if (typeof d.t === "string") {
+              vist += d.t;
+              if (!aEl) { sk.remove(); aEl = boble({ role: "assistant", content: "" }); }
+              aEl.innerHTML = format(vist.replace(/\*\*/g, "").replace(/^\s+/, ""));
+              rull();
+            } else if (d.ferdig || d.feil) slutt = d;
           }
-          rull();
+          function les() {
+            return rd.read().then(function (x) {
+              if (x.done) { if (buf) hendelse(buf); return ferdig(slutt || { feil: "Svaret ble avbrutt. Prøv igjen." }); }
+              buf += dec.decode(x.value, { stream: true });
+              var n;
+              while ((n = buf.indexOf("\n")) >= 0) { hendelse(buf.slice(0, n).replace(/\r$/, "")); buf = buf.slice(n + 1); }
+              return les();
+            });
+          }
+          return les();
         })
         .catch(function () {
-          sk.remove(); meldinger.pop(); lagre(); mEl.remove(); felt.value = t;
+          sk.remove(); if (aEl) aEl.remove(); meldinger.pop(); lagre(); mEl.remove(); felt.value = t;
           merknad("feil", "Fikk ikke kontakt. Sjekk nettet og prøv igjen.");
         })
         .then(function () { opptatt = false; send.disabled = false; felt.focus(); });
