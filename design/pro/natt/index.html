@@ -239,6 +239,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
 <script>/* Inn-animasjoner bare når Motion faktisk kjører */
 if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentElement.classList.add("anim");setTimeout(function(){if(!window.__orveloPro)document.documentElement.classList.remove("anim")},2500)}</script>
 <script src="../../../assets/vendor/motion-12.23.12.js" defer></script>
+<script src="../robot.js" defer></script>
 <script src="../pro.js" defer></script>
 </head>
 <body>
@@ -261,7 +262,7 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
   <section class="hero hero--pro">
     <div class="hero-bg" aria-hidden="true"><i></i><i></i><i></i></div>
     <div class="hero-copy">
-      <a class="hero-badge" href="#sporsmal"><b>Nytt</b> Velg stemme: Petter eller Eva</a>
+      <a class="hero-badge" href="#assistentene"><b>Nytt</b> Velg stemme: Petter eller Eva</a>
       <div class="eyebrow">For håndverkere og servicebedrifter</div>
       <h1>Din egen KI-sekretær. <span class="grad">Svarer kundene døgnet rundt.</span></h1>
       <p class="lead">Orvelo lager en KI-sekretær for firmaet ditt. Den kjenner tjenestene, prisene og åpningstidene dine, snakker og skriver norsk, og svarer kundene døgnet rundt via en lenke på nettsiden din. Når kunden vil ha en avtale, foreslår den ledige tider.</p>
@@ -273,10 +274,10 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
     </div>
     <div class="hero-visual" aria-hidden="true">
       <img class="figur figur--h" src="../../../assets/figur.svg" alt="" width="210" height="245">
-      <div class="orb-wrap" data-orb><div class="orb orb--petter"><i class="orb-core"></i><i class="orb-shine"></i><div class="orb-face"><i></i><i></i></div></div><i class="orb-ring"></i></div>
+      <div class="robot robot--hero" data-robot="petter"></div>
       <div class="hv-3d">
       <div class="call">
-        <div class="call-top"><div class="orb-wrap call-av" data-orb><div class="orb orb--petter"><i class="orb-core"></i><i class="orb-shine"></i><div class="orb-face"><i></i><i></i></div></div><i class="orb-ring"></i></div><div><b>Petter · Hansen Rør AS</b><small>KI-sekretær på nettsiden</small></div><span class="call-live">Svarer nå</span></div>
+        <div class="call-top"><div class="robot call-av" data-robot="petter"></div><div><b>Petter · Hansen Rør AS</b><small>KI-sekretær på nettsiden</small></div><span class="call-live">Svarer nå</span></div>
         <div class="call-body">
           <div class="cb cb--k"><small>Kunde</small>Hei! Vasken lekker. Har dere tid denne uka?</div>
           <div class="cb cb--p"><small>Petter</small>Det ordner vi. Jeg har ledig torsdag kl. 09.00 eller fredag kl. 13.00.</div>
@@ -306,13 +307,13 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
     </div>
     <div class="meet-grid" data-stagger>
       <article class="meet-card" style="--o2:#1f9c6e">
-        <div class="orb-wrap" data-orb><div class="orb orb--petter"><i class="orb-core"></i><i class="orb-shine"></i><div class="orb-face"><i></i><i></i></div></div><i class="orb-ring"></i></div>
+        <div class="robot" data-robot="petter"></div>
         <div><h3>Petter</h3><span class="rolle">Mannsstemme</span>
           <ul><li>Rolig og tydelig norsk</li><li>Svarer i chat og med stemme</li><li>Foreslår ledige tider</li></ul>
           <a class="btn btn--ghost" href="#demo">Prøv demoen</a></div>
       </article>
       <article class="meet-card" style="--o2:#e2674b">
-        <div class="orb-wrap" data-orb><div class="orb orb--eva"><i class="orb-core"></i><i class="orb-shine"></i><div class="orb-face"><i></i><i></i></div></div><i class="orb-ring"></i></div>
+        <div class="robot" data-robot="eva"></div>
         <div><h3>Eva</h3><span class="rolle">Kvinnestemme</span>
           <ul><li>Varm og vennlig norsk</li><li>Svarer i chat og med stemme</li><li>Foreslår ledige tider</li></ul>
           <a class="btn btn--ghost" href="#demo">Prøv demoen</a></div>
@@ -349,8 +350,9 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
     <div class="phone">
       <div class="screen">
         <div class="callbar" id="callbar">
+          <div class="robot robot--demo" data-robot="petter"></div>
           <div class="who" id="who">Hansen Rør AS</div>
-          <div class="sub">Stemmesamtale på nettsiden · Orvelo KI-sekretær</div>
+          <div class="sub">Petter · Orvelo KI-sekretær</div>
           <div class="status"><span class="dot"></span><span id="statusText">Venter på kunde</span> <span id="timer"></span></div>
           <div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
         </div>
@@ -1236,8 +1238,8 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
   }
   function playRecorded(i, myRun){
     return new Promise(res=>{
-      const a=new Audio(`../../../audio/${key}/${i}.mp3`); curAudio=a;
-      a.onended=()=>res(true); a.onerror=()=>res(null);
+      const a=new Audio(`../../../audio/${key}/${i}.mp3`); curAudio=a; window.__orveloLyd=a;
+      a.onended=()=>{ window.__orveloLyd=null; res(true); }; a.onerror=()=>{ window.__orveloLyd=null; res(null); };
       a.play().catch(()=>res(null));
       if(myRun!==run){ a.pause(); res(false); }
     });
@@ -1310,8 +1312,8 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
         bubble(type,text);
         if(type==="ai") callbar.classList.add("talking");
         const spoke=await speak(text,type,myRun,i);
-        callbar.classList.remove("talking");
         if(!spoke) await sleep(Math.min(3200, 900 + text.length*28));
+        callbar.classList.remove("talking");
       }
       else if(type==="set"){
         $("#cardJob").classList.add("on");

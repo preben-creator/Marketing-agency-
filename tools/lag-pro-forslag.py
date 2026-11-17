@@ -20,7 +20,7 @@ ORB = '''<div class="orb-wrap{ekstra}" data-orb><div class="orb orb--{navn}"><i 
 HERO = '''<section class="hero hero--pro">
     <div class="hero-bg" aria-hidden="true"><i></i><i></i><i></i></div>
     <div class="hero-copy">
-      <a class="hero-badge" href="#sporsmal"><b>Nytt</b> Velg stemme: Petter eller Eva</a>
+      <a class="hero-badge" href="#assistentene"><b>Nytt</b> Velg stemme: Petter eller Eva</a>
       <div class="eyebrow">For håndverkere og servicebedrifter</div>
       <h1>Din egen KI-sekretær. <span class="grad">Svarer kundene døgnet rundt.</span></h1>
       <p class="lead">Orvelo lager en KI-sekretær for firmaet ditt. Den kjenner tjenestene, prisene og åpningstidene dine, snakker og skriver norsk, og svarer kundene døgnet rundt via en lenke på nettsiden din. Når kunden vil ha en avtale, foreslår den ledige tider.</p>
@@ -78,9 +78,10 @@ HERO = '''<section class="hero hero--pro">
       </article>
     </div>
   </section>'''
-HERO = (HERO.replace('@ORB_P@', ORB.format(ekstra='', navn='petter'))
-        .replace('@ORB_AV@', ORB.format(ekstra=' call-av', navn='petter'))
-        .replace('@ORB_E@', ORB.format(ekstra='', navn='eva')))
+HERO = (HERO.replace('@ORB_P@', '<div class="robot robot--hero" data-robot="petter"></div>', 1)
+        .replace('@ORB_AV@', '<div class="robot call-av" data-robot="petter"></div>')
+        .replace('@ORB_P@', '<div class="robot" data-robot="petter"></div>')
+        .replace('@ORB_E@', '<div class="robot" data-robot="eva"></div>'))
 
 DEMO_HEAD = '''<div class="demo-head" data-reveal>
     <div class="eyebrow">Prøv selv</div>
@@ -112,7 +113,7 @@ def bygg(kilde: str, tema: str, prefiks: str, pro: str) -> str:
         '<script>/* Inn-animasjoner bare når Motion faktisk kjører */\n'
         'if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentElement.classList.add("anim");'
         'setTimeout(function(){if(!window.__orveloPro)document.documentElement.classList.remove("anim")},2500)}</script>\n'
-        f'<script src="{prefiks}assets/vendor/motion-12.23.12.js" defer></script>\n<script src="{pro}pro.js" defer></script>\n'
+        f'<script src="{prefiks}assets/vendor/motion-12.23.12.js" defer></script>\n<script src="{pro}robot.js" defer></script>\n<script src="{pro}pro.js" defer></script>\n'
     )
     s = s.replace("</style>\n</head>", "</style>" + hode + "</head>", 1)
     s = s.replace('<body>\n', '<body>\n<div class="progress" aria-hidden="true"></div>\n', 1)
@@ -126,6 +127,8 @@ def bygg(kilde: str, tema: str, prefiks: str, pro: str) -> str:
     # Demo: overskrift og stage som glir inn
     s = s.replace('<section id="demo" class="demo" aria-label="Demo">\n  ', '<section id="demo" class="demo" aria-label="Demo">\n  ' + DEMO_HEAD, 1)
     s = s.replace('<div class="stage">', '<div class="stage" data-reveal>', 1)
+    s = s.replace('<div class="who" id="who">', '<div class="robot robot--demo" data-robot="petter"></div>\n          <div class="who" id="who">', 1)
+    s = s.replace('Stemmesamtale på nettsiden · Orvelo KI-sekretær', 'Petter · Orvelo KI-sekretær', 1)
     # Slik virker det, før «Hva du får»
     s = s.replace('<section class="sec" id="tjenester"', STEG + '<section class="sec" id="tjenester"', 1)
     # Inn-animasjoner

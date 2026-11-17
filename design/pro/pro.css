@@ -219,3 +219,24 @@ html.anim .hero-copy>*,html.anim .call,html.anim .call-body>*,html.anim .toast{o
 @media (prefers-reduced-motion:reduce){.orb-core{animation:none}.hv-3d{transform:none}}
 html.anim .orb-wrap[data-orb]{opacity:0}
 @media (prefers-reduced-motion:reduce){html.anim .orb-wrap[data-orb]{opacity:1}}
+
+/* ---------- Petter og Eva som menneske-roboter (design/pro/robot.js) ---------- */
+.robot{aspect-ratio:200/260;transform:perspective(800px) rotateY(var(--ry,0deg)) rotateX(var(--rx,0deg));transition:transform .35s cubic-bezier(.22,1,.36,1);filter:drop-shadow(0 26px 34px rgba(0,0,0,.45))}
+.robot svg{width:100%;height:100%;display:block;overflow:visible}
+.robot.snakker{filter:drop-shadow(0 26px 34px rgba(0,0,0,.45)) drop-shadow(0 0 18px color-mix(in srgb,var(--accent) 45%,transparent))}
+.hero-visual{display:flex;flex-direction:column;align-items:flex-end}
+.hero-visual>.robot--hero{position:relative;width:250px;margin:0 105px -62px 0;z-index:0}
+.hv-3d{width:100%}
+.hero-visual>.robot--hero::before{content:"";position:absolute;inset:-20% -30%;z-index:-1;background:radial-gradient(circle at 50% 40%,color-mix(in srgb,var(--accent) 30%,transparent),transparent 60%)}
+.hv-3d{position:relative;z-index:1}
+.call-av.robot{width:46px;height:46px;aspect-ratio:auto;border-radius:14px;overflow:hidden;background:radial-gradient(circle at 50% 30%,#1d3a2e,#08100c);filter:none;transform:none}
+.call-av.robot svg{width:100%;height:auto;transform:scale(1.7) translateY(14%)}
+.robot--demo{width:118px;margin:-8px auto 2px;filter:drop-shadow(0 12px 18px rgba(0,0,0,.45))}
+.screen{height:720px}
+.meet-card .robot{width:170px;flex:none}
+@media (max-width:960px){
+  .hero-visual{padding-top:0}
+  .hero-visual{align-items:center}
+  .hero-visual>.robot--hero{width:190px;margin:0 auto -64px}
+}
+@media (max-width:520px){.meet-card .robot{width:140px}}
