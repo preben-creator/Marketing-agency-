@@ -36,6 +36,46 @@
   const { animate, inView, stagger, scroll } = M;
   const fjær = { type: "spring", stiffness: 140, damping: 20, mass: 0.9 };
 
+  // KI-assistentene: øynene følger musa, blunker av og til, og kula vipper i 3D
+  const kuler = Array.from(document.querySelectorAll("[data-orb]"));
+  const blunk = (k) => animate(k.querySelectorAll(".orb-face i"), { scaleY: [1, 0.1, 1] }, { duration: 0.28, ease: "easeInOut" });
+  const pust = (k) => animate(k.querySelector(".orb-ring"), { opacity: [0.9, 0], scale: [0.9, 1.35] }, { duration: 1.1, ease: "easeOut" });
+  kuler.forEach((k, i) => {
+    animate(k, { scale: [0.6, 1], opacity: [0, 1] }, { type: "spring", stiffness: 160, damping: 14, delay: 0.3 + i * 0.1 });
+    setTimeout(() => blunk(k), 1400 + i * 300);
+    k.addEventListener("pointerenter", () => { blunk(k); pust(k); });
+  });
+  let ventMus = false;
+  if (window.matchMedia("(hover: hover)").matches) {
+    window.addEventListener("pointermove", (e) => {
+      if (ventMus) return; ventMus = true;
+      requestAnimationFrame(() => {
+        ventMus = false;
+        kuler.forEach((k) => {
+          const r = k.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight) return;
+          const dx = (e.clientX - (r.left + r.width / 2)) / innerWidth, dy = (e.clientY - (r.top + r.height / 2)) / innerHeight;
+          const ansikt = k.querySelector(".orb-face");
+          ansikt.style.transform = `translate(calc(-50% + ${(dx * r.width * 0.22).toFixed(1)}px), calc(-50% + ${(dy * r.height * 0.18).toFixed(1)}px))`;
+        });
+      });
+    }, { passive: true });
+    // 3D-vipp på produktbildet og assistentkortene
+    const vipp = (flate, el, maks) => {
+      flate.addEventListener("pointermove", (e) => {
+        const r = flate.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+        animate(el, { rotateY: x * maks, rotateX: -y * maks }, { type: "spring", stiffness: 120, damping: 18 });
+      });
+      flate.addEventListener("pointerleave", () => animate(el, { rotateY: el.dataset.ry ? +el.dataset.ry : 0, rotateX: el.dataset.rx ? +el.dataset.rx : 0 }, { type: "spring", stiffness: 90, damping: 16 }));
+    };
+    const hv = document.querySelector(".hv-3d");
+    if (hv && window.innerWidth > 960) { hv.dataset.ry = "-9"; hv.dataset.rx = "5"; vipp(document.querySelector(".hero-visual"), hv, 16); }
+    document.querySelectorAll(".meet-card").forEach((c) => vipp(c, c, 10));
+  }
+  // Petter «snakker» når boblene hans dukker opp i hero
+  const heroKule = document.querySelector(".hero-visual > .orb-wrap");
+  if (heroKule) [1.4, 3.0].forEach((t) => setTimeout(() => pust(heroKule), t * 1000));
+
   // Rullelinje øverst
   const linje = document.querySelector(".progress");
   if (linje && scroll) scroll(animate(linje, { scaleX: [0, 1] }, { ease: "linear" }));

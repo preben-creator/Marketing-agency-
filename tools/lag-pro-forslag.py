@@ -15,6 +15,8 @@ TEMAER = {
     "varm": "Forslag 3: Varm",
 }
 
+ORB = '''<div class="orb-wrap{ekstra}" data-orb><div class="orb orb--{navn}"><i class="orb-core"></i><i class="orb-shine"></i><div class="orb-face"><i></i><i></i></div></div><i class="orb-ring"></i></div>'''
+
 HERO = '''<section class="hero hero--pro">
     <div class="hero-bg" aria-hidden="true"><i></i><i></i><i></i></div>
     <div class="hero-copy">
@@ -30,8 +32,10 @@ HERO = '''<section class="hero hero--pro">
     </div>
     <div class="hero-visual" aria-hidden="true">
       <img class="figur figur--h" src="assets/figur.svg" alt="" width="210" height="245">
+      @ORB_P@
+      <div class="hv-3d">
       <div class="call">
-        <div class="call-top"><span class="call-av">P</span><div><b>Petter · Hansen Rør AS</b><small>KI-sekretær på nettsiden</small></div><span class="call-live">Svarer nå</span></div>
+        <div class="call-top">@ORB_AV@<div><b>Petter · Hansen Rør AS</b><small>KI-sekretær på nettsiden</small></div><span class="call-live">Svarer nå</span></div>
         <div class="call-body">
           <div class="cb cb--k"><small>Kunde</small>Hei! Vasken lekker. Har dere tid denne uka?</div>
           <div class="cb cb--p"><small>Petter</small>Det ordner vi. Jeg har ledig torsdag kl. 09.00 eller fredag kl. 13.00.</div>
@@ -42,6 +46,7 @@ HERO = '''<section class="hero hero--pro">
         <div class="toast"><span class="ti">📅</span><div><b>Booket i kalenderen</b><span>Torsdag kl. 09.00 · Vasken lekker</span></div></div>
         <div class="toast"><span class="ti">✉️</span><div><b>SMS sendt til kunden</b><span>Bekreftelse og påminnelse</span></div></div>
       </div>
+      </div>
     </div>
   </section>
 
@@ -50,7 +55,32 @@ HERO = '''<section class="hero hero--pro">
     <li><b>0 kr</b><span>i oppstartspris</span></li>
     <li><b>14 dager</b><span>gratis prøvetid</span></li>
     <li><b>2 stemmer</b><span>Petter eller Eva, på norsk</span></li>
-  </ul>'''
+  </ul>
+
+  <section class="sec meet" id="assistentene" aria-labelledby="meetH">
+    <div class="sec-head">
+      <div class="eyebrow">KI-assistentene</div>
+      <h2 id="meetH">Møt Petter og Eva</h2>
+      <p>Sekretæren din snakker og skriver naturlig norsk. Du velger stemme, og hvor fort den snakker.</p>
+    </div>
+    <div class="meet-grid" data-stagger>
+      <article class="meet-card" style="--o2:#1f9c6e">
+        @ORB_P@
+        <div><h3>Petter</h3><span class="rolle">Mannsstemme</span>
+          <ul><li>Rolig og tydelig norsk</li><li>Svarer i chat og med stemme</li><li>Foreslår ledige tider</li></ul>
+          <a class="btn btn--ghost" href="#demo">Prøv demoen</a></div>
+      </article>
+      <article class="meet-card" style="--o2:#e2674b">
+        @ORB_E@
+        <div><h3>Eva</h3><span class="rolle">Kvinnestemme</span>
+          <ul><li>Varm og vennlig norsk</li><li>Svarer i chat og med stemme</li><li>Foreslår ledige tider</li></ul>
+          <a class="btn btn--ghost" href="#demo">Prøv demoen</a></div>
+      </article>
+    </div>
+  </section>'''
+HERO = (HERO.replace('@ORB_P@', ORB.format(ekstra='', navn='petter'))
+        .replace('@ORB_AV@', ORB.format(ekstra=' call-av', navn='petter'))
+        .replace('@ORB_E@', ORB.format(ekstra='', navn='eva')))
 
 DEMO_HEAD = '''<div class="demo-head" data-reveal>
     <div class="eyebrow">Prøv selv</div>
