@@ -44,7 +44,7 @@ async function tts(text, voice) {
     const res = await fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
       headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: TTS_MODELL, voice, input: text, instructions: TTS_STIL, response_format: "mp3" }),
+      body: JSON.stringify({ model: TTS_MODELL, voice, input: text, instructions: TTS_STIL, speed: Number(process.env.TTS_FART) || 0.9, response_format: "mp3" }),
     });
     if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
     return Buffer.from(await res.arrayBuffer());
