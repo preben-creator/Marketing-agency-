@@ -1067,7 +1067,7 @@ function rensTillegg(t = {}, profil = {}) {
   };
 }
 
-// Telefonlinjen: nummeret Ada svarer på for kunden (norsk, 8 siffer, også fasttelefon) -> +47XXXXXXXX
+// Telefonlinjen: nummeret Petter svarer på for kunden (norsk, 8 siffer, også fasttelefon) -> +47XXXXXXXX
 function linjeNr(v) {
   let s = String(v || "").replace(/[\s().-]/g, "");
   if (s.startsWith("0047")) s = "+" + s.slice(2);
@@ -1683,7 +1683,7 @@ async function tilleggRute(request, env, ctx, url) {
     if (body.tillegg) {
       const gammel = cfg.anmeldelse, gammelLinje = cfg.telefon.nummer;
       cfg = rensTillegg(body.tillegg, profil);
-      // Telefonlinjen: linje:<nummer> -> kunde-id, så orvelo-ring vet hvem Ada svarer for
+      // Telefonlinjen: linje:<nummer> -> kunde-id, så orvelo-ring vet hvem Petter svarer for
       if (cfg.telefon.nummer !== gammelLinje) {
         if (cfg.telefon.nummer) {
           const eier = await env.KUNDER.get("linje:" + cfg.telefon.nummer);
@@ -2461,7 +2461,7 @@ async function chatStat(env, id, felt, n = 1) {
 async function chatVerktoy(navn, a, kx) {
   const { env, id, profil, prov, ctx, url } = kx;
   const kilde = kx.kilde === "telefon" ? "telefon" : "chat";
-  const fraKanal = kilde === "telefon" ? "telefonen" : "chatten", viaKanal = kilde === "telefon" ? "på telefonen (Ada svarte)" : "via chatten på nettsiden";
+  const fraKanal = kilde === "telefon" ? "telefonen" : "chatten", viaKanal = kilde === "telefon" ? "på telefonen (Petter svarte)" : "via chatten på nettsiden";
   const sted = profil.sted || (profil.type === "befaring" ? "firmaet" : "salongen");
   const idag = osloNaa().iso;
   if (!kx.innboks) kx.innboks = (await env.KUNDER.get("chatinnboks:" + id, "json")) || [];
@@ -2622,7 +2622,7 @@ async function chatTilgang(env, url, origin, id, k) {
   return { profil: normaliser(profilRaw), chat, prov, cfg, direkte: cfg.kalender.pa };
 }
 
-// ---------- Telefonlinje: Ada svarer kundens egen telefon ----------
+// ---------- Telefonlinje: Petter svarer kundens egen telefon ----------
 // Kunden viderekobler telefonen sin til et Orvelo-nummer (Telnyx). orvelo-ring svarer, finner kunden i
 // linje:<nummer> og kaller disse endepunktene for å få sekretærens instruksjoner og kjøre verktøyene:
 //   POST /telefon/oppsett {kunde, fra}                         -> instruksjoner, verktøy og første replikk
