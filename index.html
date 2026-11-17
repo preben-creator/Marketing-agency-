@@ -1232,15 +1232,15 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
   function useRecorded(i){ const m=recorded[key]; return !!(m && m.steps.includes(i) && firm()===m.firm); }
   function updateVoiceLabel(){
     const lbl=document.getElementById("voiceInfo"); const m=recorded[key];
-    if(lbl && m && firm()===m.firm) lbl.textContent="Stemme: Grok (xAI)";
+    if(lbl && m && firm()===m.firm) lbl.textContent="Stemme: Petter (OpenAI)";
     else loadVoices();
   }
-  // Tempo i demoen: kunden som ringer inn +20 %, Petter +5 % (tonehøyden beholdes)
+  // Tempo for nettleserstemmen (reserve): kunden +20 %, Petter +5 %. Lydfilene er laget med samtalemodellen
+  // i naturlig tempo (2026-11-17), så de spilles i vanlig fart: speeding gjør stemmen mer robotaktig.
   const TEMPO={ ai:1.05, kunde:1.2 };
-  function playRecorded(i, myRun, who){
+  function playRecorded(i, myRun){
     return new Promise(res=>{
       const a=new Audio(`audio/${key}/${i}.mp3`); curAudio=a; window.__orveloLyd=a;
-      a.preservesPitch=true; a.playbackRate = who==="ai" ? TEMPO.ai : TEMPO.kunde;
       a.onended=()=>{ window.__orveloLyd=null; res(true); }; a.onerror=()=>{ window.__orveloLyd=null; res(null); };
       a.play().catch(()=>res(null));
       if(myRun!==run){ a.pause(); res(false); }
@@ -1248,7 +1248,7 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
   }
   async function speak(text, who, myRun, i){
     if(voiceOn && myRun===run && useRecorded(i)){
-      const r=await playRecorded(i, myRun, who);
+      const r=await playRecorded(i, myRun);
       if(r!==null) return r;
     }
     return speakTTS(text, who, myRun);
