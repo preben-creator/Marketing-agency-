@@ -1,19 +1,24 @@
-// Lager ferdige lydfiler for demosamtalene med xAI (Grok) tekst-til-tale.
+// Lager ferdige lydfiler for demosamtalene med tekst-til-tale: OpenAI (Petter, stemmen cedar) når OPENAI_API_KEY
+// finnes, ellers xAI (Grok) som før.
 //
 //   node tools/generate-voice.mjs --test     # bare én testsetning -> audio/test.mp3
 //   node tools/generate-voice.mjs            # alle samtaler
 //   node tools/generate-voice.mjs ror el     # bare noen bransjer
 //
-// Nøkkelen leses fra miljøvariabelen XAI_API_KEY og skal aldri inn i repoet.
+// Nøkkelen leses fra miljøvariabelen OPENAI_API_KEY (eller XAI_API_KEY) og skal aldri inn i repoet.
 // Filene havner i audio/<bransje>/<steg>.mp3, og audio/manifest.json forteller siden hva som finnes.
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 
-const KEY = process.env.XAI_API_KEY;
-if (!KEY) { console.error("Mangler XAI_API_KEY i miljøet."); process.exit(1); }
+const OPENAI = !!process.env.OPENAI_API_KEY && process.env.TTS_MOTOR !== "grok";
+const KEY = OPENAI ? process.env.OPENAI_API_KEY : process.env.XAI_API_KEY;
+if (!KEY) { console.error("Mangler OPENAI_API_KEY (eller XAI_API_KEY) i miljøet."); process.exit(1); }
 
-const AI_VOICE = process.env.AI_VOICE || "liora";   // sekretæren (Preben valgte Liora 2026-11-09)
-const CUST_VOICE = process.env.CUST_VOICE || "leo"; // kunden (mann)
-const CUST_VOICE_F = process.env.CUST_VOICE_F || "eve"; // kunden (kvinne)
+// Sekretæren er Petter (Preben valgte OpenAI-stemmen cedar 2026-11-17). Kundene får andre stemmer.
+const AI_VOICE = process.env.AI_VOICE || (OPENAI ? "cedar" : "liora");
+const CUST_VOICE = process.env.CUST_VOICE || (OPENAI ? "ash" : "leo");       // kunden (mann)
+const CUST_VOICE_F = process.env.CUST_VOICE_F || (OPENAI ? "coral" : "eve"); // kunden (kvinne)
+const TTS_MODELL = process.env.TTS_MODELL || "gpt-4o-mini-tts";
+const TTS_STIL = "Snakk naturlig norsk bokmål med østlandsk uttale. Vennlig, rolig og tydelig, som i en vanlig telefonsamtale.";
 const FEMALE = /^(Kari|Anne|Hilde|Maria|Ingrid|Sofie|Nina|Silje|Kristin|Ida|Camilla|Hanne)\b/;
 const LANGUAGE = process.env.TTS_LANGUAGE || "no";  // norsk er ikke offisielt støttet; prøv "no", ellers "auto"
 
@@ -35,6 +40,15 @@ function speakable(text) {
 
 async function tts(text, voice) {
   text = speakable(text);
+  if (OPENAI) {
+    const res = await fetch("https://api.openai.com/v1/audio/speech", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: TTS_MODELL, voice, input: text, instructions: TTS_STIL, response_format: "mp3" }),
+    });
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+    return Buffer.from(await res.arrayBuffer());
+  }
   const res = await fetch("https://api.x.ai/v1/tts", {
     method: "POST",
     headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },

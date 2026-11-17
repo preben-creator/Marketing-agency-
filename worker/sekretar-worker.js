@@ -162,7 +162,9 @@ async function hovedFetch(request, env, ctx) {
       if (origin && !sameOrigin && !ALLOWED_ORIGINS.includes(origin)) {
         return json({ feil: "Ikke tillatt" }, 403, origin);
       }
-      if (!env.XAI_API_KEY) return json({ feil: "Demoen er ikke satt opp ennå (mangler nøkkel)." }, 500, origin);
+      // Stemmen: OpenAI Realtime (Petter, stemmen cedar) når OPENAI_API_KEY finnes, ellers Grok. MOTOR_NETT=grok tvinger Grok.
+      const brukOpenai = !!env.OPENAI_API_KEY && String(env.MOTOR_NETT || "").toLowerCase() !== "grok";
+      if (!brukOpenai && !env.XAI_API_KEY) return json({ feil: "Demoen er ikke satt opp ennå (mangler nøkkel)." }, 500, origin);
 
       let body = {};
       try { body = await request.json(); } catch {}
@@ -178,19 +180,28 @@ async function hovedFetch(request, env, ctx) {
         return json({ feil: "Demoen har nådd dagens grense for samtaler. Prøv igjen i morgen, eller skriv til sekretæren i stedet." }, 429, origin);
       }
 
-      const r = await fetch("https://api.x.ai/v1/realtime/client_secrets", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${env.XAI_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ expires_after: { seconds: 60 } }),
-      });
+      const modell = env.OPENAI_MODELL || "gpt-realtime-2.1";
+      const r = brukOpenai
+        ? await fetch("https://api.openai.com/v1/realtime/client_secrets", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ expires_after: { anchor: "created_at", seconds: 60 }, session: { type: "realtime", model: modell } }),
+        })
+        : await fetch("https://api.x.ai/v1/realtime/client_secrets", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${env.XAI_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ expires_after: { seconds: 60 } }),
+        });
       if (!r.ok) {
         const t = await r.text();
-        console.log("xAI svarte", r.status, t.slice(0, 300));
+        console.log(brukOpenai ? "OpenAI svarte" : "xAI svarte", r.status, t.slice(0, 300));
         return json({ feil: "Sekretæren er ikke tilgjengelig akkurat nå. Prøv igjen senere." }, 502, origin);
       }
       const d = await r.json();
       if (env._maal && kunde) { env._maal.id = kunde; env._maal.taleokter++; }
-      return json({ value: d.value, expires_at: d.expires_at }, 200, origin);
+      return json(brukOpenai
+        ? { value: d.value, expires_at: d.expires_at, motor: "openai", modell, stemme: env.OPENAI_STEMME || "cedar" }
+        : { value: d.value, expires_at: d.expires_at, motor: "grok" }, 200, origin);
     }
 
     if (url.pathname === "/kunde") {
@@ -1067,7 +1078,7 @@ function rensTillegg(t = {}, profil = {}) {
   };
 }
 
-// Telefonlinjen: nummeret Liora svarer på for kunden (norsk, 8 siffer, også fasttelefon) -> +47XXXXXXXX
+// Telefonlinjen: nummeret Petter svarer på for kunden (norsk, 8 siffer, også fasttelefon) -> +47XXXXXXXX
 function linjeNr(v) {
   let s = String(v || "").replace(/[\s().-]/g, "");
   if (s.startsWith("0047")) s = "+" + s.slice(2);
@@ -1683,7 +1694,7 @@ async function tilleggRute(request, env, ctx, url) {
     if (body.tillegg) {
       const gammel = cfg.anmeldelse, gammelLinje = cfg.telefon.nummer;
       cfg = rensTillegg(body.tillegg, profil);
-      // Telefonlinjen: linje:<nummer> -> kunde-id, så orvelo-ring vet hvem Liora svarer for
+      // Telefonlinjen: linje:<nummer> -> kunde-id, så orvelo-ring vet hvem Petter svarer for
       if (cfg.telefon.nummer !== gammelLinje) {
         if (cfg.telefon.nummer) {
           const eier = await env.KUNDER.get("linje:" + cfg.telefon.nummer);
@@ -2461,7 +2472,7 @@ async function chatStat(env, id, felt, n = 1) {
 async function chatVerktoy(navn, a, kx) {
   const { env, id, profil, prov, ctx, url } = kx;
   const kilde = kx.kilde === "telefon" ? "telefon" : "chat";
-  const fraKanal = kilde === "telefon" ? "telefonen" : "chatten", viaKanal = kilde === "telefon" ? "på telefonen (Liora svarte)" : "via chatten på nettsiden";
+  const fraKanal = kilde === "telefon" ? "telefonen" : "chatten", viaKanal = kilde === "telefon" ? "på telefonen (Petter svarte)" : "via chatten på nettsiden";
   const sted = profil.sted || (profil.type === "befaring" ? "firmaet" : "salongen");
   const idag = osloNaa().iso;
   if (!kx.innboks) kx.innboks = (await env.KUNDER.get("chatinnboks:" + id, "json")) || [];
@@ -2622,7 +2633,7 @@ async function chatTilgang(env, url, origin, id, k) {
   return { profil: normaliser(profilRaw), chat, prov, cfg, direkte: cfg.kalender.pa };
 }
 
-// ---------- Telefonlinje: Liora svarer kundens egen telefon ----------
+// ---------- Telefonlinje: Petter svarer kundens egen telefon ----------
 // Kunden viderekobler telefonen sin til et Orvelo-nummer (Telnyx). orvelo-ring svarer, finner kunden i
 // linje:<nummer> og kaller disse endepunktene for å få sekretærens instruksjoner og kjøre verktøyene:
 //   POST /telefon/oppsett {kunde, fra}                         -> instruksjoner, verktøy og første replikk

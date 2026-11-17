@@ -216,8 +216,10 @@ Ting du IKKE vet sikkert, og som du derfor skal si at Preben svarer på: hvilket
 const P = new URLSearchParams(location.search);
 const TOKEN_URL = P.get("api") || "/token";       // samme adresse som siden (Cloudflare Worker)
 const DEMO_KODE = P.get("k") || "";
-const MODEL = "grok-voice-latest";
-const VOICE = P.get("stemme") || "ara";
+const MODEL = "grok-voice-latest";        // reserve hvis serveren gir Grok
+let MOTOR = "grok", OPENAI_MODELL = "gpt-realtime-2.1"; // settes av /token: «openai» = Petter-stemmen (cedar)
+let VOICE = P.get("stemme") || "ara";
+const FUNKSJONSNAVN = {};                 // OpenAI: call_id -> verktøynavn
 const MAX_MIN = 10;          // samtalen avsluttes automatisk etter 10 min
 const STILLE_SEK = 75;       // og etter 75 sekunder uten at noen sier noe
 const TZ = "Europe/Oslo";
@@ -428,7 +430,7 @@ ${produkt()}
 /* ================= Lyd og sanntidstilkobling ================= */
 let ws=null, ctx=null, micStream=null, micNode=null, srcNode=null, analyser=null;
 let playHead=0, sources=[], muted=false, connected=false, callActive=false, aiTalking=false;
-let startTid=0, sisteAktivitet=0, timerId=0, curAiEl=null, curAiText="", meterId=0;
+let startTid=0, sisteAktivitet=0, timerId=0, curAiEl=null, curAiText="", meterId=0, micRate=48000;
 const RATES=[8000,16000,22050,24000,32000,44100,48000];
 
 function setStatus(kind,text){$("status").className="status "+kind;$("statusText").textContent=text;}
@@ -464,7 +466,16 @@ async function hentToken(){
   const r=await fetch(TOKEN_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({k:DEMO_KODE,kunde:P.get("kunde")||""})});
   const d=await r.json().catch(()=>({}));
   if(!r.ok||!d.value) throw new Error(d.feil||("Kunne ikke starte samtalen ("+r.status+")"));
+  MOTOR = d.motor==="openai" ? "openai" : "grok";
+  if(MOTOR==="openai"){ OPENAI_MODELL=d.modell||OPENAI_MODELL; VOICE=P.get("stemme")||d.stemme||"cedar"; }
   return d.value;
+}
+// OpenAI vil ha 24 kHz inn. Mikrofonen går ofte i 44,1 eller 48 kHz: snitt over hvert vindu (enkelt lavpass) og ta ut 24 kHz.
+function til24k(f32,rate){
+  if(rate===24000) return f32;
+  const forhold=rate/24000, n=Math.floor(f32.length/forhold), ut=new Float32Array(n);
+  for(let i=0;i<n;i++){const a=Math.floor(i*forhold), b=Math.max(a+1,Math.floor((i+1)*forhold));let s=0;for(let k=a;k<b&&k<f32.length;k++)s+=f32[k];ut[i]=s/(b-a);}
+  return ut;
 }
 
 async function kobleTil(medMikrofon){
@@ -484,12 +495,26 @@ async function kobleTil(medMikrofon){
       micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
     }
     const token=await (tokenP||hentToken());
-    ws=new WebSocket(`wss://api.x.ai/v1/realtime?model=${MODEL}`,[`xai-client-secret.${token}`]);
+    ws = MOTOR==="openai"
+      ? new WebSocket(`wss://api.openai.com/v1/realtime?model=${encodeURIComponent(OPENAI_MODELL)}`,["realtime",`openai-insecure-api-key.${token}`])
+      : new WebSocket(`wss://api.x.ai/v1/realtime?model=${MODEL}`,[`xai-client-secret.${token}`]);
+    micRate=inRate;
     await new Promise((ok,feil)=>{ws.onopen=ok;ws.onerror=()=>feil(new Error("Fikk ikke kontakt med sekretæren"));setTimeout(()=>feil(new Error("Tidsavbrudd")),12000);});
     connected=true; startTid=Date.now(); sisteAktivitet=Date.now();
     SAMTALE={start:new Date().toISOString(),t0:Date.now(),kanal:micStream?"tale":"tekst",utskrift:[],bookinger:[],beskjeder:[]};
     ws.onmessage=(m)=>{try{onEvent(JSON.parse(m.data));}catch(e){console.warn(e);}};
     ws.onclose=()=>{if(connected) avslutt("Samtalen ble avsluttet.");};
+    const hilsen=`Hei, du har kommet til ${KUNDE.navn}! Jeg er den digitale assistenten deres. Hva kan jeg hjelpe deg med?`;
+    if(MOTOR==="openai"){
+      ws.send(JSON.stringify({type:"session.update",session:{
+        type:"realtime", instructions:instruksjoner()+"\n\nSnakk alltid naturlig norsk bokmål.", tools:TOOLS, tool_choice:"auto",
+        audio:{input:{format:{type:"audio/pcm",rate:24000},transcription:{model:"gpt-4o-transcribe",language:"no"},
+                      turn_detection:{type:"server_vad",interrupt_response:true,create_response:true}},
+               output:{format:{type:"audio/pcm",rate:24000},voice:VOICE}},
+      }}));
+      if(micStream) await startMic();
+      ws.send(JSON.stringify({type:"response.create",response:{instructions:`Start samtalen med å si nøyaktig dette, og ikke noe mer: «${hilsen}»`}}));
+    } else {
     ws.send(JSON.stringify({type:"session.update",session:{
       voice:VOICE, instructions:instruksjoner(), tools:TOOLS,
       turn_detection:{type:"server_vad"},
@@ -499,7 +524,8 @@ async function kobleTil(medMikrofon){
     if(micStream) await startMic();
     // fast hilsen uten modellkall
     ws.send(JSON.stringify({type:"conversation.item.create",item:{type:"force_message",role:"assistant",interruptible:true,
-      content:[{type:"output_text",text:`Hei, du har kommet til ${KUNDE.navn}! Jeg er den digitale assistenten deres. Hva kan jeg hjelpe deg med?`}]}}));
+      content:[{type:"output_text",text:hilsen}]}}));
+    }
     timerId=setInterval(sjekkTid,1000);
     meter();
     setStatus("live", micStream?"I samtale · snakk når du vil":"Tilkoblet · skriv under");
@@ -516,7 +542,7 @@ async function startMic(){
   micNode=new AudioWorkletNode(ctx,"mic");
   micNode.port.onmessage=(e)=>{
     if(!connected||ws.readyState!==1) return;
-    const {b64,rms}=b64FromInt16(e.data);
+    const {b64,rms}=b64FromInt16(MOTOR==="openai"?til24k(e.data,micRate):e.data);
     // Mot ekko på høyttaler: mens sekretæren snakker, slipp bare gjennom tydelig tale
     if(isPlaying() && rms<0.045) return;
     ws.send(JSON.stringify({type:"input_audio_buffer.append",audio:b64}));
@@ -542,13 +568,14 @@ function onEvent(e){
       const el=bubble("me",e.transcript.trim()); if(curAiEl) $("chat").insertBefore(el,curAiEl);
     }
     sisteAktivitet=Date.now();return;}
+  if((t==="response.output_item.added"||t==="response.output_item.done")&&e.item&&e.item.type==="function_call"){FUNKSJONSNAVN[e.item.call_id]=e.item.name;return;}
   if(t==="response.function_call_arguments.done"){
     let args={};try{args=JSON.parse(e.arguments||"{}");}catch{}
-    const res=runTool(e.name,args);
+    const res=runTool(e.name||FUNKSJONSNAVN[e.call_id],args);
     ws.send(JSON.stringify({type:"conversation.item.create",item:{type:"function_call_output",call_id:e.call_id,output:JSON.stringify(res)}}));
     ws.send(JSON.stringify({type:"response.create"}));
     sisteAktivitet=Date.now();return;}
-  if(t==="error"){console.warn("xAI:",e);const m=(e.error&&e.error.message)||"";if(/credit|quota|billing|limit/i.test(m)) sys("Demoen er midlertidig utilgjengelig. Kontakt Preben.");return;}
+  if(t==="error"){console.warn(MOTOR+":",e);const m=(e.error&&e.error.message)||"";if(/credit|quota|billing|limit/i.test(m)) sys("Demoen er midlertidig utilgjengelig. Kontakt Preben.");return;}
 }
 function sjekkTid(){
   if(!connected) return;
