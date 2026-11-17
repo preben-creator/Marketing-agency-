@@ -63,6 +63,7 @@ h1,h2,h3{font-family:var(--font-head);line-height:1.15;margin:0 0 .4em;letter-sp
 .compose input:focus{border-color:var(--accent)}
 .compose button,.chip{border:0;cursor:pointer}
 .compose button{border-radius:999px;padding:10px 16px;font-weight:600;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff}
+.fart{font:inherit;font-size:14px;cursor:pointer}
 .mute{background:var(--surface)!important;border:1px solid var(--border)!important;color:var(--text)!important;padding:10px 12px!important}
 .chips{padding:0 12px 14px;display:flex;flex-wrap:wrap;gap:6px}
 .chipgroup{width:100%;font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600;margin-top:4px}
@@ -125,6 +126,7 @@ h1,h2,h3{font-family:var(--font-head);line-height:1.15;margin:0 0 .4em;letter-sp
       </div>
       <form class="compose" id="compose" autocomplete="off">
         <input id="text" placeholder="Eller skriv her …" aria-label="Skriv til sekretæren">
+        <select class="mute fart" id="fart" title="Taletempo" aria-label="Taletempo"><option value="0.8">Rolig</option><option value="0.9" selected>Litt rolig</option><option value="1">Normal</option><option value="1.1">Rask</option></select>
         <button type="button" class="mute" id="mute" title="Slå lyd av/på" aria-label="Slå lyd av eller på">🔊</button>
         <button type="submit">Send</button>
       </form>
@@ -217,9 +219,11 @@ const P = new URLSearchParams(location.search);
 const TOKEN_URL = P.get("api") || "/token";       // samme adresse som siden (Cloudflare Worker)
 const DEMO_KODE = P.get("k") || "";
 const MODEL = "grok-voice-latest";        // reserve hvis serveren gir Grok
-let MOTOR = "grok", OPENAI_MODELL = "gpt-realtime-2.1"; // settes av /token: «openai» = Petter-stemmen (cedar)
+let MOTOR = "grok", OPENAI_MODELL = "gpt-realtime-2.1", FART = 0.9; // settes av /token: «openai» = Petter-stemmen (cedar)
 let VOICE = P.get("stemme") || "ara";
 const FUNKSJONSNAVN = {};                 // OpenAI: call_id -> verktøynavn
+const STEMME_ID = {mann:"cedar", kvinne:"marin"}; // ?stemme=kvinne gir kvinnestemmen
+let fartValgt = false;                    // den som ringer har valgt tempo selv
 const MAX_MIN = 10;          // samtalen avsluttes automatisk etter 10 min
 const STILLE_SEK = 75;       // og etter 75 sekunder uten at noen sier noe
 const TZ = "Europe/Oslo";
@@ -467,7 +471,8 @@ async function hentToken(){
   const d=await r.json().catch(()=>({}));
   if(!r.ok||!d.value) throw new Error(d.feil||("Kunne ikke starte samtalen ("+r.status+")"));
   MOTOR = d.motor==="openai" ? "openai" : "grok";
-  if(MOTOR==="openai"){ OPENAI_MODELL=d.modell||OPENAI_MODELL; VOICE=P.get("stemme")||d.stemme||"cedar"; }
+  if(MOTOR==="openai"){ OPENAI_MODELL=d.modell||OPENAI_MODELL; VOICE=STEMME_ID[P.get("stemme")]||P.get("stemme")||STEMME_ID[KUNDE.stemme]||d.stemme||"cedar";
+    if(!fartValgt){const f=Number(P.get("fart")||KUNDE.fart||d.fart); FART=f>=0.25&&f<=1.5?f:0.9; visFart();} }
   return d.value;
 }
 // OpenAI vil ha 24 kHz inn. Mikrofonen går ofte i 44,1 eller 48 kHz: snitt over hvert vindu (enkelt lavpass) og ta ut 24 kHz.
@@ -507,10 +512,10 @@ async function kobleTil(medMikrofon){
     const hilsen=`Hei, du har kommet til ${KUNDE.navn}! Jeg er den digitale assistenten deres. Hva kan jeg hjelpe deg med?`;
     if(MOTOR==="openai"){
       ws.send(JSON.stringify({type:"session.update",session:{
-        type:"realtime", instructions:instruksjoner()+"\n\nSnakk alltid naturlig norsk bokmål.", tools:TOOLS, tool_choice:"auto",
+        type:"realtime", instructions:instruksjoner()+"\n\nSnakk alltid naturlig norsk bokmål. Snakk i et rolig, behagelig tempo, med små pauser mellom setningene. Ikke forhast deg.", tools:TOOLS, tool_choice:"auto",
         audio:{input:{format:{type:"audio/pcm",rate:24000},transcription:{model:"gpt-4o-transcribe",language:"no"},
                       turn_detection:{type:"server_vad",interrupt_response:true,create_response:true}},
-               output:{format:{type:"audio/pcm",rate:24000},voice:VOICE}},
+               output:{format:{type:"audio/pcm",rate:24000},voice:VOICE,speed:FART}},
       }}));
       if(micStream) await startMic();
       ws.send(JSON.stringify({type:"response.create",response:{instructions:`Start samtalen med å si nøyaktig dette, og ikke noe mer: «${hilsen}»`}}));
@@ -621,6 +626,10 @@ function avslutt(tekst){sendLogg();rydd();oppdaterOrb();setStatus("","Trykk for 
 
 $("orb").addEventListener("click",()=>{ if(connected) avslutt("Du la på."); else kobleTil(true); });
 $("mute").addEventListener("click",()=>{muted=!muted;$("mute").textContent=muted?"🔇":"🔊";if(muted)stopPlayback();});
+// Taletempo: kan endres midt i samtalen (gjelder fra neste svar).
+function visFart(){const s=$("fart");const n=[...s.options].map(o=>+o.value).reduce((a,b)=>Math.abs(b-FART)<Math.abs(a-FART)?b:a);s.value=String(n);}
+$("fart").addEventListener("change",()=>{FART=Number($("fart").value);fartValgt=true;
+  if(connected&&MOTOR==="openai"&&ws&&ws.readyState===1) ws.send(JSON.stringify({type:"session.update",session:{type:"realtime",audio:{output:{speed:FART}}}}));});
 async function sendTekst(txt){
   txt=txt.trim(); if(!txt) return;
   if(!connected){ await kobleTil(!!micStream); if(!connected) return; }

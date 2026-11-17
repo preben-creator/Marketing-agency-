@@ -18,7 +18,7 @@ const AI_VOICE = process.env.AI_VOICE || (OPENAI ? "cedar" : "liora");
 const CUST_VOICE = process.env.CUST_VOICE || (OPENAI ? "ash" : "leo");       // kunden (mann)
 const CUST_VOICE_F = process.env.CUST_VOICE_F || (OPENAI ? "coral" : "eve"); // kunden (kvinne)
 const TTS_MODELL = process.env.TTS_MODELL || "gpt-4o-mini-tts";
-const TTS_STIL = "Snakk naturlig norsk bokmål med østlandsk uttale. Vennlig, rolig og tydelig, som i en vanlig telefonsamtale.";
+const TTS_STIL = "Snakk naturlig norsk bokmål med østlandsk uttale. Vennlig, rolig og tydelig, i et behagelig og litt langsomt tempo med små pauser, som i en vanlig telefonsamtale.";
 const FEMALE = /^(Kari|Anne|Hilde|Maria|Ingrid|Sofie|Nina|Silje|Kristin|Ida|Camilla|Hanne)\b/;
 const LANGUAGE = process.env.TTS_LANGUAGE || "no";  // norsk er ikke offisielt støttet; prøv "no", ellers "auto"
 
@@ -44,7 +44,7 @@ async function tts(text, voice) {
     const res = await fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
       headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: TTS_MODELL, voice, input: text, instructions: TTS_STIL, response_format: "mp3" }),
+      body: JSON.stringify({ model: TTS_MODELL, voice, input: text, instructions: TTS_STIL, speed: Number(process.env.TTS_FART) || 0.9, response_format: "mp3" }),
     });
     if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
     return Buffer.from(await res.arrayBuffer());
