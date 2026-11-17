@@ -14,6 +14,7 @@
 //   OPENAI_API_KEY       (Secret, valgfri)  satt = Petter snakker med OpenAI Realtime (stemmen cedar). Standard når den finnes.
 //   OPENAI_MODELL        (Text,   valgfri)  standard «gpt-realtime-2.1»
 //   OPENAI_STEMME        (Text,   valgfri)  standard «cedar» (Preben valgte den 2026-11-17)
+//   OPENAI_FART          (Text,   valgfri)  taletempo 0,25–1,5, standard 0.9 (Preben ville ha roligere tale)
 //   GEMINI_API_KEY       (Secret, valgfri)  reserve: Gemini Live (stemmen Aoede)
 //   MOTOR                (Text,   valgfri)  «openai», «gemini» eller «grok». Tom = OpenAI hvis nøkkelen finnes, så Gemini, så Grok.
 //                                          Rask vei tilbake uten ny deploy: sett MOTOR til «gemini» eller «grok».
@@ -392,6 +393,9 @@ export const VERKTOY = [
 // ---------- Gemini Live (stemmen Aoede) ----------
 // Telefonen gir μ-law 8 kHz. Gemini vil ha PCM 16 kHz inn og gir PCM 24 kHz ut. Vi gjør om begge veier.
 
+// Taletempo for OpenAI (0,25–1,5). Standard 0.9: litt roligere enn normalt.
+export const fart = (v) => { const n = Number(v); return n >= 0.25 && n <= 1.5 ? n : 0.9; };
+
 // Hvilken motor samtalen bruker: valgt med MOTOR (hvis nøkkelen finnes), ellers OpenAI, så Gemini, så Grok.
 export function velgMotor(env) {
   const har = { openai: !!env.OPENAI_API_KEY, gemini: !!env.GEMINI_API_KEY, grok: !!env.XAI_API_KEY };
@@ -406,7 +410,7 @@ export function openaiSesjon(env, kunde) {
   const s = sesjon(env, kunde);
   return {
     type: "realtime",
-    instructions: s.instructions + "\n\nSnakk alltid naturlig norsk bokmål.",
+    instructions: s.instructions + "\n\nSnakk alltid naturlig norsk bokmål. Snakk i et rolig, behagelig tempo, med små pauser mellom setningene. Ikke forhast deg.",
     tools: s.tools,
     tool_choice: "auto",
     audio: {
@@ -415,7 +419,7 @@ export function openaiSesjon(env, kunde) {
         transcription: { model: "gpt-4o-transcribe", language: "no" },
         turn_detection: { ...s.turn_detection, interrupt_response: true, create_response: true },
       },
-      output: { format: { type: "audio/pcmu" }, voice: env.OPENAI_STEMME || OPENAI_STEMME },
+      output: { format: { type: "audio/pcmu" }, voice: env.OPENAI_STEMME || OPENAI_STEMME, speed: fart(env.OPENAI_FART) },
     },
   };
 }

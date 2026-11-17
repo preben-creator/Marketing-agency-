@@ -200,7 +200,7 @@ async function hovedFetch(request, env, ctx) {
       const d = await r.json();
       if (env._maal && kunde) { env._maal.id = kunde; env._maal.taleokter++; }
       return json(brukOpenai
-        ? { value: d.value, expires_at: d.expires_at, motor: "openai", modell, stemme: env.OPENAI_STEMME || "cedar" }
+        ? { value: d.value, expires_at: d.expires_at, motor: "openai", modell, stemme: env.OPENAI_STEMME || "cedar", fart: Number(env.OPENAI_FART) || 0.9 }
         : { value: d.value, expires_at: d.expires_at, motor: "grok" }, 200, origin);
     }
 
