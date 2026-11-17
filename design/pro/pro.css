@@ -251,3 +251,6 @@ html.anim .orb-wrap[data-orb]{opacity:0}
   .hero-visual>.robot--hero{width:250px;margin:0 auto -90px}
 }
 @media (max-width:520px){.meet-card .robot{width:170px}}
+/* Komplett som skreddersydd tilbud (2026-11-17) */
+.ag-intro{max-width:62ch;margin:-4px 0 18px;color:var(--muted)}
+.plan .fra{margin:-6px 0 10px;font-size:.82rem;color:var(--muted)}

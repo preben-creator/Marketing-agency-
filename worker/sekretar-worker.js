@@ -1818,7 +1818,7 @@ function likKode(a, b) {
 //   bookinger: [{hva, dato, kl, navn, mobil}], beskjeder: [{tekst, navn, mobil}], tapt: true, tilbakeringt: true
 
 const LOGG_TTL = 62 * 24 * 3600;
-const PAKKER = { starter: { navn: "Starter", min: 50 }, pro: { navn: "Pro", min: 200 }, komplett: { navn: "Komplett", min: 500 } };
+const PAKKER = { starter: { navn: "Starter", min: 50 }, pro: { navn: "Pro", min: 200 }, komplett: { navn: "Komplett", min: 200 } };
 const KATEGORIER = { booking: "Bestille time", flytte: "Flytte eller avbestille", pris: "Spørsmål om pris", apning: "Åpningstider og adresse", tjeneste: "Spørsmål om tjenester", akutt: "Akutt eller hastesak", klage: "Klage", annet: "Annet" };
 const KANAL_NAVN = { tale: "Samtale", telefon: "Telefon", tekst: "Chat", chat: "Chat", sms: "SMS", epost: "E-post", facebook: "Facebook" };
 const loggTreff = new Map();
@@ -3783,7 +3783,7 @@ const KOST_PRISER = {
 const PAKKE_PRIS = {
   starter: { navn: "Starter", kr: 790, min: 50, sms: 0 },
   pro: { navn: "Pro", kr: 1490, min: 200, sms: 200 },
-  komplett: { navn: "Komplett", kr: 2990, min: 500, sms: 500 },
+  komplett: { navn: "Komplett", kr: 2990, min: 200, sms: 200 },
 };
 const EKSTRA_MIN_KR = 5, EKSTRA_SMS_KR = 1;
 const FEILTYPER = ["Feil fakta eller pris", "Fant på noe", "Misforsto kunden", "Brøt en regel", "Booking eller verktøy feilet", "Tone eller språk", "Annet"];
@@ -4730,7 +4730,7 @@ async function salgDrift(env, b) {
 // ======================================================================
 const VANLIGE_DOMENER = /^(gmail\.com|hotmail\.com|hotmail\.no|outlook\.com|live\.no|live\.com|yahoo\.com|yahoo\.no|online\.no|icloud\.com|me\.com|msn\.com)$/i;
 const SALG_FAKTA = `- Orvelo leverer en KI-sekretær som svarer kundene på bedriftens nettside med chat og stemme døgnet rundt, ut fra bedriftens egne opplysninger (tjenester, priser, åpningstider). Den foreslår ledige timer og tar imot beskjeder.
-- Pakker (alle priser eks. mva, per måned): Starter 790 kr (sekretær på nettsiden, 50 taleminutter). Pro 1 490 kr (+ booking i kalender og SMS-bekreftelse og påminnelse, 200 minutter og 200 SMS). Komplett 2 990 kr (+ 10 KI-agenter for tilbud, faktura, anmeldelser m.m., 500 minutter og 500 SMS). Ekstra minutt 5 kr, ekstra SMS 1 kr. Chat er ubegrenset.
+- Pakker (alle priser eks. mva, per måned): Starter 790 kr (sekretær på nettsiden, 50 taleminutter). Pro 1 490 kr (+ booking i kalender og SMS-bekreftelse og påminnelse, 200 minutter og 200 SMS). Komplett er et skreddersydd tilbud fra 2 990 kr (alt i Pro med 200 minutter og 200 SMS, pluss KI-agenter for tilbud, faktura, anmeldelser m.m. satt opp etter behov). Ekstra minutt 5 kr, ekstra SMS 1 kr. Chat er ubegrenset.
 - 14 dager gratis prøve. Etter prøveperioden er avtalen 12 måneder, og den fornyes automatisk hvis den ikke sies opp senest 2 måneder før.
 - Ingen oppstartspris. Oppsett: vi lager sekretæren fra nettsiden deres, dere retter selv, og den legges inn på nettsiden med én kodelinje (eller som lenke).
 - Svar på telefon er under utvikling og ikke klart ennå. Lov det aldri.
