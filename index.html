@@ -1235,9 +1235,12 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
     if(lbl && m && firm()===m.firm) lbl.textContent="Stemme: Grok (xAI)";
     else loadVoices();
   }
-  function playRecorded(i, myRun){
+  // Tempo i demoen: kunden som ringer inn +20 %, Petter +5 % (tonehøyden beholdes)
+  const TEMPO={ ai:1.05, kunde:1.2 };
+  function playRecorded(i, myRun, who){
     return new Promise(res=>{
       const a=new Audio(`audio/${key}/${i}.mp3`); curAudio=a; window.__orveloLyd=a;
+      a.preservesPitch=true; a.playbackRate = who==="ai" ? TEMPO.ai : TEMPO.kunde;
       a.onended=()=>{ window.__orveloLyd=null; res(true); }; a.onerror=()=>{ window.__orveloLyd=null; res(null); };
       a.play().catch(()=>res(null));
       if(myRun!==run){ a.pause(); res(false); }
@@ -1245,7 +1248,7 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
   }
   async function speak(text, who, myRun, i){
     if(voiceOn && myRun===run && useRecorded(i)){
-      const r=await playRecorded(i, myRun);
+      const r=await playRecorded(i, myRun, who);
       if(r!==null) return r;
     }
     return speakTTS(text, who, myRun);
@@ -1254,7 +1257,7 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
     return new Promise(res=>{
       if(!voiceOn || myRun!==run){ return res(false); }
       const u=new SpeechSynthesisUtterance(text);
-      u.lang="nb-NO"; u.rate=1;
+      u.lang="nb-NO"; u.rate = who==="ai" ? TEMPO.ai : TEMPO.kunde;
       const v = who==="ai" ? aiVoice : custVoice;
       if(v){ try{ u.voice=v; }catch(e){} }
       // Only shift pitch when both speakers share one voice, so natural voices stay natural.
