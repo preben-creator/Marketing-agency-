@@ -296,6 +296,7 @@ async function hovedFetch(request, env, ctx) {
     if (url.pathname === "/kontakt" || url.pathname === "/kontakt/liste") {
       return kontaktRute(request, env, url, origin);
     }
+    if (url.pathname === "/prov") return provRute(request, env, origin);
 
     // Til overvåkingen (.github/workflows/overvak.yml). Viser ingen hemmeligheter, bare at ting er koblet til.
     if (url.pathname === "/helse") {
@@ -691,26 +692,102 @@ async function kontaktRute(request, env, url, origin) {
   const rec = { tid, ...h };
   await env.KUNDER.put(`henvendelse:${tid}:${crypto.randomUUID().slice(0, 8)}`, JSON.stringify(rec), { expirationTtl: KONTAKT_TTL });
 
+  await varsleHenvendelse(env, h);
+  return json({ ok: true }, 200, origin);
+}
+
+// SMS og e-post til Preben om en ny henvendelse fra nettsiden.
+async function varsleHenvendelse(env, h) {
   const linjer = [
-    `Navn: ${h.navn}`, `Firma: ${h.firma || "-"}`, `Telefon: ${h.telefon}`, `E-post: ${h.epost || "-"}`,
+    `Navn: ${h.navn || "-"}`, `Firma: ${h.firma || "-"}`, `Telefon: ${h.telefon || "-"}`, `E-post: ${h.epost || "-"}`,
     `Fag: ${h.fag || "-"}`, "", h.melding || "(ingen melding)",
   ];
   const varsler = [];
   const mobil = mobilnr(env.VARSEL_MOBIL || "41232557");
   if (env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_FROM && mobil) {
-    const sms = gsm(`Ny henvendelse fra orvelo.no: ${h.navn}${h.firma ? ", " + h.firma : ""}, tlf ${h.telefon}${h.fag ? ", " + h.fag : ""}. ${h.melding}`).slice(0, 300);
+    const sms = gsm(`${h.emne || "Ny henvendelse fra orvelo.no"}: ${h.navn || "-"}${h.firma ? ", " + h.firma : ""}, tlf ${h.telefon || "-"}${h.fag ? ", " + h.fag : ""}. ${h.melding}`).slice(0, 300);
     varsler.push(twilioSms(env, mobil, env.TWILIO_FROM, sms).then((r) => { if (!r.ok) console.log("kontakt-SMS feilet", r.feil); }));
   }
   if (env.RESEND_API_KEY) {
     varsler.push(sendEpost(env, {
       til: env.VARSEL_EPOST || "hilleren.bedrift@gmail.com",
-      emne: `Ny henvendelse fra nettsiden: ${h.navn}${h.firma ? " (" + h.firma + ")" : ""}`,
+      emne: `${h.emne || "Ny henvendelse fra nettsiden"}: ${h.navn || h.epost || "-"}${h.firma ? " (" + h.firma + ")" : ""}`,
       tekst: linjer.join("\n"),
       html: `<pre style="font:15px/1.5 system-ui,sans-serif;white-space:pre-wrap">${esc(linjer.join("\n"))}</pre>`,
     }).catch((e) => console.log("kontakt-e-post feilet", e && e.message)));
   }
   await Promise.all(varsler);
-  return json({ ok: true }, 200, origin);
+}
+
+/* ================= «Lag min demo nå» på orvelo.no =================
+   POST /prov { nettside, firma?, bransje?, kontakt (e-post eller mobil) }.
+   Leser nettsiden, lager en egen demo-sekretær som virker i PROV_DAGER dager, og varsler Preben.
+   Bremser: maks 3 per IP per time og PROV_PER_DAG (standard 30) totalt per døgn, så Grok-kostnaden har et tak. */
+const PROV_DAGER = 14;
+const provTreff = new Map();
+
+async function provRute(request, env, origin) {
+  if (request.method !== "POST") return json({ feil: "Bruk POST" }, 405, origin);
+  if (!origin || !ALLOWED_ORIGINS.includes(origin)) return json({ feil: "Ikke tillatt" }, 403, origin);
+  if (!env.KUNDER || !env.XAI_API_KEY) return json({ feil: "Demoen er ikke klar akkurat nå." }, 503, origin);
+  let b = {};
+  try { b = await request.json(); } catch { return json({ feil: "Kunne ikke lese skjemaet." }, 400, origin); }
+  if (b._honey) return json({ feil: "Prøv igjen." }, 400, origin);
+
+  const nettside = tekst(b.nettside, 200).replace(/\s+/g, "");
+  let host = "";
+  try { host = new URL(/^https?:\/\//i.test(nettside) ? nettside : "https://" + nettside).hostname.toLowerCase(); } catch {}
+  if (!host || !/^[a-z0-9æøå-]+(\.[a-z0-9æøå-]+)*\.[a-z]{2,}$/.test(host) || /^\d+(\.\d+)+$/.test(host) || /(^|\.)(orvelo\.no|workers\.dev|localhost)$/.test(host)) {
+    return json({ feil: "Skriv inn adressen til nettsiden, for eksempel bergror.no." }, 400, origin);
+  }
+  const kontakt = tekst(b.kontakt, 120);
+  const epost = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(kontakt) ? kontakt : "";
+  const sifre = kontakt.replace(/[^\d+]/g, "");
+  const telefon = !epost && /^(\+47)?[49]\d{7}$/.test(sifre) ? sifre : "";
+  if (!epost && !telefon) return json({ feil: "Skriv inn e-post eller mobilnummer, så vi kan følge deg opp." }, 400, origin);
+
+  const ip = request.headers.get("CF-Connecting-IP") || "ukjent";
+  const naa = Date.now();
+  const treff = (provTreff.get(ip) || []).filter((t) => naa - t < 3600000);
+  if (treff.length >= 3) return json({ feil: "Du har laget flere demoer nå. Ring oss heller på 412 32 557." }, 429, origin);
+  treff.push(naa); provTreff.set(ip, treff);
+  if (provTreff.size > 5000) provTreff.clear();
+
+  const dag = new Date(naa + 3600000).toISOString().slice(0, 10);
+  const antall = Number(await env.KUNDER.get("provdag:" + dag)) || 0;
+  if (antall >= tallEnv(env.PROV_PER_DAG, 30)) {
+    return json({ feil: "Vi har laget mange demoer i dag. Legg igjen nummeret ditt i skjemaet under, så lager vi din i morgen." }, 429, origin);
+  }
+  await env.KUNDER.put("provdag:" + dag, String(antall + 1), { expirationTtl: 3 * 86400 });
+
+  let profil;
+  try {
+    if (env._maal) env._maal.id = "orvelo"; // Orvelos egen salgskostnad
+    profil = await lagSekretaer({ firma: tekst(b.firma, 80), nettside: host, bransje: tekst(b.bransje, 60) }, env);
+  } catch (e) {
+    console.log("prov feilet", e && e.stack);
+    return json({ feil: "Noe gikk galt da vi laget demoen. Prøv igjen om litt." }, 500, origin);
+  }
+  if ((profil.usikkert || []).some((x) => /kunne ikke leses/i.test(x))) {
+    return json({ feil: `Vi fikk ikke lest ${host}. Sjekk adressen, eller legg igjen nummeret ditt i skjemaet under.` }, 422, origin);
+  }
+  const base = (profil.kortnavn || profil.navn || "firma").toLowerCase().replace(/æ/g, "ae").replace(/ø/g, "o").replace(/å/g, "a")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 26) || "firma";
+  const id = "p-" + base + "-" + Math.random().toString(36).slice(2, 6);
+  profil.id = id; profil.provDemo = { tid: new Date().toISOString(), epost, telefon }; profil.oppdatert = profil.provDemo.tid;
+  const ttl = PROV_DAGER * 86400;
+  // Lever i PROV_DAGER dager. Blir det en kunde, lagrer Preben den på /lagre (uten utløp).
+  await env.KUNDER.put("kunde:" + id, JSON.stringify(profil), { expirationTtl: ttl });
+  await env.KUNDER.put("demoutl:" + id, new Date(naa + ttl * 1000).toISOString(), { expirationTtl: ttl });
+  const lenke = await demoLenke(new URL(env.SEKRETAR_URL || SEKRETAR_URL_DEFAULT), env, id);
+
+  // Salgsmotoren skal ikke sende kald e-post til et firma som selv har prøvd.
+  await salgSperrKunde(env, { epost, nettside: host }).catch(() => {});
+  const h = { navn: "", firma: profil.navn || host, telefon, epost, fag: profil.bransje || "", emne: "Laget demo selv på orvelo.no",
+    melding: `Laget egen demo for ${host}: ${lenke}` };
+  await env.KUNDER.put(`henvendelse:${h.tid = new Date().toISOString()}:${crypto.randomUUID().slice(0, 8)}`, JSON.stringify(h), { expirationTtl: KONTAKT_TTL });
+  await varsleHenvendelse(env, h).catch((e) => console.log("prov-varsel feilet", e && e.message));
+  return json({ ok: true, lenke, navn: profil.navn || host, dager: PROV_DAGER }, 200, origin);
 }
 
 async function avtaleRute(request, env, ctx, url) {
