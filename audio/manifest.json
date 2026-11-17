@@ -15,8 +15,8 @@
       18
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "eve"
+      "ai": "cedar",
+      "cust": "coral"
     }
   },
   "el": {
@@ -33,8 +33,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "leo"
+      "ai": "cedar",
+      "cust": "ash"
     }
   },
   "snekker": {
@@ -51,8 +51,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "eve"
+      "ai": "cedar",
+      "cust": "coral"
     }
   },
   "maler": {
@@ -69,8 +69,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "eve"
+      "ai": "cedar",
+      "cust": "coral"
     }
   },
   "tak": {
@@ -87,8 +87,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "leo"
+      "ai": "cedar",
+      "cust": "ash"
     }
   },
   "flis": {
@@ -105,8 +105,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "eve"
+      "ai": "cedar",
+      "cust": "coral"
     }
   },
   "varme": {
@@ -123,8 +123,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "leo"
+      "ai": "cedar",
+      "cust": "ash"
     }
   },
   "bil": {
@@ -141,8 +141,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "leo"
+      "ai": "cedar",
+      "cust": "ash"
     }
   },
   "frisor": {
@@ -159,8 +159,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "eve"
+      "ai": "cedar",
+      "cust": "coral"
     }
   },
   "mat": {
@@ -177,8 +177,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "eve"
+      "ai": "cedar",
+      "cust": "coral"
     }
   },
   "las": {
@@ -195,8 +195,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "leo"
+      "ai": "cedar",
+      "cust": "ash"
     }
   },
   "design": {
@@ -213,8 +213,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "eve"
+      "ai": "cedar",
+      "cust": "coral"
     }
   },
   "verksted": {
@@ -231,8 +231,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "leo"
+      "ai": "cedar",
+      "cust": "ash"
     }
   },
   "grafisk": {
@@ -249,8 +249,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "eve"
+      "ai": "cedar",
+      "cust": "coral"
     }
   },
   "rengjoring": {
@@ -267,8 +267,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "eve"
+      "ai": "cedar",
+      "cust": "coral"
     }
   },
   "flytting": {
@@ -285,8 +285,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "leo"
+      "ai": "cedar",
+      "cust": "ash"
     }
   },
   "dekk": {
@@ -303,8 +303,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "leo"
+      "ai": "cedar",
+      "cust": "ash"
     }
   },
   "dyr": {
@@ -321,8 +321,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "eve"
+      "ai": "cedar",
+      "cust": "coral"
     }
   },
   "skjonnhet": {
@@ -339,8 +339,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "eve"
+      "ai": "cedar",
+      "cust": "coral"
     }
   },
   "trening": {
@@ -357,8 +357,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "leo"
+      "ai": "cedar",
+      "cust": "ash"
     }
   },
   "skadedyr": {
@@ -375,8 +375,8 @@
       16
     ],
     "voices": {
-      "ai": "liora",
-      "cust": "eve"
+      "ai": "cedar",
+      "cust": "coral"
     }
   }
 }
