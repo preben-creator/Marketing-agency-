@@ -9,6 +9,10 @@ on:
   pull_request:
   push:
     branches: [main]
+    # Nyhetsinnlegg og nettsidetekst trenger ingen ny worker-deploy
+    paths-ignore:
+      - "nyheter/**"
+      - "sitemap.xml"
   workflow_dispatch:
     inputs:
       worker:
@@ -36,7 +40,7 @@ jobs:
       - name: Tester
         run: |
           set -e
-          for t in sikkerhet drift salgsmotor nye-agenter anmeldelse-auto innboks ringeagent telefonlinje; do
+          for t in nyheter sikkerhet drift salgsmotor nye-agenter anmeldelse-auto innboks ringeagent telefonlinje; do
             echo "::group::test-$t"
             node tools/test-$t.mjs
             echo "::endgroup::"
