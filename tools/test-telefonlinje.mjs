@@ -120,7 +120,7 @@ await test("Endret kunde-id i strømmen blir avvist", async () => {
 });
 
 let tlf;
-await test("Liora svarer som kundens sekretær (instruksjoner, verktøy, hilsen)", async () => {
+await test("Ada svarer som kundens sekretær (instruksjoner, verktøy, hilsen)", async () => {
   xaiWs = null;
   await ring.fetch(new Request(streamUrl.replace("wss:", "https:"), { headers: { Upgrade: "websocket" } }), ringEnv);
   await vent(50);
@@ -129,7 +129,7 @@ await test("Liora svarer som kundens sekretær (instruksjoner, verktøy, hilsen)
   const okt = xaiWs.ut.find((m) => m.type === "session.update").session;
   assert.match(okt.instructions, /Lia Frisør/);
   assert.match(okt.instructions, /# Telefon/);
-  assert.match(okt.instructions, /912 34 567/, "Liora vet hvilket nummer det ringes fra");
+  assert.match(okt.instructions, /912 34 567/, "Ada vet hvilket nummer det ringes fra");
   assert.doesNotMatch(okt.instructions, /Orvelos demonummer|finn_firma/);
   const navn = okt.tools.map((t) => t.name);
   assert.deepEqual(navn.sort(), ["finn_ledige_tider", "legg_igjen_beskjed", "legg_paa", "send_timeforesporsel"]);

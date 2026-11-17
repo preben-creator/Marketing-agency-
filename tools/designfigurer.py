@@ -5,7 +5,7 @@ HEAD = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 280" role="img"
 
 def fjord():
     ink, blå, teal, lys, hvit = "#0f2531", "#0d5c75", "#5fd4c9", "#14998f", "#ffffff"
-    return HEAD.format(navn="Liora, KI-sekretær") + f"""
+    return HEAD.format(navn="Ada, KI-sekretær") + f"""
 <ellipse cx="120" cy="270" rx="72" ry="8" fill="{ink}" opacity=".12"/>
 <path d="M68,214 Q40,190 46,158" fill="none" stroke="{blå}" stroke-width="14" stroke-linecap="round"/>
 <circle cx="46" cy="152" r="11" fill="{hvit}" stroke="{ink}" stroke-width="3"/>

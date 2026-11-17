@@ -1,7 +1,7 @@
 # Orvelo ringeagent («ring meg»)
 
 `ringeagent-worker.js` er en egen Cloudflare Worker. Den gir en «ring meg»-side der en bedrift legger inn mobilnummeret sitt.
-Nummeret bekreftes med en SMS-kode (Twilio), og deretter ringer Liora (Grok-stemmen) opp fra et norsk nummer via Telnyx. Hun forteller om KI-sekretæren
+Nummeret bekreftes med en SMS-kode (Twilio), og deretter ringer Ada (Gemini Live, stemmen Aoede) opp fra et norsk nummer via Telnyx. Hun forteller om KI-sekretæren
 og sender bookinglenken (Google Avtaleplan) på SMS. Etter samtalen får Preben et sammendrag på e-post.
 
 Hvorfor SMS-kode og avkrysning: markedsføringsloven § 15 krever forhåndssamtykke for automatiske oppringinger til
@@ -12,7 +12,8 @@ privatpersoner (også ENK). SMS-koden beviser at det er eieren av nummeret som b
 1. Cloudflare: **Workers & Pages → Create → Create Worker**, kall den `orvelo-ring`, trykk **Deploy**.
 2. **Edit code**, slett alt, lim inn hele `worker/ringeagent-worker.js`, trykk **Deploy**.
 3. **Settings → Variables and Secrets → Add**:
-   - Secret `XAI_API_KEY` (samme som i orvelo-sekretar)
+   - Secret `GEMINI_API_KEY` (Google AI Studio-nøkkelen). Da snakker Ada med Gemini Live og stemmen Aoede.
+   - Secret `XAI_API_KEY` (samme som i orvelo-sekretar). Brukes som reserve: uten `GEMINI_API_KEY`, eller med variabelen `MOTOR` = `grok`, går samtalene til Grok som før.
    - Secret `TWILIO_ACCOUNT_SID` og Secret `TWILIO_AUTH_TOKEN` (forsiden i Twilio-konsollen)
    - Text `TWILIO_FROM` = `+17372508034` (byttes til norsk nummer senere)
    - (valgfritt) Text `BOOKING_URL`, `VARSEL_EPOST`, `STEMME`
@@ -29,7 +30,10 @@ privatpersoner (også ENK). SMS-koden beviser at det er eieren av nummeret som b
 ## Kostnad
 
 - Twilio: ca. 0,08 dollar per minutt til norsk mobil + SMS (to per samtale).
-- Grok-stemme: ca. 0,08 dollar per minutt.
+- Gemini Live (Aoede): ca. 0,04 dollar per minutt (målt 2026-11-17: 0,028 dollar for en samtale på 44 sekunder). Lengre samtaler blir litt dyrere per minutt.
+- Grok-stemme (reserve): ca. 0,08 dollar per minutt.
+
+Lokal test av en hel telefonsamtale med Gemini (falsk Telnyx-strøm, ingenting ringes eller sendes): se `tools/test-ada-gemini.mjs`.
 - En samtale på 3 minutter koster rundt 5 kroner.
 - Samtaler avsluttes automatisk etter 8 minutter. Bremser: maks 5 kodeforespørsler per time per nettverk og 3 per nummer.
 

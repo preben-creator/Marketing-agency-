@@ -4,14 +4,18 @@
 //   1. Kunden åpner «ring meg»-siden (GET /), skriver inn mobilnummer og krysser av for samtykke.
 //   2. POST /kode  -> vi sender en SMS-kode for å bekrefte at nummeret er kundens eget (dobbelt samtykke).
 //   3. POST /ring  -> riktig kode? Da ringer Telnyx (norsk nummer) eller Twilio kunden, og samtalen kobles til Grok.
-//   4. GET  /media -> WebSocket mellom telefonlyden (Telnyx/Twilio) og xAI realtime (Grok-stemmen).
+//   4. GET  /media -> WebSocket mellom telefonlyden (Telnyx/Twilio) og Gemini Live (stemmen Aoede), eller Grok som reserve.
 //   Innringing (Telnyx): ringer noen nummeret, svarer agenten, spør hvilket firma de ringer fra, henter
 //   firmaets KI-sekretær (laget med /lag i orvelo-sekretar) og spiller den, så de hører hvordan den høres ut.
 //   SMS (kode og bookinglenke) sendes alltid via Twilio, fra avsendernavnet «Orvelo».
 //   Under samtalen kan agenten sende bookinglenken på SMS og sende Preben et sammendrag på e-post.
 //
 // Innstillinger (Cloudflare: Worker -> Settings -> Variables and Secrets):
-//   XAI_API_KEY          (Secret, påkrevd)  xAI-nøkkelen
+//   GEMINI_API_KEY       (Secret, valgfri)  satt = Ada snakker med Gemini Live (stemmen Aoede). Uten den brukes Grok.
+//   MOTOR                (Text,   valgfri)  «grok» = bruk Grok selv om GEMINI_API_KEY er satt (rask vei tilbake)
+//   GEMINI_MODELL        (Text,   valgfri)  standard «gemini-3.8-live»
+//   GEMINI_STEMME        (Text,   valgfri)  standard «Aoede» (Preben valgte den 2026-11-17)
+//   XAI_API_KEY          (Secret)           xAI-nøkkelen (Grok), påkrevd når Gemini ikke er satt opp
 //   TWILIO_ACCOUNT_SID   (Secret, påkrevd)  fra Twilio-forsiden
 //   TWILIO_AUTH_TOKEN    (Secret, påkrevd)  fra Twilio-forsiden
 //   TWILIO_FROM          (Text,   valgfri)  Twilio-nummeret samtalen ringer fra (brukes bare uten Telnyx)
@@ -29,13 +33,15 @@
 //
 // Telefonlinje for kunder: har Preben lagt inn et Telnyx-nummer for en kunde på /lag (del 4), står det i
 // KV som linje:<nummer> -> kunde-id. Ringer noen det nummeret (kunden viderekobler telefonen sin dit), svarer
-// Liora som kundens egen sekretær: instruksjonene og verktøyene (ledige tider, booking, SMS, beskjed) kommer
+// Ada som kundens egen sekretær: instruksjonene og verktøyene (ledige tider, booking, SMS, beskjed) kommer
 // fra orvelo-sekretar via /telefon/*, så telefonen, chatten og stemmen på nettsiden svarer likt.
 //   TEST_NUMMER          (Text,   valgfri)  ditt eget nummer: hopper over SMS-koden (koden blir 0000) mens Twilio er prøvekonto
 
 const BOOKING_URL_DEFAULT = "https://calendar.app.google/24niGvpRRwPqNqr28";
 const VARSEL_EPOST_DEFAULT = "hilleren.bedrift@gmail.com";
 const MODEL = "grok-voice-latest";
+const GEMINI_MODELL = "gemini-3.8-live";
+const GEMINI_STEMME = "Aoede";
 const MAKS_SEK = 480; // operatøren legger på etter 8 minutter uansett
 const KODE_GYLDIG_MS = 10 * 60 * 1000;
 
@@ -154,7 +160,7 @@ async function varsle(env, emne, felter) {
 
 export function instruksjoner(navn, firma) {
   const hvem = [navn, firma].filter(Boolean).join(" fra ");
-  return `Du er Liora, en KI-assistent som ringer på vegne av Orvelo, et lite norsk selskap i Bergen drevet av Preben Hilleren.
+  return `Du er Ada, en KI-assistent som ringer på vegne av Orvelo, et lite norsk selskap i Bergen drevet av Preben Hilleren.
 Du snakker norsk (bokmål), varmt, rolig og kort, som i en vanlig telefonsamtale. Maks to setninger om gangen, still ett spørsmål om gangen, og la kunden snakke. Ingen lister og ingen lange forklaringer. Hvis kunden avbryter deg, stopp og svar på det de sa. Før du bruker et verktøy, si kort hva du gjør (for eksempel «Jeg sender deg lenken nå»), så det ikke blir stille i telefonen.
 
 Hvorfor du ringer: Kunden${hvem ? ` (${hvem})` : ""} har selv bedt om å bli ringt opp via nettsiden til Orvelo for å høre hvordan en KI-sekretær høres ut.
@@ -303,13 +309,13 @@ Spørsmål du ikke kan svare på, flytting og klager: spør om navn og nummer, b
 Gi aldri andre priser enn prislisten, og lov aldri noe ${sted} ikke har sagt. Står noe ikke i prislisten, si at du ikke er sikker og tilby å sende spørsmålet videre. Ingen medisinske eller tekniske vurderinger.
 
 # Etter demoen
-Når de har prøvd, eller hvis de spør hva dette koster og hvordan det settes opp: gå ut av rollen og vær Liora fra Orvelo igjen.
+Når de har prøvd, eller hvis de spør hva dette koster og hvordan det settes opp: gå ut av rollen og vær Ada fra Orvelo igjen.
 Tre pakker med fast månedspris eks. mva. og uten oppstartskostnad: Starter 790 kroner (50 minutter samtale i måneden), Pro 1 490 kroner (200 minutter) og Komplett 2 990 kroner (500 minutter). Pro gir i tillegg booking og SMS til kundene, Komplett gir KI-agenter for kontorarbeidet. Minutter utover pakken koster 5 kroner. De første 14 dagene er gratis. Preben setter det opp, tilpasset ${sted}.
 Tilby et kort møte med Preben (send_bookinglenke), skriv sammendrag med noter_for_preben, si ha det og bruk legg_paa.`;
 }
 
 export function innringInstruks() {
-  return `Du er Liora, en KI-assistent fra Orvelo, et lite norsk selskap i Bergen drevet av Preben Hilleren. Orvelo lager KI-sekretærer som svarer telefonen for håndverkere og andre små bedrifter.
+  return `Du er Ada, en KI-assistent fra Orvelo, et lite norsk selskap i Bergen drevet av Preben Hilleren. Orvelo lager KI-sekretærer som svarer telefonen for håndverkere og andre små bedrifter.
 Du snakker norsk (bokmål), varmt og kort, maks to setninger om gangen. Si tydelig at du er en KI hvis noen spør.
 
 Noen har ringt Orvelos demonummer, trolig etter en e-post der vi skrev at vi har laget en KI-sekretær til firmaet deres.
@@ -377,7 +383,123 @@ export const VERKTOY = [
   },
 ];
 
-// Øktoppsettet for Grok. Eksportert så tools/test-liora.mjs tester det samme som telefonen bruker.
+// ---------- Gemini Live (stemmen Aoede) ----------
+// Telefonen gir μ-law 8 kHz. Gemini vil ha PCM 16 kHz inn og gir PCM 24 kHz ut. Vi gjør om begge veier.
+
+export const brukGemini = (env) => !!env.GEMINI_API_KEY && String(env.MOTOR || "").toLowerCase() !== "grok";
+
+const ULAW_TIL_LIN = new Int16Array(256);
+for (let i = 0; i < 256; i++) {
+  const u = ~i & 0xff, exp = (u >> 4) & 7, mant = u & 0x0f;
+  const s = (((mant << 3) + 0x84) << exp) - 0x84;
+  ULAW_TIL_LIN[i] = u & 0x80 ? -s : s;
+}
+function linTilUlaw(s) {
+  let sign = 0;
+  if (s < 0) { sign = 0x80; s = -s; }
+  if (s > 32635) s = 32635;
+  s += 0x84;
+  let exp = 7;
+  for (let mask = 0x4000; (s & mask) === 0 && exp > 0; exp--, mask >>= 1);
+  return ~(sign | (exp << 4) | ((s >> (exp + 3)) & 0x0f)) & 0xff;
+}
+function fraB64(b64) {
+  const bin = atob(b64), u = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  return u;
+}
+function tilB64(u8) {
+  let bin = "";
+  for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+// μ-law 8 kHz (base64) -> PCM 16 kHz (base64). forrige = siste sample fra forrige bit, for jevn overgang.
+export function ulawTilPcm16k(b64, st = { forrige: 0 }) {
+  const u = fraB64(b64), ut = new Int16Array(u.length * 2);
+  let f = st.forrige;
+  for (let i = 0; i < u.length; i++) {
+    const s = ULAW_TIL_LIN[u[i]];
+    ut[2 * i] = (f + s) >> 1;
+    ut[2 * i + 1] = s;
+    f = s;
+  }
+  st.forrige = f;
+  return tilB64(new Uint8Array(ut.buffer));
+}
+
+// PCM 24 kHz (base64) -> μ-law 8 kHz (base64). Snitt av tre og tre samples (enkel lavpass). Rester tas vare på i st.
+export function pcm24kTilUlaw(b64, st = { rest: [] }) {
+  const b = fraB64(b64);
+  const n = b.length >> 1, dv = new DataView(b.buffer, b.byteOffset, n * 2);
+  const alle = st.rest.slice();
+  for (let i = 0; i < n; i++) alle.push(dv.getInt16(i * 2, true));
+  const antall = Math.floor(alle.length / 3), ut = new Uint8Array(antall);
+  for (let i = 0; i < antall; i++) ut[i] = linTilUlaw(Math.round((alle[3 * i] + alle[3 * i + 1] + alle[3 * i + 2]) / 3));
+  st.rest = alle.slice(antall * 3);
+  return tilB64(ut);
+}
+
+// Verktøy i Grok/OpenAI-format -> Gemini functionDeclarations (typer med store bokstaver, bare felt Gemini forstår).
+function geminiSkjema(s) {
+  if (!s || typeof s !== "object") return s;
+  const ut = {};
+  if (s.type) ut.type = String(s.type).toUpperCase();
+  if (s.description) ut.description = s.description;
+  if (s.enum) ut.enum = s.enum;
+  if (s.items) ut.items = geminiSkjema(s.items);
+  if (s.properties) {
+    ut.properties = {};
+    for (const [k, v] of Object.entries(s.properties)) ut.properties[k] = geminiSkjema(v);
+    if (!Object.keys(ut.properties).length) delete ut.properties;
+  }
+  if (Array.isArray(s.required) && s.required.length) ut.required = s.required;
+  return ut;
+}
+export function geminiVerktoy(verktoy) {
+  const decl = (verktoy || []).filter((v) => v && v.name).map((v) => {
+    const d = { name: v.name, description: v.description || "" };
+    const p = geminiSkjema(v.parameters);
+    if (p && p.properties) d.parameters = p;
+    return d;
+  });
+  return decl.length ? [{ functionDeclarations: decl }] : [];
+}
+
+// Øktoppsettet for Gemini Live: samme instruksjoner og verktøy som Grok får.
+export function geminiOppsett(env, kunde) {
+  const s = sesjon(env, kunde);
+  return {
+    setup: {
+      model: `models/${env.GEMINI_MODELL || GEMINI_MODELL}`,
+      generationConfig: {
+        responseModalities: ["AUDIO"],
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: env.GEMINI_STEMME || GEMINI_STEMME } } },
+      },
+      systemInstruction: { parts: [{ text: s.instructions + "\n\nSnakk alltid naturlig norsk bokmål." }] },
+      tools: geminiVerktoy(s.tools),
+      realtimeInputConfig: {
+        automaticActivityDetection: {
+          startOfSpeechSensitivity: "START_SENSITIVITY_LOW", // telefonlinjer har støy
+          prefixPaddingMs: 300,
+          silenceDurationMs: Number(env.VAD_STILLE_MS) || 450,
+        },
+      },
+      inputAudioTranscription: {},
+      outputAudioTranscription: {},
+    },
+  };
+}
+
+// Første replikk: Gemini har ikke «si nøyaktig dette», så vi ber om det.
+export const geminiStart = (forste) => ({
+  clientContent: {
+    turns: [{ role: "user", parts: [{ text: `(Telefonsamtalen er koblet til. Start med å si nøyaktig dette, og ikke noe mer: «${forste}»)` }] }],
+    turnComplete: true,
+  },
+});
+
+// Øktoppsettet for Grok. Eksportert så tools/test-ada.mjs tester det samme som telefonen bruker.
 export function sesjon(env, kunde) {
   const o = kunde.oppsett; // telefonlinje for en kunde
   return {
@@ -385,7 +507,7 @@ export function sesjon(env, kunde) {
     instructions: o ? o.instruksjoner : kunde.inn ? innringInstruks() : instruksjoner(kunde.navn, kunde.firma),
     tools: o ? o.verktoy : kunde.inn ? INN_VERKTOY() : VERKTOY,
     // Telefonlinjer har støy, og folk tar små pauser midt i setninger. Litt høyere terskel og lengre pause
-    // før Liora svarer gir færre falske avbrytelser og færre ganger hun snakker i munnen på kunden.
+    // før Ada svarer gir færre falske avbrytelser og færre ganger hun snakker i munnen på kunden.
     turn_detection: {
       type: "server_vad",
       threshold: Number(env.VAD_TERSKEL) || 0.6,
@@ -393,7 +515,7 @@ export function sesjon(env, kunde) {
       silence_duration_ms: Number(env.VAD_STILLE_MS) || 450,
     },
     audio: {
-      input: { format: { type: "audio/pcmu" }, transcription: { language_hint: "no", keyterms: (o ? o.keyterms || [] : ["Orvelo", "Preben", "Liora", "KI-sekretær", kunde.firma]).filter(Boolean) } },
+      input: { format: { type: "audio/pcmu" }, transcription: { language_hint: "no", keyterms: (o ? o.keyterms || [] : ["Orvelo", "Preben", "Ada", "KI-sekretær", kunde.firma]).filter(Boolean) } },
       output: { format: { type: "audio/pcmu" } },
     },
   };
@@ -403,12 +525,13 @@ export function forsteReplikk(kunde) {
   if (kunde.oppsett) return kunde.oppsett.forste;
   const hei = kunde.navn ? `Hei, ${kunde.navn.split(" ")[0]}!` : "Hei!";
   return kunde.inn
-    ? "Hei, du har ringt Orvelo! Jeg er Liora, en KI-assistent. Hvilket firma ringer du fra?"
-    : `${hei} Det er Liora fra Orvelo, en KI-assistent. Du ba om en samtale for å høre hvordan en KI-sekretær høres ut. Passer det nå?`;
+    ? "Hei, du har ringt Orvelo! Jeg er Ada, en KI-assistent. Hvilket firma ringer du fra?"
+    : `${hei} Det er Ada fra Orvelo, en KI-assistent. Du ba om en samtale for å høre hvordan en KI-sekretær høres ut. Passer det nå?`;
 }
 
 // tlfWs = WebSocket fra Telnyx eller Twilio. urlParam = parameterne fra stream-URL-en (Telnyx).
-async function koblSamtale(env, tlfWs, urlParam) {
+// Eksportert så tools/test-ada-gemini.mjs kan kjøre en hel samtale lokalt.
+export async function koblSamtale(env, tlfWs, urlParam) {
   let streamSid = null;
   let callSid = null;
   let erTelnyx = false;
@@ -449,6 +572,19 @@ async function koblSamtale(env, tlfWs, urlParam) {
     if (erTelnyx) tilTlf({ event: "clear" }); else if (streamSid) tilTlf({ event: "clear", streamSid });
   };
   const tilXai = (obj) => { if (xai && xai.readyState === 1) xai.send(JSON.stringify(obj)); };
+  // Gemini: xai er da WebSocket-en til Gemini, og geminiKlar blir satt når oppsettet er godtatt.
+  const gemini = brukGemini(env);
+  let geminiKlar = false;
+  const innSt = { forrige: 0 }, utSt = { rest: [] };
+  const sendInnLyd = (pcmu) => {
+    if (gemini) tilXai({ realtimeInput: { audio: { data: ulawTilPcm16k(pcmu, innSt), mimeType: "audio/pcm;rate=16000" } } });
+    else tilXai({ type: "input_audio_buffer.append", audio: pcmu });
+  };
+  const motorKlar = () => xai && xai.readyState === 1 && (!gemini || geminiKlar);
+  // Be Ada si noe (f.eks. «er du der?»), uten at kunden har sagt noe.
+  const be = (instruks) => gemini
+    ? tilXai({ clientContent: { turns: [{ role: "user", parts: [{ text: `(${instruks})` }] }], turnComplete: true } })
+    : tilXai({ type: "response.create", response: { instructions: instruks } });
 
   // Stillhet: spør én gang om de er der etter 20 sek, legg på etter 12 sek til. Sparer minutter på telefonsvarer og glemte samtaler.
   const stilleMs = Number(env.STILLE_MS) || 20000;
@@ -458,7 +594,7 @@ async function koblSamtale(env, tlfWs, urlParam) {
     if (!spurtOmTilstede && stille > stilleMs) {
       spurtOmTilstede = true;
       sisteAktivitet = Date.now();
-      tilXai({ type: "response.create", response: { instructions: "Det har vært stille en stund. Spør kort og vennlig om personen fortsatt er der." } });
+      be("Det har vært stille en stund. Spør kort og vennlig om personen fortsatt er der.");
     } else if (spurtOmTilstede && stille > stilleMs * 0.6) {
       avslutter = true;
       logg.push(`[${tid()}] (lagt på etter stillhet)`);
@@ -500,8 +636,8 @@ async function koblSamtale(env, tlfWs, urlParam) {
         kunde.firma = p.navn;
         demoHendelser.push(`Fant sekretæren til ${p.navn} (${p.id})`);
         const rolle = rolleInstruks(p);
-        tilXai({ type: "session.update", session: { instructions: innringInstruks() + "\n\n" + rolle } });
-        return { funnet: true, firma: p.navn, instruksjoner: rolle };
+        if (!gemini) tilXai({ type: "session.update", session: { instructions: innringInstruks() + "\n\n" + rolle } });
+        return { funnet: true, firma: p.navn, instruksjoner: rolle, merk: "Følg disse instruksjonene fra nå av, når du spiller sekretæren." };
       }
       demoHendelser.push(`Søkte etter «${String(args.navn || "").slice(0, 60)}»: ${r.flere ? "flere treff" : "ingen treff"}`);
       return r;
@@ -541,12 +677,16 @@ async function koblSamtale(env, tlfWs, urlParam) {
     const oppsett = kunde.linje && !kunde.oppsett
       ? tilSekretar(env, "/telefon/oppsett", { kunde: kunde.linje, fra: kunde.til }).catch((e) => { console.log("telefon-oppsett feilet", e && e.message); return null; })
       : null;
-    const [r, o] = await Promise.all([fetch(`https://api.x.ai/v1/realtime?model=${MODEL}`, {
-      headers: { Upgrade: "websocket", Authorization: `Bearer ${env.XAI_API_KEY}` },
-    }), oppsett]);
+    const [r, o] = await Promise.all([gemini
+      ? fetch("https://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent", {
+        headers: { Upgrade: "websocket", "x-goog-api-key": env.GEMINI_API_KEY },
+      })
+      : fetch(`https://api.x.ai/v1/realtime?model=${MODEL}`, {
+        headers: { Upgrade: "websocket", Authorization: `Bearer ${env.XAI_API_KEY}` },
+      }), oppsett]);
     if (o && o.instruksjoner) { kunde.oppsett = o; kunde.firma = o.firma || ""; }
     if (!r.webSocket) {
-      console.log("Fikk ikke kontakt med xAI", r.status, (await r.text()).slice(0, 300));
+      console.log(gemini ? "Fikk ikke kontakt med Gemini" : "Fikk ikke kontakt med xAI", r.status, (await r.text()).slice(0, 300));
       leggPaa(0);
       return;
     }
@@ -559,6 +699,7 @@ async function koblSamtale(env, tlfWs, urlParam) {
       logg.push(`[${tid()}] (fikk ikke hentet sekretæren, la på)`);
       leggPaa(9000);
     }
+    if (gemini) { startGemini(); return; }
     tilXai({ type: "session.update", session: sesjon(env, kunde) });
     const forste = forsteReplikk(kunde);
     tilXai({
@@ -568,7 +709,7 @@ async function koblSamtale(env, tlfWs, urlParam) {
         content: [{ type: "output_text", text: forste }],
       },
     });
-    while (ventende.length) tilXai({ type: "input_audio_buffer.append", audio: ventende.shift() });
+    while (ventende.length) sendInnLyd(ventende.shift());
 
     xai.addEventListener("message", async (m) => {
       let e;
@@ -580,7 +721,7 @@ async function koblSamtale(env, tlfWs, urlParam) {
         return;
       }
       if (t === "response.output_audio_transcript.done" || t === "response.audio_transcript.done") {
-        if (e.transcript && e.transcript.trim()) logg.push(`[${tid()}] Liora: ${e.transcript.trim()}${avbrutt ? " (avbrutt)" : ""}`);
+        if (e.transcript && e.transcript.trim()) logg.push(`[${tid()}] Ada: ${e.transcript.trim()}${avbrutt ? " (avbrutt)" : ""}`);
         return;
       }
       if (t.includes("input_audio_transcription.completed")) {
@@ -609,12 +750,76 @@ async function koblSamtale(env, tlfWs, urlParam) {
     xai.addEventListener("close", () => { clearInterval(stilleSjekk); try { tlfWs.close(1000, "grok lukket"); } catch {} });
   }
 
+  function startGemini() {
+    tilXai(geminiOppsett(env, kunde));
+    let innTekst = "", utTekst = "";
+    const loggKunde = () => { if (innTekst.trim()) logg.push(`[${tid()}] Kunde: ${innTekst.trim()}`); innTekst = ""; };
+    const loggAda = () => {
+      if (/[\p{L}\d]/u.test(utTekst)) logg.push(`[${tid()}] Ada: ${utTekst.trim()}${avbrutt ? " (avbrutt)" : ""}`);
+      utTekst = ""; avbrutt = false;
+    };
+    const dek = new TextDecoder();
+    xai.addEventListener("message", async (m) => {
+      let e;
+      try { e = JSON.parse(typeof m.data === "string" ? m.data : dek.decode(m.data)); } catch { return; }
+      if (e.setupComplete) {
+        geminiKlar = true;
+        tilXai(geminiStart(forsteReplikk(kunde)));
+        while (ventende.length) sendInnLyd(ventende.shift());
+        return;
+      }
+      const sc = e.serverContent;
+      if (sc) {
+        if (sc.inputTranscription && sc.inputTranscription.text) {
+          innTekst += sc.inputTranscription.text;
+          sisteAktivitet = Date.now();
+          spurtOmTilstede = false;
+        }
+        if (sc.interrupted) {
+          // Kunden begynte å snakke: stopp det som spilles. Gemini sender ikke mer av det avbrutte svaret.
+          sisteAktivitet = Date.now();
+          spurtOmTilstede = false;
+          if (Date.now() < lydSlutt) avbrutt = true;
+          stoppLyd();
+          loggAda();
+        }
+        if (sc.modelTurn && sc.modelTurn.parts) {
+          loggKunde();
+          for (const p of sc.modelTurn.parts) {
+            if (p.inlineData && p.inlineData.data) {
+              const ut = pcm24kTilUlaw(p.inlineData.data, utSt);
+              if (ut) sendLyd(ut);
+            }
+          }
+        }
+        if (sc.outputTranscription && sc.outputTranscription.text) utTekst += sc.outputTranscription.text;
+        if (sc.turnComplete) { loggKunde(); loggAda(); }
+        return;
+      }
+      if (e.toolCall && e.toolCall.functionCalls) {
+        loggKunde();
+        const svar = [];
+        for (const f of e.toolCall.functionCalls) {
+          const res = await kjorVerktoy(f.name, f.args || {});
+          svar.push({ id: f.id, name: f.name, response: f.name === "legg_paa" ? { ok: true, info: "Samtalen avsluttes. Ikke si mer." } : res });
+        }
+        tilXai({ toolResponse: { functionResponses: svar } });
+        return;
+      }
+      if (e.error) console.log("Gemini-feil", JSON.stringify(e).slice(0, 300));
+    });
+    xai.addEventListener("close", (c) => {
+      if (c && c.code && c.code !== 1000) console.log("Gemini lukket", c.code, String(c.reason || "").slice(0, 200));
+      clearInterval(stilleSjekk); try { tlfWs.close(1000, "gemini lukket"); } catch {}
+    });
+  }
+
   tlfWs.addEventListener("message", async (m) => {
     let e;
     try { e = JSON.parse(m.data); } catch { return; }
     if (e.event === "media") {
       if (e.media.track && e.media.track !== "inbound") return;
-      if (xai && xai.readyState === 1) tilXai({ type: "input_audio_buffer.append", audio: e.media.payload });
+      if (motorKlar()) sendInnLyd(e.media.payload);
       else if (ventende.length < 250) ventende.push(e.media.payload);
       return;
     }
@@ -667,7 +872,7 @@ async function koblSamtale(env, tlfWs, urlParam) {
   }
 
   // Telnyx legger parameterne i URL-en, så vi kan koble til Grok med en gang strømmen åpnes,
-  // i stedet for å vente på «start». Det sparer rundt et halvt sekund før Liora sier hei.
+  // i stedet for å vente på «start». Det sparer rundt et halvt sekund før Ada sier hei.
   let tidligStart = false;
   if (urlParam && urlParam.sig) {
     const kjent = await sjekkParam(urlParam);
@@ -685,7 +890,7 @@ async function koblSamtale(env, tlfWs, urlParam) {
     if (kunde.linje) {
       // Kundens egen linje: beskjeder og bookinger har allerede gått til firmaet. Her logges bare samtalen
       // (ukesrapport, kostnad og kvalitetssjekk i orvelo-sekretar). Nummeret til den som ringte tas ikke med.
-      const utskrift = logg.map((l) => { const m = l.match(/^\[[^\]]*\] (Kunde|Liora): (.*)$/); return m ? [m[1] === "Kunde" ? "kunde" : "ai", m[2].replace(/\+?\d[\d ]{7,}/g, "[nummer]")] : null; }).filter(Boolean);
+      const utskrift = logg.map((l) => { const m = l.match(/^\[[^\]]*\] (Kunde|Ada): (.*)$/); return m ? [m[1] === "Kunde" ? "kunde" : "ai", m[2].replace(/\+?\d[\d ]{7,}/g, "[nummer]")] : null; }).filter(Boolean);
       await tilSekretar(env, "/telefon/slutt", { kunde: kunde.linje, start: new Date(startet).toISOString(), sek: Math.round((Date.now() - startet) / 1000),
         utskrift, bookinger: linjeData.bookinger, beskjeder: linjeData.beskjeder, verktoy: linjeData.verktoy })
         .catch((e) => console.log("telefon-slutt feilet", e && e.message));
@@ -719,7 +924,7 @@ async function lagreDrift(env, sek, logg, kanal, notat) {
   k.talesek = (k.talesek || 0) + sek; k.taleokter = (k.taleokter || 0) + 1; k.sist = new Date().toISOString();
   await env.KUNDER.put(key, JSON.stringify(k), { expirationTtl: KOST_DAGER * 86400 });
   if (!logg.length) return;
-  const meldinger = logg.map((l) => { const m = l.match(/^\[[^\]]*\] (Kunde|Liora): (.*)$/); return m ? [m[1] === "Kunde" ? "kunde" : "ai", m[2].replace(/\+?\d[\d ]{7,}/g, "[nummer]")] : ["info", l]; });
+  const meldinger = logg.map((l) => { const m = l.match(/^\[[^\]]*\] (Kunde|Ada): (.*)$/); return m ? [m[1] === "Kunde" ? "kunde" : "ai", m[2].replace(/\+?\d[\d ]{7,}/g, "[nummer]")] : ["info", l]; });
   const rec = { id, kanal, t: new Date(Date.now() - sek * 1000).toISOString(), prov: false, meldinger: meldinger.slice(-80), verktoy: [],
     flagg: notat && notat.sammendrag ? [] : ["Agenten skrev ikke sammendrag"], info: { sek, interesse: (notat && notat.interesse) || "" } };
   await env.KUNDER.put(`spor:${osloDato(Date.now())}:${id}:${Math.random().toString(36).slice(2, 10)}`, JSON.stringify(rec),
@@ -832,7 +1037,7 @@ async function svarInnringing(env, url, pl) {
   if (!cid) return;
   const fra = String(pl.from || "").slice(0, 20);
   const id = `calls/${encodeURIComponent(cid)}/actions`;
-  // Er nummeret som ble ringt en kundes telefonlinje? Da svarer Liora som kundens sekretær.
+  // Er nummeret som ble ringt en kundes telefonlinje? Da svarer Ada som kundens sekretær.
   const kunde = await finnLinje(env, pl.to);
   const grense = kunde ? forMange("inn:" + kunde, 120, 60 * 60 * 1000) : forMange("inn:alle", 60, 60 * 60 * 1000);
   if (forMange("inn:" + fra, 6, 60 * 60 * 1000) || grense) {
@@ -918,7 +1123,7 @@ button{width:100%;padding:14px;border:0;border-radius:10px;background:var(--akse
 .skjult{display:none}.felle{position:absolute;left:-9999px}.liten{font-size:.85rem;margin-top:18px}.liten a{color:var(--aksent)}
 </style></head><body><main><div class="kort">
 <h1>Hør hvordan en KI-sekretær høres ut</h1>
-<p>Legg inn mobilnummeret ditt, så ringer Liora, vår KI-assistent, deg om et øyeblikk. Hun forteller hvordan Orvelo kan svare telefonen for bedriften din, og kan avtale et kort møte med Preben.</p>
+<p>Legg inn mobilnummeret ditt, så ringer Ada, vår KI-assistent, deg om et øyeblikk. Hun forteller hvordan Orvelo kan svare telefonen for bedriften din, og kan avtale et kort møte med Preben.</p>
 <form id="steg1">
 <label for="navn">Navnet ditt</label><input id="navn" type="text" autocomplete="name" maxlength="60">
 <label for="firma">Bedrift</label><input id="firma" type="text" value="${f}" maxlength="80">

@@ -253,7 +253,7 @@ Signerte avtaler og kostnadstall beholdes. Endrer du en frist i koden (`SPOR_DAG
 **Tester.** `node tools/test-drift.mjs` tester lagringen (etterlignet Grok, ingen nøkkel).
 Før salg og etter hver endring i instruksjonene: kjør testene mot ekte Grok:
 `RUNDER=3 node tools/test-sekretar.mjs`, `node tools/test-agenter.mjs`, `node tools/test-innboks.mjs ekte` og
-`node tools/test-liora.mjs` (alle trenger `XAI_API_KEY`, ingenting sendes).
+`node tools/test-ada.mjs` (alle trenger `XAI_API_KEY`, ingenting sendes).
 
 ## Agentene fra lista i november 2026
 

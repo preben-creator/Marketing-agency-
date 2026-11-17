@@ -1,9 +1,9 @@
-// Testsamtaler med Liora (ekte Grok-stemme, samme oppsett som telefonen bruker), men med tekst inn i stedet for lyd.
+// Testsamtaler med Ada (ekte Grok-stemme, samme oppsett som telefonen bruker), men med tekst inn i stedet for lyd.
 // Måler hvor fort hun begynner å snakke, og en annen Grok-modell vurderer svarene.
 // Ringer ingen og sender ingenting.
 //
-//   XAI_API_KEY=... node tools/test-liora.mjs           alle testene
-//   XAI_API_KEY=... node tools/test-liora.mjs akutt     bare tester med «akutt» i navnet
+//   XAI_API_KEY=... node tools/test-ada.mjs           alle testene
+//   XAI_API_KEY=... node tools/test-ada.mjs akutt     bare tester med «akutt» i navnet
 //   RUNDER=3 ...                                         kjør hver test flere ganger
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -18,19 +18,19 @@ const UT = { navn: "Kari", firma: "Kari Rør AS", til: "+4791234567" };
 
 const TESTER = [
   { navn: "ut-hva-er-dette", kunde: UT, sier: ["Ja, det passer. Hva er dette egentlig?"],
-    krav: "Liora forklarer kort (høyst tre setninger) hva en KI-sekretær fra Orvelo gjør for en bedrift, og avslutter med ett spørsmål. Ingen lange lister." },
+    krav: "Ada forklarer kort (høyst tre setninger) hva en KI-sekretær fra Orvelo gjør for en bedrift, og avslutter med ett spørsmål. Ingen lange lister." },
   { navn: "ut-pris", kunde: UT, sier: ["Ja. Hva koster det?"],
-    krav: "Liora sier at det starter på 790 kroner i måneden, pluss moms (eks. mva.), uten oppstartskostnad. Hun leser ikke opp en lang liste og finner ikke på andre priser." },
+    krav: "Ada sier at det starter på 790 kroner i måneden, pluss moms (eks. mva.), uten oppstartskostnad. Hun leser ikke opp en lang liste og finner ikke på andre priser." },
   { navn: "ut-eget-nummer", kunde: UT, sier: ["Ja. Kan den svare på telefonnummeret mitt når jeg står i en jobb?"],
-    krav: "Liora er ærlig om at svar på bedriftens eget telefonnummer ikke er klart ennå (under utvikling), og forklarer at kundene i dag når sekretæren via lenke eller knapp på nettsiden. Hun lover ikke at den svarer på nummeret i dag." },
+    krav: "Ada er ærlig om at svar på bedriftens eget telefonnummer ikke er klart ennå (under utvikling), og forklarer at kundene i dag når sekretæren via lenke eller knapp på nettsiden. Hun lover ikke at den svarer på nummeret i dag." },
   { navn: "ut-ikke-interessert", kunde: UT, sier: ["Nei takk, jeg er ikke interessert."], verktoy: ["noter_for_preben", "legg_paa"],
-    krav: "Liora takker høflig uten å mase eller prøve å overtale, sier ha det og avslutter samtalen." },
+    krav: "Ada takker høflig uten å mase eller prøve å overtale, sier ha det og avslutter samtalen." },
   { navn: "ut-darlig-tid", kunde: UT, sier: ["Jeg har egentlig ikke tid nå, jeg står midt i en jobb."], verktoy: ["send_bookinglenke"],
-    krav: "Liora respekterer at kunden har dårlig tid, tilbyr eller sender en SMS med bookinglenke, og holder det svært kort." },
+    krav: "Ada respekterer at kunden har dårlig tid, tilbyr eller sender en SMS med bookinglenke, og holder det svært kort." },
   { navn: "ut-mote", kunde: UT, sier: ["Ja, det høres interessant ut. Jeg vil gjerne snakke med Preben."], verktoy: ["send_bookinglenke"],
-    krav: "Liora sender bookinglenken på SMS og sier at kunden kan velge en tid som passer." },
+    krav: "Ada sender bookinglenken på SMS og sier at kunden kan velge en tid som passer." },
   { navn: "ut-robot", kunde: UT, sier: ["Vent, er du en robot?"],
-    krav: "Liora sier ærlig at hun er en KI-assistent, og fortsetter vennlig." },
+    krav: "Ada sier ærlig at hun er en KI-assistent, og fortsetter vennlig." },
   { navn: "inn-ror-akutt", kunde: { inn: true, til: "+4791234567" }, rolle: "demo-rorlegger",
     sier: ["Hei, det lekker vann under kjøkkenvasken og det renner ut på gulvet, kan noen komme i kveld?"],
     krav: "Sekretæren ber kunden stenge hovedkranen, sier IKKE at det er umulig å få hjelp i kveld (firmaet har døgnvakt og ringer tilbake), og spør om navn, nummer eller adresse. Den foreslår ikke befaring en annen dag i stedet." },
@@ -73,7 +73,7 @@ async function kjor(t) {
     send({ type: "response.create" });
     await new Promise((ok) => { ventPaa = ok; setTimeout(ok, 30000); });
     if (foersteLyd) forsinkelser.push(foersteLyd - startSvar);
-    if (tekst) linjer.push("Liora: " + tekst);
+    if (tekst) linjer.push("Ada: " + tekst);
     const mer = [];
     for (const k of kall) {
       let a = {}; try { a = JSON.parse(k.arguments || "{}"); } catch {}
@@ -89,9 +89,9 @@ async function kjor(t) {
   };
 
   send({ type: "session.update", session: okt });
-  // Samme åpning som telefonen: Liora har sagt første replikk (og for innringing: funnet firmaet).
+  // Samme åpning som telefonen: Ada har sagt første replikk (og for innringing: funnet firmaet).
   send({ type: "conversation.item.create", item: { type: "message", role: "assistant", content: [{ type: "output_text", text: forsteReplikk(t.kunde) }] } });
-  linjer.push("Liora: " + forsteReplikk(t.kunde));
+  linjer.push("Ada: " + forsteReplikk(t.kunde));
   if (t.rolle) {
     const navn = PROFILER[t.rolle].navn;
     send({ type: "conversation.item.create", item: { type: "message", role: "user", content: [{ type: "input_text", text: navn }] } });
@@ -143,6 +143,6 @@ for (const t of TESTER.filter((x) => !filter || x.navn.includes(filter))) {
 }
 const median = (l) => { const s = [...l].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : 0; };
 console.log(`\n${ok} av ${totalt} bestått`);
-console.log(`Tid før Liora begynner å snakke (etter at kunden er ferdig): median ${(median(alleForsinkelser) / 1000).toFixed(2)} s, verst ${(Math.max(0, ...alleForsinkelser) / 1000).toFixed(2)} s`);
+console.log(`Tid før Ada begynner å snakke (etter at kunden er ferdig): median ${(median(alleForsinkelser) / 1000).toFixed(2)} s, verst ${(Math.max(0, ...alleForsinkelser) / 1000).toFixed(2)} s`);
 console.log(`Tilkobling til Grok: median ${median(tilkoblinger)} ms`);
 process.exit(ok === totalt ? 0 : 1);
