@@ -4,7 +4,7 @@ Denne filen er oppskriften den planlagte oppgaven følger hver mandag. Endre den
 
 ## Mål
 1. Et innlegg på orvelo.no/nyheter/ med ukens viktigste KI-nyheter for norske småbedrifter (håndverkere, frisører, servicebedrifter). Skrevet på norsk bokmål, nyttig og bra for SEO.
-2. En kort briefing på e-post til Preben om hva som skjer, og hva det betyr for Orvelo.
+2. To e-poster til Preben: en bedriftsbriefing om hva som kan påvirke Orvelo, og en om nettsideinnlegget som venter på godkjenning.
 3. Innlegget publiseres IKKE av agenten. Det legges som en PR som Preben godkjenner ved å trykke «Merge».
 
 ## Steg
@@ -22,7 +22,7 @@ Denne filen er oppskriften den planlagte oppgaven følger hver mandag. Endre den
    - `sitemap.xml`: ny `<url>` rett under `<!-- NYE INNLEGG HER -->`, og sett `lastmod` på `/nyheter/` til dagens dato
 6. Kjør `node tools/test-nyheter.mjs`. Den må være grønn.
 7. Lag en gren `nyheter/ÅÅÅÅ-uke-NN`, commit, push og åpne en PR mot `main` med tittel «KI-nytt uke NN: <kort tittel>». Sett preben-creator som assignee.
-8. Send briefingen på e-post (se under).
+8. Send de to e-postene (se under).
 
 ## Skrivestil for innlegget
 - Norsk bokmål, korte setninger, du-form. Ingen tankestreker som pynt, ingen engelske moteord når det finnes et norsk ord (skriv «KI», ikke «AI»).
@@ -32,15 +32,18 @@ Denne filen er oppskriften den planlagte oppgaven følger hver mandag. Endre den
 - Hva det betyr for Orvelo hører bare hjemme i briefingen til Preben, aldri på nettsiden.
 - Fyll ut JSON-LD (NewsArticle), canonical, og og:-taggene med riktig URL og dato.
 
-## Briefing på e-post
-- Til: Prebens egen e-postadresse, som står i den planlagte oppgaven (sendes fra samme konto via Gmail-koblingen). Ingen andre mottakere, aldri.
-- Emne: «KI-briefing uke NN: <det viktigste i fem ord>»
-- Innhold, kort og på norsk (maks ca. 250 ord):
-  1. De 3 viktigste tingene som skjedde, én setning hver
-  2. Hva det betyr for Orvelo (konkurrenter innen KI-telefon/sekretær, nye muligheter, priser på OpenAI/Grok/Gemini/Telnyx/Twilio, regler som AI Act og markedsføringsloven)
-  3. Ett forslag til hva Preben kan gjøre denne uken
-  4. Lenke til PR-en med teksten «Godkjenn innlegget: trykk Merge her» og lenke til hvordan det vil se ut (https://orvelo.no/nyheter/ÅÅÅÅ-uke-NN/ etter merge)
-- Bruk htmlBody med enkel formatering.
+## To e-poster hver mandag
+Begge sendes til Prebens egen e-postadresse, som står i den planlagte oppgaven (fra samme konto via Gmail-koblingen). Ingen andre mottakere, aldri. Bruk htmlBody med enkel formatering, kort og på norsk.
+
+**E-post 1: «Bedriftsbriefing uke NN: <det viktigste i fem ord>»** (for Preben som bedriftseier, maks ca. 250 ord)
+1. Det som kan påvirke Orvelo denne uken: konkurrenter innen KI-telefon/sekretær, prisendringer hos OpenAI/Grok/Gemini/Telnyx/Twilio, nye regler (KI-forordningen, markedsføringsloven, personvern), nye muligheter
+2. Ett konkret forslag til hva Preben bør gjøre denne uken
+Dette innholdet havner aldri på nettsiden.
+
+**E-post 2: «Nettsiden uke NN: nytt innlegg klart til godkjenning»**
+1. Tittelen på innlegget og 3 til 6 punkter om hva det handler om
+2. Lenke til PR-en med teksten «Godkjenn innlegget: trykk Merge her»
+3. Lenke til hvordan det vil se ut etter merge (https://orvelo.no/nyheter/ÅÅÅÅ-uke-NN/)
 
 ## Aldri
 - Aldri merge PR-en selv eller pushe til main.
