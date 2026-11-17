@@ -233,34 +233,99 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
 @keyframes sveve{50%{translate:0 -8px}}
 @media (max-width:1000px){.figur--v{display:none}.figur--h{position:static;display:block;margin:0 auto 14px;width:120px}}
 </style>
+<link rel="stylesheet" href="design/pro/pro.css">
+<link rel="stylesheet" href="design/pro/natt.css">
+<script>/* Inn-animasjoner bare når Motion faktisk kjører */
+if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentElement.classList.add("anim");setTimeout(function(){if(!window.__orveloPro)document.documentElement.classList.remove("anim")},2500)}</script>
+<script src="assets/vendor/motion-12.23.12.js" defer></script>
+<script src="design/pro/robot.js" defer></script>
+<script src="design/pro/pro.js" defer></script>
 </head>
 <body>
+<div class="progress" aria-hidden="true"></div>
 <div class="wrap">
   <header class="top">
     <a href="./" class="brand"><img src="assets/orvelo-logo-vennlig.svg" alt="Orvelo"></a>
-    <nav class="menu" aria-label="Hovedmeny">
+    <nav class="menu" id="hovedmeny" aria-label="Hovedmeny">
       <a href="#demo">Demo</a>
       <a href="#pris">Pris</a>
       <a href="#tjenester">Hva du får</a>
       <a href="#agenter">KI-agenter</a>
       <a href="#sporsmal">Spørsmål</a>
+      <a class="menu-cta" href="#kontakt">Book en prat</a>
     </nav>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="hovedmeny" aria-label="Meny"><span></span></button>
     <a class="btn btn--small" href="https://calendar.app.google/24niGvpRRwPqNqr28" target="_blank" rel="noopener">Book et møte</a>
   </header>
 
-  <section class="hero">
-    <img class="figur figur--h" src="assets/figur.svg" alt="" width="210" height="245">
-    <img class="figur figur--v" src="assets/figur.svg" alt="" width="160" height="187">
-    <div class="eyebrow">For håndverkere og servicebedrifter</div>
-    <h1>Din egen KI-sekretær. <span class="grad">Svarer kundene døgnet rundt.</span></h1>
-    <p>Orvelo lager en KI-sekretær for firmaet ditt. Den kjenner tjenestene, prisene og åpningstidene dine, snakker og skriver norsk, og svarer kundene døgnet rundt via en lenke på nettsiden din. Når kunden vil ha en avtale, foreslår den ledige tider.</p>
-    <div class="hero-cta">
-      <a class="btn" href="#demo">▶ Se den i aksjon</a>
-      <a class="btn btn--ghost" href="#pris">Se pris</a>
+  <section class="hero hero--pro">
+    <div class="hero-bg" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="hero-copy">
+      <a class="hero-badge" href="#assistentene"><b>Nytt</b> Velg stemme: Petter eller Eva</a>
+      <div class="eyebrow">For håndverkere og servicebedrifter</div>
+      <h1>Din egen KI-sekretær. <span class="grad">Svarer kundene døgnet rundt.</span></h1>
+      <p class="lead">Orvelo lager en KI-sekretær for firmaet ditt. Den kjenner tjenestene, prisene og åpningstidene dine, snakker og skriver norsk, og svarer kundene døgnet rundt via en lenke på nettsiden din. Når kunden vil ha en avtale, foreslår den ledige tider.</p>
+      <div class="hero-cta">
+        <a class="btn btn--lg" href="#demo">▶ Se den i aksjon</a>
+        <a class="btn btn--ghost btn--lg" href="#pris">Se pris</a>
+      </div>
+      <ul class="trust"><li>14 dager gratis</li><li>Ingen oppstartspris</li><li>Norsk tale og chat</li></ul>
+    </div>
+    <div class="hero-visual" aria-hidden="true">
+      <img class="figur figur--h" src="assets/figur.svg" alt="" width="210" height="245">
+      <div class="robot robot--hero" data-robot="petter"></div>
+      <div class="hv-3d">
+      <div class="call">
+        <div class="call-top"><div class="robot call-av" data-robot="petter"></div><div><b>Petter · Hansen Rør AS</b><small>KI-sekretær på nettsiden</small></div><span class="call-live">Svarer nå</span></div>
+        <div class="call-body">
+          <div class="cb cb--k"><small>Kunde</small>Hei! Vasken lekker. Har dere tid denne uka?</div>
+          <div class="cb cb--p"><small>Petter</small>Det ordner vi. Jeg har ledig torsdag kl. 09.00 eller fredag kl. 13.00.</div>
+          <div class="cb cb--k"><small>Kunde</small>Torsdag passer fint!</div>
+        </div>
+      </div>
+      <div class="toasts">
+        <div class="toast"><span class="ti">📅</span><div><b>Booket i kalenderen</b><span>Torsdag kl. 09.00 · Vasken lekker</span></div></div>
+        <div class="toast"><span class="ti">✉️</span><div><b>SMS sendt til kunden</b><span>Bekreftelse og påminnelse</span></div></div>
+      </div>
+      </div>
+    </div>
+  </section>
+
+  <ul class="facts" data-stagger aria-label="Kort fortalt">
+    <li><b>24/7</b><span>svarer kundene døgnet rundt</span></li>
+    <li><b>0 kr</b><span>i oppstartspris</span></li>
+    <li><b>14 dager</b><span>gratis prøvetid</span></li>
+    <li><b>2 stemmer</b><span>Petter eller Eva, på norsk</span></li>
+  </ul>
+
+  <section class="sec meet" id="assistentene" aria-labelledby="meetH">
+    <div class="sec-head" data-reveal>
+      <div class="eyebrow">KI-assistentene</div>
+      <h2 id="meetH">Møt Petter og Eva</h2>
+      <p>Sekretæren din snakker og skriver naturlig norsk. Du velger stemme, og hvor fort den snakker.</p>
+    </div>
+    <div class="meet-grid" data-stagger>
+      <article class="meet-card" style="--o2:#1f9c6e">
+        <div class="robot" data-robot="petter"></div>
+        <div><h3>Petter</h3><span class="rolle">Mannsstemme</span>
+          <ul><li>Rolig og tydelig norsk</li><li>Svarer i chat og med stemme</li><li>Foreslår ledige tider</li></ul>
+          <a class="btn btn--ghost" href="#demo">Prøv demoen</a></div>
+      </article>
+      <article class="meet-card" style="--o2:#e2674b">
+        <div class="robot" data-robot="eva"></div>
+        <div><h3>Eva</h3><span class="rolle">Kvinnestemme</span>
+          <ul><li>Varm og vennlig norsk</li><li>Svarer i chat og med stemme</li><li>Foreslår ledige tider</li></ul>
+          <a class="btn btn--ghost" href="#demo">Prøv demoen</a></div>
+      </article>
     </div>
   </section>
 
   <section id="demo" class="demo" aria-label="Demo">
+  <div class="demo-head" data-reveal>
+    <div class="eyebrow">Prøv selv</div>
+    <h2>Hør en kunde snakke med sekretæren</h2>
+    <p>Velg fag og firmanavn, og trykk på «Spill av samtalen». Skru på lyden for å høre stemmen.</p>
+  </div>
   <p class="demo-note"><b>Dette virker i dag:</b> kunden trykker på en knapp på nettsiden din og snakker eller chatter med sekretæren, slik som i demoen. Med Pro booker den rett i kalenderen og sender SMS til kunden. <b>Svar når kundene ringer ditt vanlige telefonnummer er ikke klart ennå</b> <span class="pill kommer">Kommer</span>. Du får det uten ekstra kostnad når det er klart.</p>
   <div class="controls">
     <div class="firm">
@@ -280,12 +345,13 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
   </div>
   <p class="voice-info muted" id="voiceInfo" aria-live="polite" hidden></p>
 
-  <div class="stage">
+  <div class="stage" data-reveal>
     <div class="phone">
       <div class="screen">
         <div class="callbar" id="callbar">
+          <div class="robot robot--demo" data-robot="petter"></div>
           <div class="who" id="who">Hansen Rør AS</div>
-          <div class="sub">Stemmesamtale på nettsiden · Orvelo KI-sekretær</div>
+          <div class="sub">Petter · Orvelo KI-sekretær</div>
           <div class="status"><span class="dot"></span><span id="statusText">Venter på kunde</span> <span id="timer"></span></div>
           <div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
         </div>
@@ -329,13 +395,26 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
 
   </section>
 
+  <section class="sec" id="slik" aria-labelledby="slikH">
+    <div class="sec-head" data-reveal>
+      <div class="eyebrow">Slik virker det</div>
+      <h2 id="slikH">I gang på tre steg</h2>
+      <p>Vi gjør jobben. Det tar rundt 15–30 minutter av din tid.</p>
+    </div>
+    <ol class="steps" data-stagger>
+      <li><b>Vi lager sekretæren</b><p>Ut fra nettsiden din, med tjenestene, prisene og åpningstidene dine. Vi går gjennom den sammen med deg.</p></li>
+      <li><b>Du deler lenken</b><p>Legg knappen på nettsiden, Google-profilen og sosiale medier. Telefonnummeret ditt fungerer som før.</p></li>
+      <li><b>Kundene får svar</b><p>Døgnet rundt, i chat eller med stemme. Med Pro havner avtalene rett i kalenderen og kunden får SMS.</p></li>
+    </ol>
+  </section>
+
   <section class="sec" id="tjenester" aria-labelledby="tjH">
-    <div class="sec-head">
+    <div class="sec-head" data-reveal>
       <div class="eyebrow">Hva du får</div>
       <h2 id="tjH">Din egen KI-sekretær</h2>
       <p>Dette er med fra første dag. Vi setter alt opp for deg.</p>
     </div>
-    <div class="svcs svcs--fem">
+    <div class="svcs svcs--fem" data-stagger>
       <div class="svc"><div class="i">🤖</div><b>Laget for firmaet ditt</b><p>Vi lager sekretæren ut fra nettsiden din, med tjenestene, prisene og åpningstidene dine. Den snakker og skriver norsk og svarer døgnet rundt.</p></div>
       <div class="svc"><div class="i">💬</div><b>Svar og forslag til tid</b><p>Svarer på spørsmål om tjenester, priser og åpningstider, og foreslår ledige tider til kundene.</p></div>
       <div class="svc"><div class="i">🔗</div><b>En lenke du kan dele</b><p>Kundene når sekretæren via en lenke eller knapp på nettsiden, Google-profilen og sosiale medier.</p></div>
@@ -347,19 +426,19 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
   </section>
 
   <section class="sec" id="agenter" aria-labelledby="agH">
-    <div class="sec-head">
+    <div class="sec-head" data-reveal>
       <div class="eyebrow">KI-agentene</div>
       <h2 id="agH">Alt sekretæren og agentene kan gjøre</h2>
       <p>Her er alle løsningene våre, hvilken pakke de er med i, og om de er klare nå eller kommer snart. Agentene lager utkast. Du sjekker dem og bestemmer hva som sendes.</p>
     </div>
     <h3 class="ag-gruppe">Sekretæren som svarer kundene</h3>
-    <div class="svcs svcs--ag">
+    <div class="svcs svcs--ag" data-stagger>
       <div class="svc"><div class="i">💬</div><b>Chat- og stemmesekretær <span class="pill ok">Klar</span></b><p>Svarer kundene døgnet rundt i chat og med stemme, på nettsiden din, Google og sosiale medier.</p><span class="tier">Starter, Pro og Komplett</span></div>
       <div class="svc"><div class="i">🔍</div><b>Kvalitetskontroll hver uke <span class="pill beta">Beta</span></b><p>En revisor-agent leser samtalene hver uke, finner svar som var feil eller vage, og foreslår rettelser, så sekretæren blir bedre over tid. Vi retter ingenting uten at du har sett det.</p><span class="tier">Alle pakker</span></div>
       <div class="svc"><div class="i">📞</div><b>Petter på telefonen <span class="pill kommer">Kommer</span></b><p>Svarer når kundene ringer ditt eget telefonnummer, tar imot beskjeder og booker tid.</p><span class="tier">Pro og Komplett, uten ekstra kostnad</span></div>
     </div>
     <h3 class="ag-gruppe">Booking og oppfølging av kundene</h3>
-    <div class="svcs svcs--ag">
+    <div class="svcs svcs--ag" data-stagger>
       <div class="svc"><div class="i">📅</div><b>Booking i kalenderen <span class="pill ok">Klar</span></b><p>Sekretæren booker tiden rett i kalenderen din. Kunden får en lenke for å legge timen i sin egen kalender eller avbestille.</p><span class="tier">Pro og Komplett</span></div>
       <div class="svc"><div class="i">✉️</div><b>SMS til kundene <span class="pill ok">Klar</span></b><p>Bekreftelse, påminnelse dagen før og samme dag, SMS ved tapt anrop og forespørsel om Google-anmeldelse etter jobben.</p><span class="tier">Pro og Komplett</span></div>
       <div class="svc"><div class="i">🔁</div><b>Avbestilling og venteliste <span class="pill ok">Klar</span></b><p>Kunden avbestiller med ett trykk i SMS-en. Timen tilbys med en gang til dem som står på ventelisten, og førstemann som svarer får den. Færre tomme hull i kalenderen.</p><span class="tier">Pro og Komplett</span></div>
@@ -367,7 +446,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       <div class="svc"><div class="i">📊</div><b>Ukesrapport <span class="pill kommer">Kommer</span></b><p>En kort rapport på e-post hver mandag: hvor mange som tok kontakt, hva de lurte på og hva som ble booket.</p><span class="tier">Pro og Komplett, uten ekstra kostnad</span></div>
     </div>
     <h3 class="ag-gruppe">10 KI-agenter for kontorarbeidet</h3>
-    <div class="svcs svcs--ag svcs--ag3">
+    <div class="svcs svcs--ag svcs--ag3" data-stagger>
       <div class="svc"><div class="i">🤝</div><b>Salg <span class="pill beta">Beta</span></b><p>Samler henvendelser fra sekretæren og foreslår hvem du bør følge opp, og hva du kan skrive.</p><span class="tier">Komplett</span></div>
       <div class="svc"><div class="i">📣</div><b>Markedsføring <span class="pill beta">Beta</span></b><p>Skriver innlegg til Facebook og Instagram og tekster til nettsiden din.</p><span class="tier">Komplett</span></div>
       <div class="svc"><div class="i">🧾</div><b>Tilbud <span class="pill beta">Beta</span></b><p>Ta et bilde av jobben og skriv tre linjer, så får du et tilbudsutkast med arbeid, materialer og forbehold.</p><span class="tier">Komplett</span></div>
@@ -383,11 +462,11 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
   </section>
 
   <section class="sec" id="pris" aria-labelledby="prisH">
-    <div class="sec-head">
+    <div class="sec-head" data-reveal>
       <div class="eyebrow">Pris</div>
       <h2 id="prisH">Tre pakker, ingen oppstartspris</h2>
     </div>
-    <div class="plans">
+    <div class="plans" data-stagger>
       <article class="plan">
         <h3>Starter</h3>
         <p class="for">Sekretær på nettsiden</p>
@@ -416,7 +495,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
     <p class="vat">Priser for bedrifter, i kroner uten mva. Orvelo er ikke mva-registrert ennå. Når vi blir det, kommer mva i tillegg. Chat er ubegrenset i alle pakker, og i alle pakker velger du mannsstemmen Petter eller kvinnestemmen Eva, og hvor fort sekretæren snakker. Ekstra minutter med stemme koster 5 kr per minutt, og ekstra SMS koster 1 kr per stykk. Er du blant de 5 første kundene, får du Pro for 990 kr/mnd i 12 måneder mot at vi får bruke navnet ditt som referanse.</p>
   </section>
 
-  <section class="roi" aria-labelledby="roiH">
+  <section class="roi" data-reveal aria-labelledby="roiH">
     <div class="eyebrow">Hva koster ubesvarte henvendelser?</div>
     <h2 id="roiH">Regn på det selv</h2>
     <div class="roi-grid">
@@ -439,7 +518,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
   </section>
 
   <section class="sec faq" id="sporsmal" aria-labelledby="faqH">
-    <div class="sec-head">
+    <div class="sec-head" data-reveal>
       <div class="eyebrow">Spørsmål og svar</div>
       <h2 id="faqH">Det folk lurer på</h2>
     </div>
@@ -457,7 +536,7 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
       <details><summary>Fungerer det for mitt fag?</summary><p>Ja. Sekretæren tilpasses faget ditt, enten du er rørlegger, elektriker, snekker, frisør, driver med rengjøring, flytting eller dekkskift, eller noe helt annet. Prøv demoen over med ditt fag.</p></details>
   </section>
 
-  <section class="sec contact" id="kontakt" aria-labelledby="kontaktH">
+  <section class="sec contact" data-reveal id="kontakt" aria-labelledby="kontaktH">
     <div>
       <div class="eyebrow">Kom i gang</div>
       <h2 id="kontaktH">Vil du ha din egen KI-sekretær?</h2>
@@ -1158,8 +1237,8 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
   }
   function playRecorded(i, myRun){
     return new Promise(res=>{
-      const a=new Audio(`audio/${key}/${i}.mp3`); curAudio=a;
-      a.onended=()=>res(true); a.onerror=()=>res(null);
+      const a=new Audio(`audio/${key}/${i}.mp3`); curAudio=a; window.__orveloLyd=a;
+      a.onended=()=>{ window.__orveloLyd=null; res(true); }; a.onerror=()=>{ window.__orveloLyd=null; res(null); };
       a.play().catch(()=>res(null));
       if(myRun!==run){ a.pause(); res(false); }
     });
@@ -1232,8 +1311,8 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
         bubble(type,text);
         if(type==="ai") callbar.classList.add("talking");
         const spoke=await speak(text,type,myRun,i);
-        callbar.classList.remove("talking");
         if(!spoke) await sleep(Math.min(3200, 900 + text.length*28));
+        callbar.classList.remove("talking");
       }
       else if(type==="set"){
         $("#cardJob").classList.add("on");

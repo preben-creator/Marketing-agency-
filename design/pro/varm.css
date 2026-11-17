@@ -1,0 +1,20 @@
+/* Forslag 3: Varm — videreutvikling av dagens «Vennlig». Kremhvit bakgrunn, elegant serif i titlene,
+   grønn og korall, og maskoten beholdes som et lite kjennetegn. */
+@font-face{font-family:"Fraunces";src:url(fonts/fraunces.woff2) format("woff2");font-weight:400 700;font-display:swap}
+:root{
+  --bg:#fbf6ee;--bg-alt:#f4ecdf;--surface:#fffdf9;--surface-2:#f7f0e4;--border:#e9dcc8;
+  --text:#2a2118;--muted:#6a5c4c;--accent:#1f7a5a;--accent-2:#c24f36;--accent-deep:#17614a;--ok:#1f7a5a;--warn:#a85a17;
+  --on-accent:#fff;--phone:#2a2118;--radius:24px;
+  --font-body:"Nunito",system-ui,sans-serif;--font-head:"Fraunces",Georgia,serif;
+  --shadow-md:0 14px 34px -20px rgba(80,50,20,.35);--shadow-lg:0 40px 80px -40px rgba(80,50,20,.45);
+  --blob-1:#cfead9;--blob-2:#ffd8c4;--blob-3:#fff0c9;--blob-o:.8;--dots:.6;
+  --roi-bg:#1f3d30;--roi-text:#fbf6ee;--roi-eyebrow:#ffcf9e;--roi-num:#ffcf9e;
+  --mascot:block;
+}
+h1,h2,h3{font-weight:600;letter-spacing:-.02em;font-variation-settings:"opsz" 120}
+.hero.hero--pro h1{font-weight:600}
+.grad{font-style:italic;color:var(--accent-2);-webkit-text-fill-color:currentColor;background:linear-gradient(transparent 80%,color-mix(in srgb,var(--accent-2) 18%,transparent) 80%);text-decoration:none;padding:0 .08em}
+.sec-head .eyebrow,.demo-head .eyebrow{background:color-mix(in srgb,var(--accent-2) 12%,transparent);color:var(--accent-2)}
+.facts b,.price{font-family:var(--font-head)}
+.steps li::before{border-radius:50%;background:var(--accent-2)}
+.svc b,.steps b{font-family:var(--font-body);font-weight:800}
