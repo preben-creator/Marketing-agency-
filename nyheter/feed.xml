@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
-  <title>KI-nytt for bedrifter – Orvelo</title>
+  <title>KI-bedriftsnyheter – Orvelo</title>
   <link>https://orvelo.no/nyheter/</link>
   <atom:link href="https://orvelo.no/nyheter/feed.xml" rel="self" type="application/rss+xml"/>
   <description>Ukens viktigste KI-nyheter for norske småbedrifter, hver mandag.</description>
