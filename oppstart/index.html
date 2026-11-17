@@ -237,6 +237,12 @@ button:disabled{opacity:.5;cursor:wait}
       <label class="v"><input type="radio" name="tone" value="kort og effektiv"><span>Kort og effektiv</span></label>
       <label class="v"><input type="radio" name="tone" value="varm og personlig"><span>Varm og personlig</span></label>
     </div>
+    <h3>Stemme</h3>
+    <div class="valg to">
+      <label class="v"><input type="radio" name="stemme" value="mann" checked><span>Mann (Petter)</span></label>
+      <label class="v"><input type="radio" name="stemme" value="kvinne"><span>Kvinne</span></label>
+    </div>
+    <label class="f mt">Hvor fort skal den snakke?<select id="tempo"><option value="rolig">Rolig</option><option value="litt rolig" selected>Litt rolig (anbefalt)</option><option value="normal">Normal</option><option value="rask">Rask</option></select></label>
     <label class="f mt">Slik skal den hilse<input id="hilsen" placeholder="Hei, du har kommet til Berg Rør, jeg heter Petter. Hva kan jeg hjelpe deg med?"></label>
     <label class="f mt">Dette skal den aldri si eller love<textarea id="aldri" rows="2" placeholder="Aldri gi fast pris på telefon. Aldri love at vi kommer samme dag."></textarea></label>
     <label class="f mt">Ord og navn som er vanskelige å høre<span class="valg">gatenavn, merker, fagord (skill med komma)</span><input id="stikkord" placeholder="Danmarksplass, Uponor, varmepumpe"></label>
@@ -281,8 +287,8 @@ const radio=n=>(document.querySelector(`input[name="${n}"]:checked`)||{}).value|
 const settRadio=(n,v)=>{const el=document.querySelector(`input[name="${n}"][value="${v}"]`);if(el)el.checked=true;};
 const FELT=["navn","orgnr","bransje","nettside","adresse","omraade","telefon","epost","kontaktperson","rolle","kontaktTlf","kontaktEpost","start",
   "prisinfo","ikke","unntak","system","systemAnnet","varsel","frem","buffer","avbestilling","sporAnnet","overAnnet","overNavn","overTlf","overTid","varsling",
-  "vaktInfo","sekNavn","tiltale","hilsen","aldri","stikkord","ekstra"];
-const RADIOER=["type","pakke","bookmodus","vakt","tone"];
+  "vaktInfo","sekNavn","tiltale","tempo","hilsen","aldri","stikkord","ekstra"];
+const RADIOER=["type","pakke","bookmodus","vakt","tone","stemme"];
 
 /* ---------- tjenester ---------- */
 function varighetSelect(v){const near=VARIGHET.reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a,60);
@@ -386,7 +392,7 @@ function oppsummering(s){const t=[];const ja=(l,v)=>{if(v)t.push(l+": "+v);};
   t.push("","== 6. Sette over ==");ja("Når",[...s.overNar,s.overAnnet].filter(Boolean).join("; "));ja("Til",[s.overNavn,s.overTlf].filter(Boolean).join(", "));
   ja("Tid",s.overTid);ja("Varsling",s.varsling);ja("Døgnvakt",s.vakt==="ja"?"ja"+(s.vaktInfo?": "+s.vaktInfo:""):"nei");
   t.push("","== 7. Spørsmål og ansatte ==");s.faq.forEach(([a,b])=>t.push("  Sp: "+a,"  Sv: "+(b||"(ikke svart)")));s.ansatte.forEach(([a,b])=>t.push("  Ansatt: "+a+(b?" ("+b+")":"")));
-  t.push("","== 8. Tone ==");ja("Navn",s.sekNavn);ja("Tiltale",s.tiltale);ja("Tone",s.tone);ja("Hilsen",s.hilsen);ja("Aldri",s.aldri);ja("Vanskelige ord",s.stikkord);ja("Annet",s.ekstra);
+  t.push("","== 8. Tone ==");ja("Navn",s.sekNavn);ja("Stemme",s.stemme);ja("Tempo",s.tempo);ja("Tiltale",s.tiltale);ja("Tone",s.tone);ja("Hilsen",s.hilsen);ja("Aldri",s.aldri);ja("Vanskelige ord",s.stikkord);ja("Annet",s.ekstra);
   return t.join("\n");}
 
 /* ---------- utkast og fremdrift ---------- */

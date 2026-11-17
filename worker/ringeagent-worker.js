@@ -408,6 +408,7 @@ export const brukGemini = (env) => velgMotor(env) === "gemini";
 // Øktoppsettet for OpenAI Realtime. Telefonlyden (μ-law 8 kHz) går rett inn og ut, uten omregning.
 export function openaiSesjon(env, kunde) {
   const s = sesjon(env, kunde);
+  const o = kunde.oppsett;
   return {
     type: "realtime",
     instructions: s.instructions + "\n\nSnakk alltid naturlig norsk bokmål. Snakk i et rolig, behagelig tempo, med små pauser mellom setningene. Ikke forhast deg.",
@@ -419,7 +420,8 @@ export function openaiSesjon(env, kunde) {
         transcription: { model: "gpt-4o-transcribe", language: "no" },
         turn_detection: { ...s.turn_detection, interrupt_response: true, create_response: true },
       },
-      output: { format: { type: "audio/pcmu" }, voice: env.OPENAI_STEMME || OPENAI_STEMME, speed: fart(env.OPENAI_FART) },
+      // Kundens egen linje kan ha valgt kvinnestemme og eget tempo (fra profilen i orvelo-sekretar).
+      output: { format: { type: "audio/pcmu" }, voice: (o && o.stemme) || env.OPENAI_STEMME || OPENAI_STEMME, speed: fart((o && o.fart) || env.OPENAI_FART) },
     },
   };
 }

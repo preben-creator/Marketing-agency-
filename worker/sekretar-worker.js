@@ -469,8 +469,15 @@ function normaliser(p) {
     stikkord: (Array.isArray(p.stikkord) ? p.stikkord : []).map((x) => tekst(x, 40)).filter(Boolean).slice(0, 20),
     usikkert: (Array.isArray(p.usikkert) ? p.usikkert : []).map((x) => tekst(x, 160)).filter(Boolean).slice(0, 10),
     kilder: (Array.isArray(p.kilder) ? p.kilder : []).map((x) => tekst(x, 200)).filter(Boolean).slice(0, 8),
+    // Stemmen på telefon og nettside: «mann» (Petter, cedar) eller «kvinne» (marin), og taletempo 0,7–1,2.
+    stemme: p.stemme === "kvinne" ? "kvinne" : "mann",
+    fart: rensFart(p.fart),
   };
 }
+
+// OpenAI-stemmene bak valgene i profilen. Preben valgte cedar (Petter) 2026-11-17; marin er kvinnestemmen.
+export const STEMME_ID = { mann: "cedar", kvinne: "marin" };
+export function rensFart(v) { const n = Number(v); return n >= 0.7 && n <= 1.2 ? Math.round(n * 20) / 20 : 0.9; }
 
 async function lagSekretaer(inn, env) {
   const firma = tekst(inn.firma, 80);
@@ -828,7 +835,7 @@ async function avtaleRute(request, env, ctx, url) {
 // Kunden kan endre tjenester, priser, varighet, åpningstider, ansatte, kontaktinfo og «dette bør sekretæren vite».
 // Navn, bransje og type kan bare Preben endre (på /lag).
 
-const KUNDE_KAN_ENDRE = ["tjenester", "apent", "apentTekst", "ansatte", "ekstra", "telefon", "epost", "adresse", "omraade"];
+const KUNDE_KAN_ENDRE = ["tjenester", "apent", "apentTekst", "ansatte", "ekstra", "telefon", "epost", "adresse", "omraade", "stemme", "fart"];
 const redigerTreff = new Map();
 
 const rensId = (v) => String(v || "").replace(/[^a-z0-9-]/g, "").slice(0, 60);
@@ -920,6 +927,8 @@ function hvaErEndret(gml, ny) {
   for (const [k, v] of b) if (!a.has(k)) ut.push("Ny: " + k + " (" + v + ")"); else if (a.get(k) !== v) ut.push("Endret: " + k + ": " + a.get(k) + " → " + v);
   for (const k of a.keys()) if (!b.has(k)) ut.push("Fjernet: " + k);
   if (JSON.stringify(gml.apent) !== JSON.stringify(ny.apent) || gml.apentTekst !== ny.apentTekst) ut.push("Åpningstider: " + ny.apentTekst);
+  if (gml.stemme !== ny.stemme) ut.push("Stemme: " + (ny.stemme === "kvinne" ? "kvinne" : "mann (Petter)"));
+  if (gml.fart !== ny.fart) ut.push("Taletempo: " + ny.fart);
   for (const f of ["ansatte", "ekstra", "telefon", "epost", "adresse", "omraade"]) {
     if (JSON.stringify(gml[f]) !== JSON.stringify(ny[f])) ut.push(f[0].toUpperCase() + f.slice(1) + ": " + (Array.isArray(ny[f]) ? ny[f].join(", ") : ny[f] || "(tomt)"));
   }
@@ -2697,6 +2706,7 @@ async function telefonRute(request, env, ctx, url) {
       verktoy: telefonVerktoy(venteliste),
       forste: `${profil.kortnavn || profil.navn}, hei! Du snakker med den digitale assistenten. Hva kan jeg hjelpe deg med?`,
       keyterms: [profil.navn, profil.kortnavn, ...profil.ansatte].filter(Boolean).slice(0, 10),
+      stemme: STEMME_ID[profil.stemme], fart: profil.fart,
     }, 200);
   }
 
