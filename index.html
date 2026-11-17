@@ -113,6 +113,9 @@ header img{height:34px;width:auto}
 .roi .note{margin:16px 0 0;font-size:.8rem;color:var(--muted)}
 .form .status{margin:0;padding:12px 14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--border);font-weight:600}
 .form .status.feil{border-color:var(--accent-2);color:var(--accent-2)}
+.lagdemo{margin-top:40px}
+.form .status.klar{display:grid;gap:12px}
+.form .status a.btn{justify-content:center;white-space:nowrap}
 .form .info{grid-column:1/-1;margin:0;font-size:.78rem;color:var(--muted)}
 .form .info a,footer a{color:inherit}
 .pill.ok{background:rgba(47,216,137,.15);color:var(--ok)}
@@ -281,10 +284,10 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
       <h1>Din egen KI&#8209;sekretær. <span class="grad">Svarer kundene døgnet rundt.</span></h1>
       <p class="lead">Orvelo lager en KI-sekretær for firmaet ditt. Den kjenner tjenestene, prisene og åpningstidene dine, snakker og skriver norsk, og svarer kundene døgnet rundt via en lenke på nettsiden din. Når kunden vil ha en avtale, foreslår den ledige tider.</p>
       <div class="hero-cta">
-        <a class="btn btn--lg" href="#demo">▶ Se den i aksjon</a>
-        <a class="btn btn--ghost btn--lg" href="#pris">Se pris</a>
+        <a class="btn btn--lg" href="#lag-demo">Lag min demo nå</a>
+        <a class="btn btn--ghost btn--lg" href="#demo">▶ Hør en samtale</a>
       </div>
-      <ul class="trust"><li>14 dager gratis</li><li>Ingen oppstartspris</li><li>Norsk tale og chat</li></ul>
+      <ul class="trust"><li>14 dager gratis</li><li>Ingen binding</li><li>Ingen oppstartspris</li><li>Norsk tale og chat</li></ul>
     </div>
     <div class="hero-visual" aria-hidden="true">
       <img class="figur figur--h" src="assets/figur.svg" alt="" width="210" height="245">
@@ -410,6 +413,29 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
 
   </section>
 
+  <section class="sec contact lagdemo" data-reveal id="lag-demo" aria-labelledby="lagH">
+    <div>
+      <div class="eyebrow">Prøv med ditt eget firma</div>
+      <h2 id="lagH">Lag din egen demo på ett minutt</h2>
+      <p class="muted">Skriv inn adressen til nettsiden din. Vi leser tjenestene, prisene og åpningstidene dine og lager en KI-sekretær for firmaet ditt, Du kan snakke og chatte med den med en gang.</p>
+      <ul class="contact-list">
+        <li>✅ Gratis og uforpliktende</li>
+        <li>⏱️ Klar på rundt ett minutt</li>
+        <li>🗓️ Demoen virker i 14 dager</li>
+      </ul>
+    </div>
+    <form class="form" id="lagDemoForm" novalidate>
+      <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off">
+      <label class="full">Nettsiden din<input name="nettside" required inputmode="url" autocomplete="url" placeholder="For eksempel bergror.no"></label>
+      <label>Firmanavn (valgfritt)<input name="firma" autocomplete="organization"></label>
+      <label>Fag (valgfritt)<input name="bransje" placeholder="F.eks. rørlegger"></label>
+      <label class="full">E-post eller mobil<input name="kontakt" required autocomplete="email" placeholder="Så vi kan hjelpe deg videre"></label>
+      <button class="btn full" type="submit">Lag min demo</button>
+      <p class="status full" id="lagDemoStatus" role="status" aria-live="polite" hidden></p>
+      <p class="info">Vi bruker bare det som står åpent på nettsiden din, og kontaktopplysningene dine bare til å følge deg opp. Les mer i <a href="personvern/">personvernerklæringen</a>.</p>
+    </form>
+  </section>
+
   <section class="sec" id="slik" aria-labelledby="slikH">
     <div class="sec-head" data-reveal>
       <div class="eyebrow">Slik virker det</div>
@@ -437,7 +463,7 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
       <div class="svc"><div class="i">🛠️</div><b>Vi setter det opp</b><p>Vi gjør jobben og går gjennom sekretæren sammen med deg før oppstart. Det tar rundt 15–30 minutter av din tid.</p></div>
     </div>
     <p class="bransjer"><b>Passer for blant annet:</b> <a href="?bransje=ror#demo">Rørlegger</a> <a href="?bransje=el#demo">Elektriker</a> <a href="?bransje=snekker#demo">Snekker / tømrer</a> <a href="?bransje=maler#demo">Maler</a> <a href="?bransje=tak#demo">Taktekker</a> <a href="?bransje=flis#demo">Flislegger / murer</a> <a href="?bransje=varme#demo">Varme / ventilasjon</a> <a href="?bransje=bil#demo">Bilverksted</a> <a href="?bransje=frisor#demo">Frisør</a> <a href="?bransje=mat#demo">Bakeri og mat</a> <a href="?bransje=las#demo">Låsesmed</a> <a href="?bransje=rengjoring#demo">Rengjøring / vaskebyrå</a> <a href="?bransje=flytting#demo">Flytting / transport</a> <a href="?bransje=dekk#demo">Dekkhotell / dekkskift</a> <a href="?bransje=dyr#demo">Hundefrisør / dyrepass</a> <a href="?bransje=skjonnhet#demo">Negl, vipper og hudpleie</a> <a href="?bransje=trening#demo">Treningssenter / PT</a> <a href="?bransje=skadedyr#demo">Skadedyrkontroll</a></p>
-    <p class="vat">Under utvikling: svar på ditt eget telefonnummer. Når det er klart, får du det uten ekstra kostnad i avtaleperioden.</p>
+    <p class="vat">Under utvikling: svar på ditt eget telefonnummer. Når det er klart, får du det uten ekstra kostnad.</p>
   </section>
 
   <section class="sec" id="agenter" aria-labelledby="agH">
@@ -487,7 +513,7 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
         <h3>Starter</h3>
         <p class="for">Sekretær på nettsiden</p>
         <div class="price">790 <small>kr/mnd</small></div>
-        <div class="terms"><span><b>50 minutter</b> med stemme per måned</span><span>Ingen oppstartspris</span><span><b>14 dager gratis</b>, deretter 12 mnd, fornyes automatisk</span></div>
+        <div class="terms"><span><b>50 minutter</b> med stemme per måned</span><span>Ingen oppstartspris</span><span><b>14 dager gratis</b>, ingen binding</span></div>
         <ul><li>Egen KI-sekretær laget for firmaet ditt</li><li>Svarer kundene døgnet rundt i chat og med stemme, også på din egen nettside</li><li>Foreslår ledige tider</li><li>Lenke og knapp til nettsiden, Google og sosiale medier</li><li>Egen side der du retter tjenester, priser og åpningstider</li><li>Oppsett og gjennomgang før oppstart</li></ul>
         <a class="btn btn--ghost" href="#kontakt" data-pakke="Starter">Prøv gratis i 14 dager</a>
       </article>
@@ -495,7 +521,7 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
         <h3>Pro</h3>
         <p class="for">Booking og SMS til kundene</p>
         <div class="price">1 490 <small>kr/mnd</small></div>
-        <div class="terms"><span><b>200 minutter</b> med stemme per måned</span><span>Ingen oppstartspris</span><span><b>14 dager gratis</b>, deretter 12 mnd, fornyes automatisk</span></div>
+        <div class="terms"><span><b>200 minutter</b> med stemme per måned</span><span>Ingen oppstartspris</span><span><b>14 dager gratis</b>, ingen binding</span></div>
         <ul><li class="inc">Alt i Starter</li><li>Booking rett i kalenderen din</li><li>SMS til kunden: bekreftelse og påminnelse dagen før og samme dag (200 SMS)</li><li>Avbestilling med ett trykk, og venteliste som fyller hullet</li><li>SMS ved tapt anrop og forespørsel om Google-anmeldelse</li><li class="inc">Kommer uten ekstra kostnad: svar på ditt eget telefonnummer, innboks for e-post og Facebook, og ukesrapport på e-post</li></ul>
         <a class="btn" href="#kontakt" data-pakke="Pro">Prøv gratis i 14 dager</a>
       </article>
@@ -503,7 +529,7 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
         <h3>Komplett</h3>
         <p class="for">Skreddersydd: sekretær pluss KI-agenter for kontorarbeidet</p>
         <div class="price">2 990 <small>kr/mnd</small></div><p class="fra">Fra-pris. Endelig pris avtales etter en gjennomgang.</p>
-        <div class="terms"><span><b>200 minutter</b> med stemme per måned, som i Pro</span><span>Ingen oppstartspris</span><span><b>14 dager gratis</b>, deretter 12 mnd, fornyes automatisk</span></div>
+        <div class="terms"><span><b>200 minutter</b> med stemme per måned, som i Pro</span><span>Ingen oppstartspris</span><span><b>14 dager gratis</b>, ingen binding</span></div>
         <ul><li class="inc">Alt i Pro</li><li>Gjennomgang av kontorarbeidet ditt, og vi setter opp agentene du trenger</li><li><span><b>Skreddersydde KI-agenter</b>, velg blant 10 som skriver tilbud, faktura, fakturapurring, påminnelse om tilbud, jobbrapport, innkjøpsliste, dagens rute, salgs- og markedsføringstekster og svar på anmeldelser</span></li><li class="inc">Kommer uten ekstra kostnad: svar på ditt eget telefonnummer, innboks for e-post og Facebook, og ukesrapport på e-post</li></ul>
         <a class="btn btn--ghost" href="#kontakt" data-pakke="Komplett">Be om skreddersydd tilbud</a>
       </article>
@@ -539,16 +565,16 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
       <h2 id="faqH">Det folk lurer på</h2>
     </div>
       <details><summary>Hvordan fungerer det?</summary><p>Vi lager en KI-sekretær ut fra nettsiden din, med tjenestene, prisene og åpningstidene dine. Du får en lenke og en knapp som du legger på nettsiden, Google-profilen og sosiale medier. Kundene trykker, og sekretæren svarer i chat eller med stemme, døgnet rundt.</p></details>
-      <details><summary>Hva koster det?</summary><p>Fra 790 kr i måneden eks. mva, uten oppstartspris. Du prøver gratis i 14 dager før avtalen på 12 måneder starter. Starter er sekretæren på nettsiden, Pro legger til booking i kalenderen og SMS til kundene, og Komplett er et skreddersydd tilbud med KI-agenter for kontorarbeidet, fra 2 990 kr i måneden. Chat er ubegrenset i alle pakker.</p></details>
+      <details><summary>Hva koster det?</summary><p>Fra 790 kr i måneden eks. mva, uten oppstartspris. Du prøver gratis i 14 dager, og det er ingen binding. Starter er sekretæren på nettsiden, Pro legger til booking i kalenderen og SMS til kundene, og Komplett er et skreddersydd tilbud med KI-agenter for kontorarbeidet, fra 2 990 kr i måneden. Chat er ubegrenset i alle pakker.</p></details>
       <details><summary>Hva skjer hvis jeg bruker opp minuttene?</summary><p>Sekretæren svarer fortsatt. Ekstra minutter med stemme koster 5 kr per minutt, og du kan bytte til en større pakke hvis du merker at du trenger det.</p></details>
       <details><summary>Hvordan høres stemmen ut?</summary><p>Sekretæren snakker naturlig norsk med en rolig, vennlig stemme. Du velger mellom Petter (mann) og Eva (kvinne). Skru på lyden i demoen over for å høre hvordan en samtale kan gå.</p></details>
       <details><summary>Vil kundene merke at det er en KI?</summary><p>Ja, sekretæren sier fra at den er en digital assistent. Den er vennlig og snakker naturlig norsk, og kundene får svar med en gang i stedet for å vente på at du ringer tilbake.</p></details>
       <details><summary>Kundene vil jo snakke med et menneske?</summary><p>Det gjør de fortsatt. Sekretæren gir kundene svar med en gang når du ikke rekker det, og telefonnummeret ditt fungerer som før.</p></details>
       <details><summary>Kan den love priser eller avtaler jeg ikke vil ha?</summary><p>Nei. Den bruker bare prisene og tjenestene du har gitt den, og du kan selv rette dem når som helst på din egen side.</p></details>
       <details><summary>Hvor lang tid tar det å komme i gang?</summary><p>Vi lager sekretæren ut fra nettsiden din og går gjennom den sammen med deg. Det tar rundt 15–30 minutter av din tid.</p></details>
-      <details><summary>Kan den svare på telefonnummeret mitt?</summary><p>Ikke ennå. Det er under utvikling. Når det er klart, får du det uten ekstra kostnad i avtaleperioden. I dag når kundene sekretæren via en lenke eller knapp på nettsiden din.</p></details>
+      <details><summary>Kan den svare på telefonnummeret mitt?</summary><p>Ikke ennå. Det er under utvikling. Når det er klart, får du det uten ekstra kostnad. I dag når kundene sekretæren via en lenke eller knapp på nettsiden din.</p></details>
       <details><summary>Hva med personvern?</summary><p>Vi signerer en databehandleravtale med deg. Den sier hvilke underleverandører vi bruker, blant annet Cloudflare og OpenAI i USA, og hvilket grunnlag vi har for å overføre data dit. Kundene får beskjed om at de snakker med en KI.</p></details>
-      <details><summary>Hva skjer etter bindingstiden?</summary><p>Bindingstiden er 12 måneder. Avtalen fornyes automatisk med nye 12 måneder, med mindre du sier den opp skriftlig senest 2 måneder før perioden går ut. Du får en påminnelse fra oss senest 3 måneder før.</p></details>
+      <details><summary>Er det bindingstid?</summary><p>Nei. Bestiller du her på nettsiden, er det ingen binding. Du betaler måned for måned og kan si opp når du vil.</p></details>
       <details><summary>Fungerer det for mitt fag?</summary><p>Ja. Sekretæren tilpasses faget ditt, enten du er rørlegger, elektriker, snekker, frisør, driver med rengjøring, flytting eller dekkskift, eller noe helt annet. Prøv demoen over med ditt fag.</p></details>
   </section>
 
@@ -1397,6 +1423,42 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
       st.classList.add("feil");
       st.textContent=(err.message&&err.message!=="Failed to fetch"?err.message:"Vi fikk ikke sendt meldingen.")+" Ring oss gjerne på 412 32 557.";
     }finally{ st.hidden=false; knapp.disabled=false; knapp.textContent=tekst; }
+  });
+})();
+</script>
+<script>
+(function(){
+  const f=document.getElementById("lagDemoForm"), st=document.getElementById("lagDemoStatus");
+  if(!f||!window.fetch) return;
+  const URL_PROV="https://orvelo-sekretar.preben-m-hilleren.workers.dev/prov";
+  const vis=(html,feil)=>{ st.hidden=false; st.className="status full"+(feil?" feil":""); st.innerHTML=html; };
+  const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  // Reserve hvis demotjenesten ikke svarer: fyll ut kontaktskjemaet, så lager Preben demoen.
+  function reserve(d){
+    const k=document.getElementById("kontaktForm"); if(!k) return;
+    const sett=(n,v)=>{ const el=k.elements[n]; if(el&&v&&!el.value) el.value=v; };
+    sett("firma",d.firma); sett("fag",d.bransje);
+    if(/@/.test(d.kontakt)) sett("epost",d.kontakt); else sett("telefon",d.kontakt);
+    sett("melding","Jeg vil gjerne ha en demo av KI-sekretæren for "+d.nettside+".");
+    vis("Vi fikk ikke laget demoen automatisk akkurat nå. Vi har fylt ut skjemaet under for deg. Skriv inn navnet ditt og trykk Send, så lager vi den innen én arbeidsdag.",true);
+    setTimeout(()=>document.getElementById("kontakt").scrollIntoView({behavior:"smooth"}),1800);
+  }
+  f.addEventListener("submit",async e=>{
+    e.preventDefault();
+    const d=Object.fromEntries(new FormData(f));
+    if(!d.nettside.trim()){ vis("Skriv inn adressen til nettsiden din.",true); return; }
+    if(!d.kontakt.trim()){ vis("Skriv inn e-post eller mobilnummer.",true); return; }
+    const knapp=f.querySelector('button[type="submit"]'), tekst=knapp.textContent;
+    knapp.disabled=true; knapp.textContent="Leser nettsiden og lager sekretæren …";
+    vis("Dette tar rundt ett minutt. Ikke lukk siden.");
+    try{
+      const r=await fetch(URL_PROV,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)});
+      const svar=await r.json().catch(()=>({}));
+      if(r.status===404||r.status===503||(r.status>=500&&!svar.feil)) return reserve(d);
+      if(!r.ok) return vis(esc(svar.feil||"Noe gikk galt.")+" Du kan også ringe oss på 412 32 557.",true);
+      vis(`<span>Ferdig! Her er KI-sekretæren til ${esc(svar.navn)}. Trykk på knappen og snakk eller chat med den som om du var en kunde. Lenken virker i ${svar.dager||14} dager, og vi tar gjerne en prat om hvordan den kan passe hos deg.</span><a class="btn" href="${esc(svar.lenke)}" target="_blank" rel="noopener">Åpne min KI-sekretær</a>`); st.classList.add("klar");
+    }catch{ reserve(d); }
+    finally{ knapp.disabled=false; knapp.textContent=tekst; }
   });
 })();
 </script>
