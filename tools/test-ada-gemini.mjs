@@ -4,7 +4,7 @@
 // Oppsett (én gang, i en egen mappe):  npm i ws https-proxy-agent
 // Mappen med innringerlyd trenger linjer.json (replikkene) og k1.ulaw, k2.ulaw ... (8 kHz μ-law, f.eks. fra ffmpeg).
 // Kjør:  GEMINI_API_KEY=... node tools/test-ada-gemini.mjs "$PWD/worker/ringeagent-worker.js" <mappe>
-// Skriver svartidene, samtalen som tekst og <mappe>/samtale.ulaw (spill av: ffplay -f mulaw -ar 8000 samtale.ulaw).
+// Skriver svartidene, samtalen som tekst og <mappe>/samtale.pcm (8 kHz 16 bit, slik det høres i telefonen).
 import WebSocket from "ws";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import fs from "node:fs";
@@ -29,7 +29,12 @@ const ts = String(Date.now()), til = "+4790000000";
 const sig = crypto.createHmac("sha256", "test").update(`samtale|${til}|${ts}`).digest("hex");
 
 const t0 = Date.now(); const pos = () => Math.floor((Date.now() - t0) * 8);
-const tl = new Uint8Array(8000 * 300).fill(0xff); let adaPos = 0, sisteAda = 0, slutt = 0;
+// To spor (innringer og Ada) som mikses til slutt, slik at ingen av dem skriver over den andre.
+const ULAW = new Int16Array(256);
+for (let i = 0; i < 256; i++) { const u = ~i & 0xff, ex = (u >> 4) & 7, ma = u & 15, v = (((ma << 3) + 0x84) << ex) - 0x84; ULAW[i] = u & 0x80 ? -v : v; }
+const sporAda = new Int16Array(8000 * 300), sporInn = new Int16Array(8000 * 300);
+const skriv = (spor, bytes, fra) => { for (let i = 0; i < bytes.length && fra + i < spor.length; i++) spor[fra + i] = ULAW[bytes[i]]; };
+let adaPos = 0, sisteAda = 0, slutt = 0;
 const lytt = {}; let lukket = false;
 const tlf = {
   addEventListener: (t, f) => { (lytt[t] ||= []).push(f); },
@@ -38,8 +43,8 @@ const tlf = {
     if (e.event === "media") {
       const b = Buffer.from(e.media.payload, "base64");
       if (!sisteAda || Date.now() - sisteAda > 1500) forste.push(Date.now());
-      adaPos = Math.max(adaPos, pos()); tl.set(b, adaPos); adaPos += b.length; sisteAda = Date.now();
-    } else if (e.event === "clear") { adaPos = pos(); console.log("  [clear]"); }
+      adaPos = Math.max(adaPos, pos()); skriv(sporAda, b, adaPos); adaPos += b.length; sisteAda = Date.now();
+    } else if (e.event === "clear") { sporAda.fill(0, pos(), adaPos); adaPos = pos(); console.log("  [clear]"); }
   },
   close: () => { lukket = true; },
 };
@@ -53,7 +58,7 @@ let kø = Buffer.alloc(0);
 const takt = setInterval(() => {
   let bit = kø.subarray(0, 160); kø = kø.subarray(160);
   if (bit.length < 160) bit = Buffer.concat([bit, Buffer.alloc(160 - bit.length, 0xff)]);
-  tl.set(bit.subarray(0, 160).map((x, i) => x), pos()) ; emit({ event: "media", media: { track: "inbound", payload: bit.toString("base64") } });
+  skriv(sporInn, bit, pos()); emit({ event: "media", media: { track: "inbound", payload: bit.toString("base64") } });
 }, 20);
 const svartider = [];
 for (let i = 0; i < linjer.length && !lukket; i++) {
@@ -72,6 +77,8 @@ for (let i = 0; i < linjer.length && !lukket; i++) {
 for (let k = 0; k < 120 && !lukket; k++) await vent(100);
 clearInterval(takt);
 (lytt.close || []).forEach((f) => f({}));
-fs.writeFileSync(dir + "/samtale.ulaw", tl.subarray(0, Math.max(adaPos, pos()) + 4000));
+const lengde = Math.min(sporAda.length, Math.max(adaPos, pos()) + 4000), miks = Buffer.alloc(lengde * 2);
+for (let i = 0; i < lengde; i++) miks.writeInt16LE(Math.max(-32768, Math.min(32767, sporAda[i] + sporInn[i])), i * 2);
+fs.writeFileSync(dir + "/samtale.pcm", miks); // 8 kHz, 16 bit: ffmpeg -f s16le -ar 8000 -ac 1 -i samtale.pcm samtale.mp3
 console.log("Svartider (s):", svartider.map((x) => x.toFixed(2)).join(", "), "lagt på av Ada:", lukket);
 setTimeout(() => process.exit(0), 1500);

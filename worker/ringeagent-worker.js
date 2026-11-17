@@ -428,16 +428,36 @@ export function ulawTilPcm16k(b64, st = { forrige: 0 }) {
   return tilB64(new Uint8Array(ut.buffer));
 }
 
-// PCM 24 kHz (base64) -> μ-law 8 kHz (base64). Snitt av tre og tre samples (enkel lavpass). Rester tas vare på i st.
-export function pcm24kTilUlaw(b64, st = { rest: [] }) {
+// PCM 24 kHz (base64) -> μ-law 8 kHz (base64). Lavpassfilter (FIR, 49 ledd, grense 3,4 kHz) før vi tar hver tredje
+// sample, så stemmen blir klar og uten skurring (aliasing). Filterhistorikken tas vare på i st mellom lydbitene.
+const FIR = (() => {
+  const n = 49, fc = 3400 / 24000, h = [];
+  let sum = 0;
+  for (let i = 0; i < n; i++) {
+    const x = i - (n - 1) / 2;
+    const sinc = x === 0 ? 2 * fc : Math.sin(2 * Math.PI * fc * x) / (Math.PI * x);
+    const w = 0.42 - 0.5 * Math.cos((2 * Math.PI * i) / (n - 1)) + 0.08 * Math.cos((4 * Math.PI * i) / (n - 1)); // Blackman
+    h.push(sinc * w); sum += sinc * w;
+  }
+  return h.map((v) => v / sum);
+})();
+export function pcm24kTilUlaw(b64, st = {}) {
   const b = fraB64(b64);
   const n = b.length >> 1, dv = new DataView(b.buffer, b.byteOffset, n * 2);
-  const alle = st.rest.slice();
-  for (let i = 0; i < n; i++) alle.push(dv.getInt16(i * 2, true));
-  const antall = Math.floor(alle.length / 3), ut = new Uint8Array(antall);
-  for (let i = 0; i < antall; i++) ut[i] = linTilUlaw(Math.round((alle[3 * i] + alle[3 * i + 1] + alle[3 * i + 2]) / 3));
-  st.rest = alle.slice(antall * 3);
-  return tilB64(ut);
+  const hist = st.hist || new Array(FIR.length - 1).fill(0);
+  const buf = new Float64Array(hist.length + n);
+  for (let i = 0; i < hist.length; i++) buf[i] = hist[i];
+  for (let i = 0; i < n; i++) buf[hist.length + i] = dv.getInt16(i * 2, true);
+  const ut = [];
+  let i = hist.length + (st.fase || 0);
+  for (; i < buf.length; i += 3) {
+    let y = 0;
+    for (let k = 0; k < FIR.length; k++) y += FIR[k] * buf[i - k];
+    ut.push(linTilUlaw(Math.max(-32768, Math.min(32767, Math.round(y)))));
+  }
+  st.fase = i - buf.length;
+  st.hist = Array.from(buf.subarray(buf.length - hist.length));
+  return tilB64(Uint8Array.from(ut));
 }
 
 // Verktøy i Grok/OpenAI-format -> Gemini functionDeclarations (typer med store bokstaver, bare felt Gemini forstår).
@@ -575,7 +595,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
   // Gemini: xai er da WebSocket-en til Gemini, og geminiKlar blir satt når oppsettet er godtatt.
   const gemini = brukGemini(env);
   let geminiKlar = false;
-  const innSt = { forrige: 0 }, utSt = { rest: [] };
+  const innSt = { forrige: 0 }, utSt = {};
   const sendInnLyd = (pcmu) => {
     if (gemini) tilXai({ realtimeInput: { audio: { data: ulawTilPcm16k(pcmu, innSt), mimeType: "audio/pcm;rate=16000" } } });
     else tilXai({ type: "input_audio_buffer.append", audio: pcmu });
