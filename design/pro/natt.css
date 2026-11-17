@@ -1,0 +1,31 @@
+/* Forslag 2: Natt — mørk og eksklusiv, som moderne KI-selskaper. Smaragdgrønn glød, glasskort og rutenett. */
+@font-face{font-family:"Inter";src:url(fonts/inter.woff2) format("woff2");font-weight:400 700;font-display:swap}
+@font-face{font-family:"Inter Tight";src:url(fonts/intertight.woff2) format("woff2");font-weight:500 800;font-display:swap}
+:root{
+  --bg:#070b09;--bg-alt:#0b1210;--surface:#0e1613;--surface-2:#14201b;--border:#1e2c26;
+  --text:#ecf4ef;--muted:#93a69c;--accent:#3ddc97;--accent-2:#ff7a5c;--accent-deep:#15b37a;--ok:#3ddc97;--warn:#ffb547;
+  --on-accent:#03140c;--phone:#000;--radius:20px;color-scheme:dark;
+  --font-body:"Inter",system-ui,sans-serif;--font-head:"Inter Tight","Inter",system-ui,sans-serif;
+  --shadow-md:0 20px 40px -24px rgba(0,0,0,.8);--shadow-lg:0 50px 100px -40px rgba(0,0,0,.9),0 0 0 1px rgba(61,220,151,.08),0 0 80px -30px rgba(61,220,151,.35);
+  --blob-1:#0f6b48;--blob-2:#2a5a8a;--blob-3:#3b2a6b;--blob-o:.45;--dots:.55;
+  --card-bg:linear-gradient(180deg,rgba(20,32,27,.85),rgba(14,22,19,.85));
+  --roi-bg:linear-gradient(135deg,#0f2a20,#0b1512 60%);--roi-text:#ecf4ef;--roi-eyebrow:#3ddc97;--roi-num:#3ddc97;
+  --stage-bg:rgba(14,22,19,.6);--bento-bg:radial-gradient(500px circle at 0 0,rgba(61,220,151,.12),transparent 60%),#0e1613;
+  --mascot:none;
+}
+h1,h2,h3{font-weight:700;letter-spacing:-.028em}
+.grad{background:linear-gradient(90deg,#3ddc97,#7ee8fa);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;text-decoration:none}
+.hero-bg::before{background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);background-size:56px 56px}
+.svc,.steps li,.facts li,.faq details,.plan,.contact{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.01)),var(--surface);backdrop-filter:blur(8px)}
+.btn{box-shadow:0 0 0 1px rgba(61,220,151,.4),0 10px 30px -10px rgba(61,220,151,.55)}
+.btn:hover{background:#5ae6a8}
+.btn--ghost{background:rgba(255,255,255,.04);border:1px solid var(--border);box-shadow:none;color:var(--text)}
+.btn--ghost:hover{background:rgba(255,255,255,.08)}
+.plan.best{background:linear-gradient(#0e1613,#0e1613) padding-box,linear-gradient(140deg,#3ddc97,#7ee8fa 50%,#ff7a5c) border-box}
+.plan .badge{color:#03140c}
+.pill.ok{background:rgba(61,220,151,.15)}
+.form input,.form select,.form textarea{background:#0a110e}
+.firm select option{background:#0e1613}
+.hero-badge b{color:#03140c}
+footer img{filter:brightness(0) invert(1)}
+header.top .brand img{filter:brightness(0) invert(1)}

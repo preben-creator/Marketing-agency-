@@ -1,0 +1,17 @@
+/* Forslag 1: Ren — lys, rolig og nordisk. Mye luft, stram skrift, grønn som eneste sterke farge. */
+@font-face{font-family:"Plus Jakarta Sans";src:url(fonts/plusjakartasans.woff2) format("woff2");font-weight:400 800;font-display:swap}
+:root{
+  --bg:#fafaf7;--bg-alt:#f2f4f0;--surface:#ffffff;--surface-2:#f4f6f2;--border:#e3e8e2;
+  --text:#0e1a14;--muted:#56645c;--accent:#1f7a5a;--accent-2:#e0663f;--accent-deep:#17614a;--ok:#1f7a5a;--warn:#a85a17;
+  --on-accent:#fff;--phone:#0e1a14;--radius:18px;
+  --font-body:"Plus Jakarta Sans",system-ui,sans-serif;--font-head:"Plus Jakarta Sans",system-ui,sans-serif;
+  --shadow-md:0 12px 32px -18px rgba(14,26,20,.25);--shadow-lg:0 40px 80px -40px rgba(14,26,20,.35),0 0 0 1px rgba(14,26,20,.03);
+  --blob-1:#bfe7d3;--blob-2:#ffe0d2;--blob-o:.7;--dots:.8;
+  --roi-bg:#0e1a14;--roi-text:#f2f6f3;--roi-eyebrow:#8fd9b6;--roi-num:#8fd9b6;
+  --mascot:none;
+}
+h1,h2,h3{font-weight:800;letter-spacing:-.025em}
+.hero.hero--pro h1{font-weight:800}
+.grad{color:var(--accent);background:none;-webkit-text-fill-color:currentColor;text-decoration:none}
+.plan,.roi,.contact,.svc,.card,.faq details,.steps li,.facts li{border-radius:20px}
+.eyebrow{font-weight:700}
