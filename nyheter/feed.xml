@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>KI-nytt for bedrifter – Orvelo</title>
+  <link>https://orvelo.no/nyheter/</link>
+  <atom:link href="https://orvelo.no/nyheter/feed.xml" rel="self" type="application/rss+xml"/>
+  <description>Ukens viktigste KI-nyheter for norske småbedrifter, hver mandag.</description>
+  <language>nb-no</language>
+  <!-- NYE INNLEGG HER (nyeste øverst) -->
+  <item>
+    <title>KI-nytt uke 47: ChatGPT får bedriftsprofiler, og Gmail oppsummerer lange tråder</title>
+    <link>https://orvelo.no/nyheter/2026-uke-47/</link>
+    <guid>https://orvelo.no/nyheter/2026-uke-47/</guid>
+    <pubDate>Tue, 17 Nov 2026 08:00:00 +0100</pubDate>
+    <description>Gjør krav på bedriften din i ChatGPT, ny Gemini bak Google-søk, KI i Gmail og regneark, og telefonagenter som husker kunden.</description>
+  </item>
+</channel>
+</rss>
