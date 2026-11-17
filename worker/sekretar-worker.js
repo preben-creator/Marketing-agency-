@@ -162,7 +162,9 @@ async function hovedFetch(request, env, ctx) {
       if (origin && !sameOrigin && !ALLOWED_ORIGINS.includes(origin)) {
         return json({ feil: "Ikke tillatt" }, 403, origin);
       }
-      if (!env.XAI_API_KEY) return json({ feil: "Demoen er ikke satt opp ennå (mangler nøkkel)." }, 500, origin);
+      // Stemmen: OpenAI Realtime (Petter, stemmen cedar) når OPENAI_API_KEY finnes, ellers Grok. MOTOR_NETT=grok tvinger Grok.
+      const brukOpenai = !!env.OPENAI_API_KEY && String(env.MOTOR_NETT || "").toLowerCase() !== "grok";
+      if (!brukOpenai && !env.XAI_API_KEY) return json({ feil: "Demoen er ikke satt opp ennå (mangler nøkkel)." }, 500, origin);
 
       let body = {};
       try { body = await request.json(); } catch {}
@@ -178,19 +180,28 @@ async function hovedFetch(request, env, ctx) {
         return json({ feil: "Demoen har nådd dagens grense for samtaler. Prøv igjen i morgen, eller skriv til sekretæren i stedet." }, 429, origin);
       }
 
-      const r = await fetch("https://api.x.ai/v1/realtime/client_secrets", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${env.XAI_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ expires_after: { seconds: 60 } }),
-      });
+      const modell = env.OPENAI_MODELL || "gpt-realtime-2.1";
+      const r = brukOpenai
+        ? await fetch("https://api.openai.com/v1/realtime/client_secrets", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ expires_after: { anchor: "created_at", seconds: 60 }, session: { type: "realtime", model: modell } }),
+        })
+        : await fetch("https://api.x.ai/v1/realtime/client_secrets", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${env.XAI_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ expires_after: { seconds: 60 } }),
+        });
       if (!r.ok) {
         const t = await r.text();
-        console.log("xAI svarte", r.status, t.slice(0, 300));
+        console.log(brukOpenai ? "OpenAI svarte" : "xAI svarte", r.status, t.slice(0, 300));
         return json({ feil: "Sekretæren er ikke tilgjengelig akkurat nå. Prøv igjen senere." }, 502, origin);
       }
       const d = await r.json();
       if (env._maal && kunde) { env._maal.id = kunde; env._maal.taleokter++; }
-      return json({ value: d.value, expires_at: d.expires_at }, 200, origin);
+      return json(brukOpenai
+        ? { value: d.value, expires_at: d.expires_at, motor: "openai", modell, stemme: env.OPENAI_STEMME || "cedar" }
+        : { value: d.value, expires_at: d.expires_at, motor: "grok" }, 200, origin);
     }
 
     if (url.pathname === "/kunde") {

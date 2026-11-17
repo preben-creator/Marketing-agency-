@@ -1,11 +1,11 @@
-// Lokal test av den snakkbare demoen: XAI_API_KEY=... node tools/dev-snakk.mjs  ->  http://localhost:8787/?k=test
+// Lokal test av den snakkbare demoen: OPENAI_API_KEY=... (eller XAI_API_KEY=...) node tools/dev-snakk.mjs  ->  http://localhost:8787/?k=test
 // /lag, /rediger og /avtale/ny virker lokalt med admin-koden "admin" (alt lagres bare i minnet).
 // Filer fra GitHub (snakk/lag.html, avtale/*.html) leses fra denne mappen i stedet, og e-postvarsler skrives bare ut i terminalen.
 import http from "http"; import fs from "fs";
 import worker from "../worker/sekretar-worker.js";
 const page = new URL("../snakk/index.html", import.meta.url);
 const lager = new Map(), meta = new Map(); // i stedet for Cloudflare KV
-const env = { XAI_API_KEY: process.env.XAI_API_KEY, DEMO_KODE: "test", ADMIN_KODE: "admin",
+const env = { XAI_API_KEY: process.env.XAI_API_KEY, OPENAI_API_KEY: process.env.OPENAI_API_KEY, DEMO_KODE: "test", ADMIN_KODE: "admin",
   KUNDER: {
     get: async (k, t) => (lager.has(k) ? (t === "json" ? JSON.parse(lager.get(k)) : lager.get(k)) : null),
     put: async (k, v, o) => { lager.set(k, v); meta.set(k, o && o.metadata); },
