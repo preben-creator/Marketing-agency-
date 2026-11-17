@@ -37,7 +37,7 @@ p,li{max-width:68ch}
 .merke.norge{color:var(--accent);border-color:rgba(61,220,151,.4)}
 .merke.usa{color:var(--warn);border-color:rgba(255,181,71,.4)}
 .kort-kort{list-style:none;padding:0;margin:0}
-.kort-kort li{margin:0}
+.kort-kort li{margin:0 0 14px}
 .oppsummert{background:var(--surface-2);border:1px solid var(--border);border-radius:20px;padding:18px 22px;margin:26px 0}
 .oppsummert ul{margin:8px 0 0;padding-left:1.2em}
 .cta{background:linear-gradient(135deg,#0f2a20,#0b1512 60%);border:1px solid rgba(61,220,151,.25);border-radius:22px;padding:24px;margin:44px 0 0}
