@@ -240,7 +240,7 @@ button:disabled{opacity:.5;cursor:wait}
     <h3>Stemme</h3>
     <div class="valg to">
       <label class="v"><input type="radio" name="stemme" value="mann" checked><span>Mann (Petter)</span></label>
-      <label class="v"><input type="radio" name="stemme" value="kvinne"><span>Kvinne</span></label>
+      <label class="v"><input type="radio" name="stemme" value="kvinne"><span>Kvinne (Eva)</span></label>
     </div>
     <label class="f mt">Hvor fort skal den snakke?<select id="tempo"><option value="rolig">Rolig</option><option value="litt rolig" selected>Litt rolig (anbefalt)</option><option value="normal">Normal</option><option value="rask">Rask</option></select></label>
     <label class="f mt">Slik skal den hilse<input id="hilsen" placeholder="Hei, du har kommet til Berg Rør, jeg heter Petter. Hva kan jeg hjelpe deg med?"></label>
@@ -458,4 +458,6 @@ $("send").onclick=async()=>{
     $("reserve").hidden=false;$("reserve").scrollIntoView({behavior:"smooth"});feil("Kunne ikke sende akkurat nå. Se under.");
   }finally{b.disabled=false;}
 };
+// Navneforslag følger stemmen: Petter (mann) eller Eva (kvinne)
+document.querySelectorAll('input[name="stemme"]').forEach(function(r){r.addEventListener("change",function(){var n=r.value==="kvinne"?"Eva":"Petter";document.getElementById("sekNavn").placeholder=n;document.getElementById("hilsen").placeholder="Hei, du har kommet til Berg Rør, jeg heter "+n+". Hva kan jeg hjelpe deg med?";});});
 </script></body></html>

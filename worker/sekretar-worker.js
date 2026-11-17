@@ -469,13 +469,13 @@ function normaliser(p) {
     stikkord: (Array.isArray(p.stikkord) ? p.stikkord : []).map((x) => tekst(x, 40)).filter(Boolean).slice(0, 20),
     usikkert: (Array.isArray(p.usikkert) ? p.usikkert : []).map((x) => tekst(x, 160)).filter(Boolean).slice(0, 10),
     kilder: (Array.isArray(p.kilder) ? p.kilder : []).map((x) => tekst(x, 200)).filter(Boolean).slice(0, 8),
-    // Stemmen på telefon og nettside: «mann» (Petter, cedar) eller «kvinne» (marin), og taletempo 0,7–1,2.
+    // Stemmen på telefon og nettside: «mann» (Petter, cedar) eller «kvinne» (Eva, marin), og taletempo 0,7–1,2.
     stemme: p.stemme === "kvinne" ? "kvinne" : "mann",
     fart: rensFart(p.fart),
   };
 }
 
-// OpenAI-stemmene bak valgene i profilen. Preben valgte cedar (Petter) 2026-11-17; marin er kvinnestemmen.
+// OpenAI-stemmene bak valgene i profilen. Preben valgte cedar (Petter) 2026-11-17; marin er kvinnestemmen Eva (navn valgt 2026-11-17).
 export const STEMME_ID = { mann: "cedar", kvinne: "marin" };
 export function rensFart(v) { const n = Number(v); return n >= 0.7 && n <= 1.2 ? Math.round(n * 20) / 20 : 0.9; }
 
@@ -927,7 +927,7 @@ function hvaErEndret(gml, ny) {
   for (const [k, v] of b) if (!a.has(k)) ut.push("Ny: " + k + " (" + v + ")"); else if (a.get(k) !== v) ut.push("Endret: " + k + ": " + a.get(k) + " → " + v);
   for (const k of a.keys()) if (!b.has(k)) ut.push("Fjernet: " + k);
   if (JSON.stringify(gml.apent) !== JSON.stringify(ny.apent) || gml.apentTekst !== ny.apentTekst) ut.push("Åpningstider: " + ny.apentTekst);
-  if (gml.stemme !== ny.stemme) ut.push("Stemme: " + (ny.stemme === "kvinne" ? "kvinne" : "mann (Petter)"));
+  if (gml.stemme !== ny.stemme) ut.push("Stemme: " + (ny.stemme === "kvinne" ? "kvinne (Eva)" : "mann (Petter)"));
   if (gml.fart !== ny.fart) ut.push("Taletempo: " + ny.fart);
   for (const f of ["ansatte", "ekstra", "telefon", "epost", "adresse", "omraade"]) {
     if (JSON.stringify(gml[f]) !== JSON.stringify(ny[f])) ut.push(f[0].toUpperCase() + f.slice(1) + ": " + (Array.isArray(ny[f]) ? ny[f].join(", ") : ny[f] || "(tomt)"));
