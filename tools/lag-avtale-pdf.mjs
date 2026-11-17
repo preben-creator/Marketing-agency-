@@ -34,7 +34,7 @@ const TJENESTER_DEJAVU = [
 const PRIS = { oppstart: 0, alternativer: [
   { kode: "A", navn: "Starter", mnd: 790, prosent: 0, passer: "Sekretæren i chat og med stemme på nettsiden. 50 minutter med stemme per måned" },
   { kode: "B", navn: "Pro", mnd: 1490, prosent: 0, passer: "Alt i Starter, pluss booking i kalenderen og SMS til kundene (200 SMS). 200 minutter" },
-  { kode: "C", navn: "Komplett", mnd: 2990, prosent: 0, passer: "Alt i Pro med 500 SMS, pluss 9 KI-agenter for kontorarbeidet. 500 minutter" },
+  { kode: "C", navn: "Komplett", mnd: 2990, prosent: 0, passer: "Alt i Pro (200 minutter, 200 SMS), pluss skreddersydde KI-agenter for kontorarbeidet" },
 ] };
 const MERKNAD = "De første 14 dagene fra oppstartsdato er en gratis prøveperiode. Sier dere fra på e-post før den er over, koster det ingenting. Chat er ubegrenset i alle pakker. Ekstra minutter med stemme koster 5 kr per minutt og ekstra SMS 1 kr per stykk.";
 // Tilbudet Deja Vu fikk 6. november 2026 (gammel pris), beholdt slik det ble sendt.
