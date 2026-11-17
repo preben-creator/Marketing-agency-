@@ -17,7 +17,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "coral"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "el": {
     "firm": "Berg Elektro AS",
@@ -35,7 +36,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "ash"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "snekker": {
     "firm": "Larsen Bygg AS",
@@ -53,7 +55,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "coral"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "maler": {
     "firm": "Pedersen Maling AS",
@@ -71,7 +74,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "coral"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "tak": {
     "firm": "Andersen Tak AS",
@@ -89,7 +93,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "ash"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "flis": {
     "firm": "Solberg Flis og Mur AS",
@@ -107,7 +112,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "coral"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "varme": {
     "firm": "Karlsen Varme AS",
@@ -125,7 +131,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "ash"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "bil": {
     "firm": "Nilsen Bil AS",
@@ -143,7 +150,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "ash"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "frisor": {
     "firm": "Salong Lien",
@@ -161,7 +169,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "coral"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "mat": {
     "firm": "Holm Bakeri AS",
@@ -179,7 +188,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "coral"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "las": {
     "firm": "Lund Lås AS",
@@ -197,7 +207,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "ash"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "design": {
     "firm": "Aas Atelier",
@@ -215,7 +226,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "coral"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "verksted": {
     "firm": "Strand Verksted AS",
@@ -233,7 +245,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "ash"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "grafisk": {
     "firm": "Dahl Trykk AS",
@@ -251,7 +264,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "coral"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "rengjoring": {
     "firm": "Fjell Renhold AS",
@@ -269,7 +283,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "coral"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "flytting": {
     "firm": "Vest Flytt AS",
@@ -287,7 +302,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "ash"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "dekk": {
     "firm": "Åsane Dekk AS",
@@ -305,7 +321,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "ash"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "dyr": {
     "firm": "Pelsstell Bergen",
@@ -323,7 +340,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "coral"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "skjonnhet": {
     "firm": "Studio Glans",
@@ -341,7 +359,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "coral"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "trening": {
     "firm": "Kraft PT Bergen",
@@ -359,7 +378,8 @@
     "voices": {
       "ai": "cedar",
       "cust": "ash"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   },
   "skadedyr": {
     "firm": "Vest Skadedyr AS",
@@ -377,6 +397,7 @@
     "voices": {
       "ai": "cedar",
       "cust": "coral"
-    }
+    },
+    "modell": "gpt-audio-1.5"
   }
 }

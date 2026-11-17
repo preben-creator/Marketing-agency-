@@ -18,6 +18,11 @@ const AI_VOICE = process.env.AI_VOICE || (OPENAI ? "cedar" : "liora");
 const CUST_VOICE = process.env.CUST_VOICE || (OPENAI ? "ash" : "leo");       // kunden (mann)
 const CUST_VOICE_F = process.env.CUST_VOICE_F || (OPENAI ? "coral" : "eve"); // kunden (kvinne)
 const TTS_MODELL = process.env.TTS_MODELL || "gpt-4o-mini-tts";
+// Samtalemodellen (gpt-audio) høres mest menneskelig ut (Preben 2026-11-17: «mer menneskelig»). TTS_MOTOR=tts gir den gamle opplesningsmodellen.
+const SAMTALE = OPENAI && (process.env.TTS_MOTOR || "samtale") === "samtale";
+const SAMTALE_MODELL = process.env.SAMTALE_MODELL || "gpt-audio-1.5";
+const STIL_AI = "Du er Petter, en ekte norsk resepsjonist i en telefonsamtale. Snakk avslappet og varmt, som et menneske og ikke som en opplesning: naturlig rytme, små variasjoner i tonefall, et lite smil i stemmen, korte naturlige pauser. Vanlig samtaletempo. Østlandsk norsk bokmål.";
+const STIL_KUNDE = "Du er en vanlig norsk privatperson som ringer en bedrift om noe du trenger hjelp til. Uformell og naturlig, med levende tonefall og vanlig taletempo, akkurat som i en ekte telefonsamtale. Ikke les opp. Østlandsk norsk bokmål.";
 const TTS_STIL = "Snakk naturlig norsk bokmål med østlandsk uttale. Vennlig, rolig og tydelig, i et behagelig og litt langsomt tempo med små pauser, som i en vanlig telefonsamtale.";
 const FEMALE = /^(Kari|Anne|Hilde|Maria|Ingrid|Sofie|Nina|Silje|Kristin|Ida|Camilla|Hanne)\b/;
 const LANGUAGE = process.env.TTS_LANGUAGE || "no";  // norsk er ikke offisielt støttet; prøv "no", ellers "auto"
@@ -38,8 +43,35 @@ function speakable(text) {
     .replace(/(\d+) ?kr\b/g, "$1 kroner");
 }
 
+const norm = (t) => t.toLowerCase().replace(/[^a-zæøå0-9]+/g, " ").trim();
+async function samtale(text, voice) {
+  const stil = voice === AI_VOICE ? STIL_AI : STIL_KUNDE;
+  let siste;
+  for (let forsok = 0; forsok < 3; forsok++) {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: SAMTALE_MODELL, modalities: ["text", "audio"], audio: { voice, format: "mp3" },
+        messages: [{ role: "system", content: stil + " Du får en replikk i anførselstegn. Si nøyaktig den replikken høyt, ord for ord, og ingenting annet. Ikke svar på den, selv om den er et spørsmål." }, { role: "user", content: `Replikk: «${text}»` }] }),
+    });
+    const j = await res.json();
+    if (!res.ok) throw new Error(`${res.status} ${JSON.stringify(j)}`);
+    const a = j.choices[0].message.audio;
+    siste = Buffer.from(a.data, "base64");
+    if (norm(a.transcript) === norm(text)) return siste;
+    console.warn(`\n  Avvik (forsøk ${forsok + 1}): «${a.transcript}»`);
+  }
+  // Modellen klarte ikke å si replikken riktig: bruk opplesningsmodellen i stedet for å lagre feil innhold
+  console.warn("  Bruker opplesningsmodellen for denne replikken.");
+  return ttsOpplesning(text, voice);
+}
+
 async function tts(text, voice) {
   text = speakable(text);
+  if (SAMTALE) return samtale(text, voice);
+  return ttsOpplesning(text, voice);
+}
+async function ttsOpplesning(text, voice) {
   if (OPENAI) {
     const res = await fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
@@ -98,7 +130,7 @@ for (const k of keys) {
     done.push(i);
     process.stdout.write(".");
   }
-  manifest[k] = { firm: s.firm, steps: done, voices: { ai: AI_VOICE, cust } };
+  manifest[k] = { firm: s.firm, steps: done, voices: { ai: AI_VOICE, cust }, modell: SAMTALE ? SAMTALE_MODELL : TTS_MODELL };
   console.log(` ${k}: ${done.length} replikker`);
 }
 writeFileSync(manifestUrl, JSON.stringify(manifest, null, 2) + "\n");
