@@ -152,7 +152,7 @@ function tegn(){
   if(A.regneeksempel)h+=`<p class="liten"><b>Regneeksempel:</b> ${esc(A.regneeksempel)}</p>`;
   h+=`<h2>Hovedpunkter</h2><ul>
     <li><b>Bindingstid:</b> ${Number(A.bindingMnd||12)===1?"1 måned":esc(A.bindingMnd)+" måneder"} fra oppstartsdato, eller fra dagen etter en gratis prøveperiode hvis den står i tilbudet. Avtalen fornyes deretter automatisk med nye ${Number(A.bindingMnd||12)===1?"1 måned":esc(A.bindingMnd||12)+" måneder"}, med mindre den sies opp skriftlig senest 2 måneder før perioden går ut. Dere får en påminnelse senest 3 måneder før.</li>
-    <li><b>Fakturering:</b> ${Number(P.oppstart)>0?"oppstart faktureres ved oppstart, ":""}månedsprisen forskuddsvis hver måned${alt.some(a=>Number(a.prosent)>0)?", og en eventuell andel av bookinger etterskuddsvis for måneden før":""}. Betalingsfrist 14 dager.</li>
+    <li><b>Fakturering:</b> ${Number(P.oppstart)>0?"oppstart faktureres ved oppstart, ":""}månedsprisen forskuddsvis hver måned${alt.some(a=>Number(a.prosent)>0)?", og en eventuell andel av bookinger etterskuddsvis for måneden før":""}. Betalingsfrist 14 dager, til konto ${esc(L.kontonr||"3606 36 97685")}.</li>
     <li><b>Mva:</b> prisene er uten mva. Mva kommer i tillegg hvis Orvelo er eller blir mva-registrert.</li>
     ${A.merknad?`<li><b>Merknad:</b> ${esc(A.merknad)}</li>`:""}
   </ul>`;
@@ -172,7 +172,7 @@ function tegn(){
     h+="</div>";
     if(!window.AVTALE_DATA&&!utlopt)h+=skjema(alt,K);
   }
-  h+=`</section><footer><span>${esc(L.navn||"Orvelo")} · Org.nr. ${esc(L.orgnr||"")} · ${esc(L.epost||"")}</span><span>${S?"Avtale":"Tilbud"} nr. ${esc(A.nr||"")}</span></footer>`;
+  h+=`</section><footer><span>${esc(L.navn||"Orvelo")} · Org.nr. ${esc(L.orgnr||"")} · Konto ${esc(L.kontonr||"3606 36 97685")} · ${esc(L.epost||"")}</span><span>${S?"Avtale":"Tilbud"} nr. ${esc(A.nr||"")}</span></footer>`;
   $("ark").innerHTML=h;$("laster").hidden=true;$("ark").hidden=false;$("verktoy").hidden=!!window.AVTALE_DATA&&!q.get("forhandsvis");
   if(!S&&!window.AVTALE_DATA&&!utlopt)koble(alt);
   window.KLAR=true;
