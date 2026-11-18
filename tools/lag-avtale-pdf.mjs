@@ -11,7 +11,7 @@ const ut = process.argv[2] || path.join(rot, "avtale", "pdf");
 fs.mkdirSync(ut, { recursive: true });
 const vilkar = fs.readFileSync(path.join(rot, "avtale/vilkar.html"), "utf8").replace(/<!--[\s\S]*?-->/g, "").trim();
 
-const ORVELO = { navn: "Orvelo Hilleren v/ Preben Hilleren", orgnr: "938 720 673", adresse: "Bergen", epost: "hilleren.bedrift@gmail.com", kontonr: "3606 36 97685", signatar: "Preben Hilleren" };
+const ORVELO = { navn: "Orvelo Hilleren v/ Preben Hilleren", orgnr: "938 720 673", adresse: "Bergen", epost: "hilleren.bedrift@gmail.com", kontonr: "3606 36 97677", signatar: "Preben Hilleren" };
 const TJENESTER = [
   { t: "Egen KI-sekretær", b: "laget for firmaet deres ut fra nettsiden, med tjenestene, prisene og åpningstidene deres. Hun snakker og skriver norsk og svarer kundene døgnet rundt." },
   { t: "Svar og forslag til time", b: "sekretæren svarer på spørsmål om tjenester, priser og åpningstider, og foreslår ledige tider til kundene." },
