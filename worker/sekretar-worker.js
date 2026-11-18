@@ -609,7 +609,7 @@ function rensAvtale(a) {
     gyldigTil: datoStr(a.gyldigTil),
     bindingMnd: tall(a.bindingMnd, 60) || 12,
     kunde: { firma: tekst(k.firma, 120), orgnr: tekst(k.orgnr, 20), adresse: tekst(k.adresse, 160), kontaktperson: tekst(k.kontaktperson, 100), epost: tekst(k.epost, 120), telefon: tekst(k.telefon, 30) },
-    leverandor: { navn: tekst(l.navn, 120), orgnr: tekst(l.orgnr, 20), adresse: tekst(l.adresse, 160), epost: tekst(l.epost, 120), telefon: tekst(l.telefon, 30), signatar: tekst(l.signatar, 100) },
+    leverandor: { navn: tekst(l.navn, 120), orgnr: tekst(l.orgnr, 20), adresse: tekst(l.adresse, 160), epost: tekst(l.epost, 120), telefon: tekst(l.telefon, 30), kontonr: tekst(l.kontonr, 20).replace(/[^\d. ]/g, ""), signatar: tekst(l.signatar, 100) },
     innledning: tekst(a.innledning, 2000),
     tjenester: (Array.isArray(a.tjenester) ? a.tjenester : []).slice(0, 20).map((t) => ({ t: tekst(t && t.t, 80), b: tekst(t && t.b, 600) })).filter((t) => t.b),
     pris: {

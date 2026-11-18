@@ -74,6 +74,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
     <label>Adresse<input id="lAdresse"></label>
     <label>E-post<input id="lEpost"></label>
     <label>Telefon<input id="lTlf"></label>
+    <label>Kontonummer (Folio)<input id="lKonto" inputmode="numeric"></label>
     <label>Signert av (navn som står under leverandør)<input id="lSign"></label>
   </div></details>
 
@@ -105,12 +106,13 @@ const ORVELO={
   adresse:"Bergen",
   epost:"orvelo@epost.no",
   telefon:"412 32 557", // mobilnummeret til Preben
+  kontonr:"3606 36 97685", // bedriftskonto i Folio (åpnet 17.11.2026)
   nettside:"", // settes til "orvelo.no" når domenet virker
   signatar:"Preben Hilleren"
 };
 const $=id=>document.getElementById(id);
 $("lNavn").value=ORVELO.navn;$("lOrgnr").value=ORVELO.orgnr;$("lAdresse").value=ORVELO.adresse;
-$("lEpost").value=ORVELO.epost;$("lTlf").value=ORVELO.telefon;$("lSign").value=ORVELO.signatar;
+$("lEpost").value=ORVELO.epost;$("lTlf").value=ORVELO.telefon;$("lSign").value=ORVELO.signatar;$("lKonto").value=ORVELO.kontonr;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const iso=d=>d.toISOString().slice(0,10);
 const om=(n)=>{const d=new Date();d.setDate(d.getDate()+n);return iso(d);};
@@ -137,7 +139,7 @@ function data(){
   return {
     tittel:$("tittel").value.trim(),dato:$("dato").value,gyldigTil:$("gyldig").value,bindingMnd:Number($("binding").value)||12,
     kunde:{firma:$("firma").value.trim(),orgnr:$("orgnr").value.trim(),adresse:$("adresse").value.trim(),kontaktperson:$("kontaktperson").value.trim(),epost:$("epost").value.trim(),telefon:$("telefon").value.trim()},
-    leverandor:{navn:$("lNavn").value.trim(),orgnr:$("lOrgnr").value.trim(),adresse:$("lAdresse").value.trim(),epost:$("lEpost").value.trim(),telefon:$("lTlf").value.trim(),signatar:$("lSign").value.trim()},
+    leverandor:{navn:$("lNavn").value.trim(),orgnr:$("lOrgnr").value.trim(),adresse:$("lAdresse").value.trim(),epost:$("lEpost").value.trim(),telefon:$("lTlf").value.trim(),kontonr:$("lKonto").value.trim(),signatar:$("lSign").value.trim()},
     innledning:$("innledning").value.trim(),
     tjenester:$("tjenester").value.split("\n").map(l=>l.trim()).filter(Boolean).map(l=>{const i=l.indexOf(":");return i>0&&i<60?{t:l.slice(0,i).trim(),b:l.slice(i+1).trim()}:{t:"",b:l};}),
     pris:{oppstart:Number($("oppstart").value)||0,alternativer:alt},
