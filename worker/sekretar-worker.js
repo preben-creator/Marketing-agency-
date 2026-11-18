@@ -4513,7 +4513,7 @@ async function lagreSalgDag(env, dato, d) { await env.KUNDER.put("salgdag:" + da
 async function avmeldRute(request, env, url) {
   const orgnr = String(url.searchParams.get("o") || "").replace(/\D/g, "").slice(0, 9);
   const t = String(url.searchParams.get("t") || "");
-  const side = (tittel, tekstUt) => new Response(`<!doctype html><html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(tittel)}</title></head><body style="font:17px/1.5 system-ui,sans-serif;max-width:560px;margin:60px auto;padding:0 16px;color:#1d1b2b"><h1 style="font-size:24px">${esc(tittel)}</h1><p>${esc(tekstUt)}</p><p style="color:#666;font-size:14px">Orvelo · Hilleren Markedsføring, org.nr 938 720 673 · hilleren.bedrift@gmail.com</p></body></html>`, { headers: HTML_HODER });
+  const side = (tittel, tekstUt) => new Response(`<!doctype html><html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(tittel)}</title></head><body style="font:17px/1.5 system-ui,sans-serif;max-width:560px;margin:60px auto;padding:0 16px;color:#1d1b2b"><h1 style="font-size:24px">${esc(tittel)}</h1><p>${esc(tekstUt)}</p><p style="color:#666;font-size:14px">Orvelo · Orvelo Hilleren, org.nr 938 720 673 · hilleren.bedrift@gmail.com</p></body></html>`, { headers: HTML_HODER });
   if (!env.KUNDER || orgnr.length !== 9 || !(await salgTokenOk(env, orgnr, t))) return side("Lenken virker ikke", "Svar «stopp» på e-posten, så fjerner vi adressen for hånd.");
   const f = await env.KUNDER.get("salg:" + orgnr, "json");
   await sperrSalg(env, { orgnr, epost: f && f.epost, grunn: "avmeld" });
@@ -4609,7 +4609,7 @@ async function salgSkriv(env, f) {
 async function salgFullEpost(env, f, i) {
   const e = f.eposter[i];
   const avmeld = await avmeldLenke(env, f.orgnr);
-  const fot = `\n\nHilsen\nPreben Hilleren\nOrvelo · 412 32 557\n${env.SALG_NETTSIDE || "https://orvelo.no/"}\n\n--\nDu får denne e-posten fordi ${f.navn} er et aksjeselskap, og adressen står i Enhetsregisteret. Avsender: Orvelo (Hilleren Markedsføring, org.nr 938 720 673). Vil du ikke ha flere e-poster? Meld av her: ${avmeld} (eller svar «stopp»).`;
+  const fot = `\n\nHilsen\nPreben Hilleren\nOrvelo · 412 32 557\n${env.SALG_NETTSIDE || "https://orvelo.no/"}\n\n--\nDu får denne e-posten fordi ${f.navn} er et aksjeselskap, og adressen står i Enhetsregisteret. Avsender: Orvelo (Orvelo Hilleren, org.nr 938 720 673). Vil du ikke ha flere e-poster? Meld av her: ${avmeld} (eller svar «stopp»).`;
   const tekstUt = e.tekst + fot;
   const html = `<div style="font:15px/1.55 Arial,sans-serif;color:#1d1b2b;max-width:600px">${esc(tekstUt).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>').replace(/\n/g, "<br>")}</div>`;
   return { emne: e.emne, tekst: tekstUt, html, avmeld };
@@ -4812,7 +4812,7 @@ const SALG_FAKTA = `- Orvelo leverer en KI-sekretær som svarer kundene på bedr
 - Ingen oppstartspris. Oppsett: vi lager sekretæren fra nettsiden deres, dere retter selv, og den legges inn på nettsiden med én kodelinje (eller som lenke).
 - Svar på telefon er under utvikling og ikke klart ennå. Lov det aldri.
 - Data: samtaler lagres i 30 dager. Språkmodellen er fra xAI (USA), med databehandleravtale og nullagring hos dem.
-- Avsender: Preben Hilleren, Orvelo (Hilleren Markedsføring, org.nr 938 720 673), Bergen, tlf 412 32 557.`;
+- Avsender: Preben Hilleren, Orvelo (Orvelo Hilleren, org.nr 938 720 673), Bergen, tlf 412 32 557.`;
 
 function mimeDekod(tekstInn, enc, charset) {
   let bytes;
