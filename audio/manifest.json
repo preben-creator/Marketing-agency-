@@ -18,7 +18,24 @@
       "ai": "cedar",
       "cust": "coral"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16,
+        18
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "el": {
     "firm": "Berg Elektro AS",
@@ -37,7 +54,23 @@
       "ai": "cedar",
       "cust": "ash"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "snekker": {
     "firm": "Larsen Bygg AS",
@@ -56,7 +89,23 @@
       "ai": "cedar",
       "cust": "coral"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "maler": {
     "firm": "Pedersen Maling AS",
@@ -75,7 +124,23 @@
       "ai": "cedar",
       "cust": "coral"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "tak": {
     "firm": "Andersen Tak AS",
@@ -94,7 +159,23 @@
       "ai": "cedar",
       "cust": "ash"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "flis": {
     "firm": "Solberg Flis og Mur AS",
@@ -113,7 +194,23 @@
       "ai": "cedar",
       "cust": "coral"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "varme": {
     "firm": "Karlsen Varme AS",
@@ -132,7 +229,23 @@
       "ai": "cedar",
       "cust": "ash"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "bil": {
     "firm": "Nilsen Bil AS",
@@ -151,7 +264,23 @@
       "ai": "cedar",
       "cust": "ash"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "frisor": {
     "firm": "Salong Lien",
@@ -170,7 +299,23 @@
       "ai": "cedar",
       "cust": "coral"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "mat": {
     "firm": "Holm Bakeri AS",
@@ -189,7 +334,23 @@
       "ai": "cedar",
       "cust": "coral"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "las": {
     "firm": "Lund Lås AS",
@@ -208,7 +369,23 @@
       "ai": "cedar",
       "cust": "ash"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "design": {
     "firm": "Aas Atelier",
@@ -227,7 +404,23 @@
       "ai": "cedar",
       "cust": "coral"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "verksted": {
     "firm": "Strand Verksted AS",
@@ -246,7 +439,23 @@
       "ai": "cedar",
       "cust": "ash"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "grafisk": {
     "firm": "Dahl Trykk AS",
@@ -265,7 +474,23 @@
       "ai": "cedar",
       "cust": "coral"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "rengjoring": {
     "firm": "Fjell Renhold AS",
@@ -284,7 +509,23 @@
       "ai": "cedar",
       "cust": "coral"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "flytting": {
     "firm": "Vest Flytt AS",
@@ -303,7 +544,23 @@
       "ai": "cedar",
       "cust": "ash"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "dekk": {
     "firm": "Åsane Dekk AS",
@@ -322,7 +579,23 @@
       "ai": "cedar",
       "cust": "ash"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "dyr": {
     "firm": "Pelsstell Bergen",
@@ -341,7 +614,23 @@
       "ai": "cedar",
       "cust": "coral"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "skjonnhet": {
     "firm": "Studio Glans",
@@ -360,7 +649,23 @@
       "ai": "cedar",
       "cust": "coral"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "trening": {
     "firm": "Kraft PT Bergen",
@@ -379,7 +684,23 @@
       "ai": "cedar",
       "cust": "ash"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   },
   "skadedyr": {
     "firm": "Vest Skadedyr AS",
@@ -398,6 +719,22 @@
       "ai": "cedar",
       "cust": "coral"
     },
-    "modell": "gpt-audio-1.5"
+    "modell": "gpt-audio-1.5",
+    "generisk": [
+      1
+    ],
+    "eva": {
+      "steps": [
+        1,
+        3,
+        7,
+        12,
+        16
+      ],
+      "voice": "marin",
+      "generisk": [
+        1
+      ]
+    }
   }
 }
