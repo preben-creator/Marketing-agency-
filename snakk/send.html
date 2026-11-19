@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Send e-post · Orvelo</title><meta name="robots" content="noindex"><meta name="referrer" content="no-referrer">
+<!-- Serveres av workeren orvelo-sekretar på /drift/send (hentes fra GitHub). Krever ADMIN_KODE.
+     Kontrollrommet åpner siden med e-posten (til, emne, html, tekst, orgnr, firma) i #-delen av lenken,
+     så innholdet aldri går gjennom serveren før Preben trykker Send. Sendes fra salgsadressen via Resend,
+     svar går til orvelo@epost.no, og lenkene kommer frem rene. -->
+<style>
+:root{--bg:#0f0e17;--card:#1a1928;--ink:#eeedf7;--muted:#a3a0bd;--line:#2e2c44;--acc:#3ddc97;--ok:#5fd59a;--warn:#ffb547;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:24px;margin:0 0 4px}p.lead{color:var(--muted);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+input{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 11px;width:100%}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button{font:inherit;font-weight:700;border-radius:9px;padding:10px 18px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.p{background:var(--acc);border-color:var(--acc);color:#06140d}button:disabled{opacity:.5;cursor:wait}
+.msg{font-size:15px;margin-top:10px}.err{color:var(--warn)}.ok{color:var(--ok)}.muted{color:var(--muted);font-size:14px}
+iframe{width:100%;height:70vh;border:1px solid var(--line);border-radius:12px;background:#fff}
+</style></head><body><div class="wrap">
+<h1>Send e-post</h1>
+<p class="lead">Sendes fra salgsadressen til Orvelo. Svar fra kunden kommer til orvelo@epost.no.</p>
+<div class="card" id="tom" hidden><p class="err">Fant ingen e-post i lenken. Åpne siden fra «Send nå» i kontrollrommet.</p></div>
+<div class="card" id="skjema" hidden>
+  <label>Til<input id="til" type="email" autocomplete="off"></label>
+  <label>Emne<input id="emne" autocomplete="off"></label>
+  <label>Admin-kode<input id="kode" type="password" autocomplete="current-password"></label>
+  <div class="row"><button class="p" id="send">Send nå</button><span class="muted" id="fra"></span></div>
+  <div class="msg" id="msg"></div>
+</div>
+<iframe id="vis" title="Forhåndsvisning" sandbox hidden></iframe>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+let e = null;
+try {
+  const h = location.hash.slice(1);
+  if (h) {
+    const b = atob(h.replace(/-/g, "+").replace(/_/g, "/"));
+    e = JSON.parse(new TextDecoder().decode(Uint8Array.from(b, (c) => c.charCodeAt(0))));
+  }
+} catch { e = null; }
+if (!e || !e.html) { $("tom").hidden = false; }
+else {
+  $("skjema").hidden = false; $("vis").hidden = false;
+  $("til").value = e.til || ""; $("emne").value = e.emne || "";
+  $("vis").srcdoc = e.html;
+  document.title = "Send: " + (e.firma || e.til || "e-post");
+  try { $("kode").value = localStorage.getItem("orvelo-admin") || ""; } catch {}
+  if (e.test) $("msg").innerHTML = '<span class="muted">Dette er en test. Den går bare til adressen over.</span>';
+}
+let sendt = false;
+$("send").addEventListener("click", async () => {
+  if (sendt) return;
+  const msg = $("msg"); const knapp = $("send");
+  knapp.disabled = true; msg.className = "msg"; msg.textContent = "Sender …";
+  try { localStorage.setItem("orvelo-admin", $("kode").value); } catch {}
+  try {
+    const r = await fetch("/drift/api", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kode: $("kode").value, handling: "send-epost", til: $("til").value, emne: $("emne").value,
+        html: e.html, tekst: e.tekst || "", orgnr: e.orgnr || "", firma: e.firma || "" }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) throw new Error(d.feil || "Sendingen feilet (" + r.status + ").");
+    sendt = true; msg.className = "msg ok";
+    msg.textContent = "Sendt til " + d.til + ". Du kan lukke denne fanen og merke den som sendt i kontrollrommet.";
+    $("fra").textContent = "Fra: " + (d.fra || "");
+    history.replaceState(null, "", location.pathname);
+  } catch (err) {
+    msg.className = "msg err"; msg.textContent = err.message; knapp.disabled = false;
+  }
+});
+</script></body></html>

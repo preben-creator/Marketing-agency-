@@ -4315,6 +4315,11 @@ async function driftRute(request, env, ctx, url) {
     try { return new Response(await hentFraGitHub("snakk/drift.html", env), { headers: HTML_HODER }); }
     catch (e) { return new Response(e.message, { status: 502 }); }
   }
+  if (request.method === "GET" && p === "/drift/send") {
+    // Kontrollrommet åpner denne siden med e-posten i #-delen av lenken. Preben ser den og trykker Send.
+    try { return new Response(await hentFraGitHub("snakk/send.html", env), { headers: HTML_HODER }); }
+    catch (e) { return new Response(e.message, { status: 502 }); }
+  }
   if (p !== "/drift/api" || request.method !== "POST") return new Response("Ikke funnet", { status: 404 });
   const origin = request.headers.get("Origin");
   if (origin && origin !== url.origin) return json({ feil: "Ikke tillatt" }, 403);
@@ -4386,6 +4391,7 @@ async function driftRute(request, env, ctx, url) {
       const id = rensId(b.kunde);
       return json({ revisjon: await brukRettelse(env, id, String(b.uke || ""), Number(b.nr), b.tekst) }, 200);
     }
+    if (b.handling === "send-epost") return json(await sendFraKontrollrom(env, b), 200);
     if (String(b.handling || "").startsWith("salg")) return json(await salgDrift(env, b), 200);
     if (b.handling === "oppbevaring") return json({ spor: SPOR_DAGER, saker: SAK_DAGER, logg: Math.round(LOGG_TTL / 86400), kost: KOST_DAGER }, 200);
     return json({ feil: "Ukjent handling." }, 400);
@@ -4620,6 +4626,24 @@ async function salgSend(env, f, til) {
   return sendEpost(env, { til: til || f.epost, emne: m.emne, tekst: m.tekst, html: m.html,
     fra: env.SALG_FRA || "Preben i Orvelo <salg@orvelo.no>", svarTil: env.SALG_SVAR_TIL || "orvelo@epost.no",
     hoder: { "List-Unsubscribe": `<${m.avmeld}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } });
+}
+
+// E-post som Preben sender selv fra kontrollrommet (demo eller tilbud). Går fra salgsadressen via Resend,
+// så lenkene kommer frem rene (Gmail-koblingen pakker dem inn i google.com/url). Sperrelisten sjekkes først.
+async function sendFraKontrollrom(env, b) {
+  const til = String(b.til || "").trim().toLowerCase();
+  if (!/^[^\s@<>",;]+@[^\s@<>",;]+\.[a-z]{2,}$/.test(til)) throw Object.assign(new Error("Ugyldig e-postadresse."), { status: 400 });
+  const emne = tekst(b.emne, 200);
+  const html = String(b.html || "");
+  if (!emne || !html) throw Object.assign(new Error("Mangler emne eller innhold."), { status: 400 });
+  if (html.length > 200000) throw Object.assign(new Error("E-posten er for stor."), { status: 400 });
+  const orgnr = String(b.orgnr || "").replace(/\D/g, "").slice(0, 9);
+  if (await salgSperret(env, orgnr, til, { navn: b.firma })) throw Object.assign(new Error("Firmaet står på sperrelisten (avmeldt eller stoppet). E-posten ble ikke sendt."), { status: 400 });
+  const hoder = {};
+  if (orgnr.length === 9) { const a = await avmeldLenke(env, orgnr); hoder["List-Unsubscribe"] = `<${a}>`; hoder["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"; }
+  const r = await sendEpost(env, { til, emne, html, tekst: String(b.tekst || "").slice(0, 50000) || undefined,
+    fra: env.SALG_FRA || "Preben i Orvelo <salg@orvelo.no>", svarTil: env.SALG_SVAR_TIL || "orvelo@epost.no", hoder: Object.keys(hoder).length ? hoder : undefined });
+  return { ok: true, id: r && r.id, til, fra: env.SALG_FRA || "Preben i Orvelo <salg@orvelo.no>" };
 }
 
 async function salgListe(env, status) {
