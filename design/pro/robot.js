@@ -107,6 +107,12 @@
       });
     }, { passive: true });
   }
-  window.OrveloRobot = { lag, snakk, blunk, se };
+  // Bytt hvem som vises (Petter/Eva), f.eks. når besøkende velger stemme i demoen
+  function bytt(el, type) {
+    if (!TYPER[type] || el.dataset.robot === type && el.dataset.klar) return;
+    cancelAnimationFrame(el._raf); el.classList.remove("snakker");
+    el.dataset.robot = type; delete el.dataset.klar; el._deler = null; lag(el);
+  }
+  window.OrveloRobot = { lag, snakk, blunk, se, bytt };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();

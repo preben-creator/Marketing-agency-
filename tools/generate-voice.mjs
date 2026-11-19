@@ -4,6 +4,8 @@
 //   node tools/generate-voice.mjs --test     # bare én testsetning -> audio/test.mp3
 //   node tools/generate-voice.mjs            # alle samtaler
 //   node tools/generate-voice.mjs ror el     # bare noen bransjer
+//   PERSON=eva node tools/generate-voice.mjs # Eva (marin): bare sekretærens replikker -> audio/eva/<bransje>/<steg>.mp3
+//   node tools/generate-voice.mjs --hilsen   # bare hilsenen uten firmanavn (<steg>-g.mp3), for demo med eget firmanavn
 //
 // Nøkkelen leses fra miljøvariabelen OPENAI_API_KEY (eller XAI_API_KEY) og skal aldri inn i repoet.
 // Filene havner i audio/<bransje>/<steg>.mp3, og audio/manifest.json forteller siden hva som finnes.
@@ -14,14 +16,17 @@ const KEY = OPENAI ? process.env.OPENAI_API_KEY : process.env.XAI_API_KEY;
 if (!KEY) { console.error("Mangler OPENAI_API_KEY (eller XAI_API_KEY) i miljøet."); process.exit(1); }
 
 // Sekretæren er Petter (Preben valgte OpenAI-stemmen cedar 2026-11-17). Kundene får andre stemmer.
-const AI_VOICE = process.env.AI_VOICE || (OPENAI ? "cedar" : "liora");
+// Eva (kvinnestemmen marin, PR #70) lages med PERSON=eva. Kundens replikker deles mellom Petter og Eva.
+const PERSON = process.env.PERSON === "eva" ? "eva" : "petter";
+const AI_VOICE = process.env.AI_VOICE || (PERSON === "eva" ? "marin" : OPENAI ? "cedar" : "liora");
+const AI_NAVN = PERSON === "eva" ? "Eva" : "Petter";
 const CUST_VOICE = process.env.CUST_VOICE || (OPENAI ? "ash" : "leo");       // kunden (mann)
 const CUST_VOICE_F = process.env.CUST_VOICE_F || (OPENAI ? "coral" : "eve"); // kunden (kvinne)
 const TTS_MODELL = process.env.TTS_MODELL || "gpt-4o-mini-tts";
 // Samtalemodellen (gpt-audio) høres mest menneskelig ut (Preben 2026-11-17: «mer menneskelig»). TTS_MOTOR=tts gir den gamle opplesningsmodellen.
 const SAMTALE = OPENAI && (process.env.TTS_MOTOR || "samtale") === "samtale";
 const SAMTALE_MODELL = process.env.SAMTALE_MODELL || "gpt-audio-1.5";
-const STIL_AI = "Du er Petter, en ekte norsk resepsjonist i en telefonsamtale. Snakk avslappet og varmt, som et menneske og ikke som en opplesning: naturlig rytme, små variasjoner i tonefall, et lite smil i stemmen, korte naturlige pauser. Vanlig samtaletempo. Østlandsk norsk bokmål.";
+const STIL_AI = "Du er " + AI_NAVN + ", en ekte norsk resepsjonist i en telefonsamtale. Snakk avslappet og varmt, som et menneske og ikke som en opplesning: naturlig rytme, små variasjoner i tonefall, et lite smil i stemmen, korte naturlige pauser. Vanlig samtaletempo. Østlandsk norsk bokmål.";
 const STIL_KUNDE = "Du er en vanlig norsk privatperson som ringer en bedrift om noe du trenger hjelp til. Uformell og naturlig, med levende tonefall og vanlig taletempo, akkurat som i en ekte telefonsamtale. Ikke les opp. Østlandsk norsk bokmål.";
 const TTS_STIL = "Snakk naturlig norsk bokmål med østlandsk uttale. Vennlig, rolig og tydelig, i et behagelig og litt langsomt tempo med små pauser, som i en vanlig telefonsamtale.";
 const FEMALE = /^(Kari|Anne|Hilde|Maria|Ingrid|Sofie|Nina|Silje|Kristin|Ida|Camilla|Hanne)\b/;
@@ -113,25 +118,49 @@ if (args.includes("--test")) {
 const manifestUrl = new URL("audio/manifest.json", root);
 let manifest = {};
 try { manifest = JSON.parse(readFileSync(manifestUrl, "utf8")); } catch {}
-const keys = args.length ? args : Object.keys(SCENARIOS);
+const flagg = new Set(args.filter((a) => a.startsWith("--")));
+const bransjer = args.filter((a) => !a.startsWith("--"));
+const keys = bransjer.length ? bransjer : Object.keys(SCENARIOS);
+const bareHilsen = flagg.has("--hilsen");
+// Hilsenen med firmanavn får også en utgave uten navn, så demoen kan bruke ekte stemme når kunden skriver inn sitt eget firma.
+const generisk = (t) => t.replace(/du har kommet til \{firm\}/, "takk for at du tar kontakt");
 let chars = 0;
 for (const k of keys) {
   const s = SCENARIOS[k];
   if (!s) { console.warn("Ukjent bransje:", k); continue; }
-  const dir = new URL(`audio/${k}/`, root);
+  const dir = new URL(PERSON === "eva" ? `audio/eva/${k}/` : `audio/${k}/`, root);
   mkdirSync(dir, { recursive: true });
-  const done = [];
+  const done = [], gen = [];
   const cust = FEMALE.test(s.caller || "") ? CUST_VOICE_F : CUST_VOICE;
+  const m = manifest[k] || {};
   for (const [i, step] of s.steps.entries()) {
     if (step[0] !== "ai" && step[0] !== "cust") continue;
-    const text = step[1].replaceAll("{firm}", s.firm);
-    chars += text.length;
-    writeFileSync(new URL(`${i}.mp3`, dir), await tts(text, step[0] === "ai" ? AI_VOICE : cust));
-    done.push(i);
-    process.stdout.write(".");
+    if (PERSON === "eva" && step[0] !== "ai") continue; // kunden er den samme uansett sekretær
+    const voice = step[0] === "ai" ? AI_VOICE : cust;
+    if (!bareHilsen) {
+      const text = step[1].replaceAll("{firm}", s.firm);
+      chars += text.length;
+      writeFileSync(new URL(`${i}.mp3`, dir), await tts(text, voice));
+      done.push(i);
+      process.stdout.write(".");
+    }
+    if (step[1].includes("{firm}")) {
+      const text = generisk(step[1]);
+      if (text.includes("{firm}")) { console.warn(`\n  ${k}/${i}: fant ikke «du har kommet til {firm}», hopper over`); continue; }
+      chars += text.length;
+      writeFileSync(new URL(`${i}-g.mp3`, dir), await tts(text, voice));
+      gen.push(i);
+      process.stdout.write("g");
+    }
   }
-  manifest[k] = { firm: s.firm, steps: done, voices: { ai: AI_VOICE, cust }, modell: SAMTALE ? SAMTALE_MODELL : TTS_MODELL };
-  console.log(` ${k}: ${done.length} replikker`);
+  if (PERSON === "eva") {
+    m.eva = { steps: bareHilsen ? (m.eva && m.eva.steps) || [] : done, voice: AI_VOICE, generisk: gen };
+  } else {
+    if (!bareHilsen) Object.assign(m, { firm: s.firm, steps: done, voices: { ai: AI_VOICE, cust }, modell: SAMTALE ? SAMTALE_MODELL : TTS_MODELL });
+    m.generisk = gen;
+  }
+  manifest[k] = m;
+  console.log(` ${k}: ${done.length} replikker, ${gen.length} uten firmanavn`);
 }
 writeFileSync(manifestUrl, JSON.stringify(manifest, null, 2) + "\n");
 console.log(`Ferdig. ${chars} tegn ≈ $${((chars * 15) / 1e6).toFixed(3)}`);

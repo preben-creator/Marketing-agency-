@@ -54,6 +54,10 @@ header img{height:34px;width:auto}
 .bransjer{margin:22px 0 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.88rem;color:var(--muted)}.bransjer b{color:var(--text)}.bransjer a{border:1px solid color-mix(in srgb,var(--text) 15%,transparent);border-radius:999px;padding:4px 12px;color:var(--text);text-decoration:none}.bransjer a:hover{border-color:var(--accent-2)}
 .firm label{font-size:.8rem;color:var(--muted);white-space:nowrap}
 .firm input{background:transparent;border:0;outline:0;width:170px;font-weight:600}
+.stemmevalg{padding-right:5px}.stemmevalg .lbl{font-size:.8rem;color:var(--muted)}
+.stemmevalg button{background:transparent;border:0;color:var(--muted);font:inherit;font-weight:600;padding:5px 12px;border-radius:999px;cursor:pointer}
+.stemmevalg button[aria-checked="true"]{background:var(--accent);color:#fff}
+.stemmevalg button:focus-visible{outline:2px solid var(--accent-2);outline-offset:1px}
 .btn{text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:999px;font-weight:600;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:var(--on-accent)}
 .btn--ghost{background:var(--surface);border:1px solid var(--border)}
 .btn:disabled{opacity:.5;cursor:default}
@@ -328,13 +332,13 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
         <div class="robot" data-robot="petter"></div>
         <div><h3>Petter</h3><span class="rolle">Mannsstemme</span>
           <ul><li>Rolig og tydelig norsk</li><li>Svarer i chat og med stemme</li><li>Foreslår ledige tider</li></ul>
-          <a class="btn btn--ghost" href="#demo">Prøv demoen</a></div>
+          <a class="btn btn--ghost" href="#demo" data-velg-stemme="petter">Hør Petter i demoen</a></div>
       </article>
       <article class="meet-card" style="--o2:#e2674b">
         <div class="robot" data-robot="eva"></div>
         <div><h3>Eva</h3><span class="rolle">Kvinnestemme</span>
           <ul><li>Varm og vennlig norsk</li><li>Svarer i chat og med stemme</li><li>Foreslår ledige tider</li></ul>
-          <a class="btn btn--ghost" href="#demo">Prøv demoen</a></div>
+          <a class="btn btn--ghost" href="#demo" data-velg-stemme="eva">Hør Eva i demoen</a></div>
       </article>
     </div>
   </section>
@@ -343,7 +347,7 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
   <div class="demo-head" data-reveal>
     <div class="eyebrow">Prøv selv</div>
     <h2>Hør en kunde snakke med sekretæren</h2>
-    <p>Velg fag og firmanavn, og trykk på «Spill av samtalen». Skru på lyden for å høre stemmen.</p>
+    <p>Velg fag, firmanavn og stemme (Petter eller Eva), og trykk på «Spill av samtalen». Skru på lyden for å høre stemmen.</p>
   </div>
   <p class="demo-note"><b>Dette virker i dag:</b> kunden trykker på en knapp på nettsiden din og snakker eller chatter med sekretæren, slik som i demoen. Med Pro booker den rett i kalenderen og sender SMS til kunden. <b>Svar når kundene ringer ditt vanlige telefonnummer er ikke klart ennå</b> <span class="pill kommer">Kommer</span>. Du får det uten ekstra kostnad når det er klart.</p>
   <div class="controls">
@@ -359,6 +363,11 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
       <label for="firm">Firma:</label>
       <input id="firm" maxlength="40" autocomplete="off">
     </div>
+    <div class="firm stemmevalg" role="radiogroup" aria-label="Velg stemme">
+      <span class="lbl">Stemme:</span>
+      <button type="button" role="radio" data-person="petter" aria-checked="true">Petter</button>
+      <button type="button" role="radio" data-person="eva" aria-checked="false">Eva</button>
+    </div>
     <button class="btn btn--ghost" id="voice" aria-pressed="false" title="Les samtalen høyt">🔇 Lyd av</button>
     <button class="btn" id="play">▶ Spill av samtalen</button>
   </div>
@@ -370,7 +379,7 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
         <div class="callbar" id="callbar">
           <div class="robot robot--demo" data-robot="petter"></div>
           <div class="who" id="who">Hansen Rør AS</div>
-          <div class="sub">Petter · Orvelo KI-sekretær</div>
+          <div class="sub" id="demoSub">Petter · Orvelo KI-sekretær</div>
           <div class="status"><span class="dot"></span><span id="statusText">Venter på kunde</span> <span id="timer"></span></div>
           <div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
         </div>
@@ -1240,12 +1249,17 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
   firmIn.addEventListener("input",()=>{ firmOverride=firmIn.value.trim(); updateFirm(); syncUrl(); });
   function syncUrl(){
     const p=new URLSearchParams(); p.set("fag",fag.slug); if(firmIn.value.trim()) p.set("firma",firmIn.value.trim());
+    if(person==="eva") p.set("stemme","eva");
     history.replaceState(null,"","?"+p.toString());
   }
 
-  // Voice (Web Speech API, Norwegian if available)
-  // Pick the most natural Norwegian voices the browser offers.
-  // Edge: "Microsoft Pernille/Finn/Iselin Online (Natural)"; Chrome: "Google norsk"; Safari/macOS: "Nora".
+  // Stemmer. Bare én lyd spiller om gangen: alt går gjennom spillLyd() og stoppLyd().
+  // Ferdige lydfiler (tools/generate-voice.mjs): Petter = OpenAI cedar, Eva = OpenAI marin, kunden deles.
+  // Finnes lydfiler for bransjen, brukes de for hele samtalen. Nettleserstemmen brukes bare når det ikke finnes noen,
+  // så stemmene aldri bytter midt i en samtale.
+  const NAVN={petter:"Petter",eva:"Eva"};
+  let person = /^(eva|kvinne)$/i.test(params.get("stemme")||"") ? "eva" : "petter";
+  let recorded={}, curAudio=null, curDone=null;
   let aiVoice=null, custVoice=null;
   const FEMALE=/pernille|iselin|nora|hulda|google/i, MALE=/finn|henrik|magnus|jon\b/i;
   function score(v){
@@ -1261,62 +1275,117 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
   function loadVoices(){
     if(!("speechSynthesis" in window)) return;
     const nb=speechSynthesis.getVoices().filter(v=>/^(nb|no|nn)/i.test(v.lang)).sort((a,b)=>score(b)-score(a));
-    aiVoice = nb.find(v=>FEMALE.test(v.name)) || nb[0] || null;
-    custVoice = nb.find(v=>MALE.test(v.name) && v!==aiVoice) || nb.find(v=>v!==aiVoice) || aiVoice;
-    const lbl=document.getElementById("voiceInfo");
-    if(lbl) lbl.textContent = aiVoice ? "Stemme: "+aiVoice.name.replace(/^Microsoft\s+/,"").replace(/\s*-\s*Norwegian.*$/i,"") : "Ingen norsk stemme funnet i denne nettleseren. Prøv Microsoft Edge for best kvalitet.";
+    const kvinne = nb.find(v=>FEMALE.test(v.name)), mann = nb.find(v=>MALE.test(v.name));
+    aiVoice = (person==="eva" ? kvinne||nb[0] : mann||nb[0]) || null;
+    custVoice = (person==="eva" ? mann : kvinne) || nb.find(v=>v!==aiVoice) || aiVoice;
+    updateVoiceLabel();
   }
-  if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; } else { voiceBtn.hidden=true; }
+  if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; }
+  const manifestKlar = fetch("audio/manifest.json").then(r=>r.ok?r.json():{}).then(m=>{ recorded=m||{}; updateVoiceLabel(); }).catch(()=>{});
+  // Lydfilene for valgt bransje og stemme, eller null hvis bransjen mangler lyd for denne stemmen.
+  function opptak(){
+    const m=recorded[key]; if(!m || !m.steps) return null;
+    if(person==="eva" && !(m.eva && m.eva.steps && m.eva.steps.length)) return null;
+    return m;
+  }
+  function lydUrl(i, who, raw){
+    const m=opptak(); if(!m) return null;
+    const eva = who==="ai" && person==="eva";
+    const liste = eva ? m.eva : m;
+    const mappe = eva ? `audio/eva/${key}/` : `audio/${key}/`;
+    if(raw.includes("{firm}") && firm()!==m.firm){
+      // Eget firmanavn: bruk hilsenen uten navn, så stemmen er den samme hele veien.
+      return (liste.generisk||[]).includes(i) ? `${mappe}${i}-g.mp3` : null;
+    }
+    return liste.steps.includes(i) ? `${mappe}${i}.mp3` : null;
+  }
+  function updateVoiceLabel(){
+    const lbl=document.getElementById("voiceInfo"); if(!lbl) return;
+    if(opptak()) lbl.textContent=`Stemme: ${NAVN[person]} (OpenAI)`;
+    else lbl.textContent = aiVoice ? "Stemme: "+aiVoice.name.replace(/^Microsoft\s+/,"").replace(/\s*-\s*Norwegian.*$/i,"") : "Ingen norsk stemme funnet i denne nettleseren. Prøv Microsoft Edge for best kvalitet.";
+  }
+  if(!("speechSynthesis" in window) && !window.Audio) voiceBtn.hidden=true;
+  // Stopper all lyd med en gang (lydfil og nettleserstemme), og lar samtalen gå videre uten lyd.
+  function stoppLyd(){
+    if("speechSynthesis" in window) speechSynthesis.cancel();
+    if(curAudio){ curAudio.pause(); curAudio=null; }
+    window.__orveloLyd=null;
+    if(curDone){ const d=curDone; curDone=null; d(false); }
+  }
   voiceBtn.onclick=()=>{
     voiceOn=!voiceOn; voiceBtn.setAttribute("aria-pressed",voiceOn);
     voiceBtn.textContent = voiceOn ? "🔊 Lyd på" : "🔇 Lyd av";
     document.getElementById("voiceInfo").hidden=!voiceOn;
-    if(!voiceOn) speechSynthesis.cancel();
+    if(!voiceOn) stoppLyd();
   };
-  // Ferdige lydfiler (laget med tools/generate-voice.mjs) brukes når de finnes og firmanavnet er standard.
-  let recorded={}, curAudio=null;
-  fetch("audio/manifest.json").then(r=>r.ok?r.json():{}).then(m=>{ recorded=m||{}; updateVoiceLabel(); }).catch(()=>{});
-  function useRecorded(i){ const m=recorded[key]; return !!(m && m.steps.includes(i) && firm()===m.firm); }
-  function updateVoiceLabel(){
-    const lbl=document.getElementById("voiceInfo"); const m=recorded[key];
-    if(lbl && m && firm()===m.firm) lbl.textContent="Stemme: Petter (OpenAI)";
-    else loadVoices();
+  // Lydfilene hentes på forhånd når samtalen starter, så det blir korte pauser mellom replikkene.
+  const lager=new Map();
+  function lydElement(url){
+    let a=lager.get(url);
+    if(!a){ a=new Audio(); a.preload="auto"; a.src=url; lager.set(url,a); }
+    return a;
   }
-  // Tempo for nettleserstemmen (reserve): kunden +20 %, Petter +5 %. Lydfilene er laget med samtalemodellen
-  // i naturlig tempo (2026-11-17), så de spilles i vanlig fart: speeding gjør stemmen mer robotaktig.
-  const TEMPO={ ai:1.05, kunde:1.2 };
-  function playRecorded(i, myRun){
+  function forhandslast(){
+    const s=SCENARIOS[key];
+    s.steps.forEach(([type,raw],i)=>{ if(type==="ai"||type==="cust"){ const u=lydUrl(i,type,raw); if(u) lydElement(u); } });
+  }
+  function spillLyd(url, myRun){
+    stoppLyd();
     return new Promise(res=>{
-      const a=new Audio(`audio/${key}/${i}.mp3`); curAudio=a; window.__orveloLyd=a;
-      a.onended=()=>{ window.__orveloLyd=null; res(true); }; a.onerror=()=>{ window.__orveloLyd=null; res(null); };
-      a.play().catch(()=>res(null));
-      if(myRun!==run){ a.pause(); res(false); }
+      if(myRun!==run) return res(false);
+      const a=lydElement(url);
+      let ferdig=false;
+      const slutt=(v)=>{ if(ferdig) return; ferdig=true; a.onended=a.onerror=null; if(curAudio===a){ curAudio=null; window.__orveloLyd=null; } if(curDone===slutt) curDone=null; res(v); };
+      curAudio=a; curDone=slutt; window.__orveloLyd=a;
+      a.onended=()=>slutt(true); a.onerror=()=>slutt(false);
+      try{ a.currentTime=0; }catch(e){}
+      const p=a.play(); if(p && p.catch) p.catch(()=>slutt(false));
     });
   }
-  async function speak(text, who, myRun, i){
-    if(voiceOn && myRun===run && useRecorded(i)){
-      const r=await playRecorded(i, myRun);
-      if(r!==null) return r;
+  async function speak(text, who, myRun, i, raw){
+    if(!voiceOn || myRun!==run) return false;
+    if(opptak()){
+      // Lydfil finnes for bransjen: ingen nettleserstemme, heller stille enn en annen stemme.
+      const u=lydUrl(i, who, raw);
+      return u ? spillLyd(u, myRun) : false;
     }
     return speakTTS(text, who, myRun);
   }
+  // Tempo for nettleserstemmen (reserve): kunden +20 %, sekretæren +5 %.
+  const TEMPO={ ai:1.05, kunde:1.2 };
   function speakTTS(text, who, myRun){
+    stoppLyd();
     return new Promise(res=>{
-      if(!voiceOn || myRun!==run){ return res(false); }
+      if(!("speechSynthesis" in window) || myRun!==run){ return res(false); }
       const u=new SpeechSynthesisUtterance(text);
       u.lang="nb-NO"; u.rate = who==="ai" ? TEMPO.ai : TEMPO.kunde;
       const v = who==="ai" ? aiVoice : custVoice;
       if(v){ try{ u.voice=v; }catch(e){} }
       // Only shift pitch when both speakers share one voice, so natural voices stay natural.
       u.pitch = (custVoice===aiVoice && who!=="ai") ? 0.8 : 1;
-      u.onend=()=>res(true); u.onerror=()=>res(false);
+      let ferdig=false; const slutt=(x)=>{ if(ferdig) return; ferdig=true; if(curDone===slutt) curDone=null; res(x); };
+      curDone=slutt;
+      u.onend=()=>slutt(true); u.onerror=()=>slutt(false);
       speechSynthesis.speak(u);
     });
   }
+  function velgPerson(p, spill){
+    if(!NAVN[p]) return;
+    const bytte = p!==person;
+    person=p;
+    document.querySelectorAll(".stemmevalg [data-person]").forEach(b=>b.setAttribute("aria-checked", String(b.dataset.person===person)));
+    $("#demoSub").textContent=`${NAVN[person]} · Orvelo KI-sekretær`;
+    const r=document.querySelector("#callbar [data-robot]");
+    if(r){ if(window.OrveloRobot && OrveloRobot.bytt) OrveloRobot.bytt(r, person); else r.dataset.robot=person; }
+    loadVoices(); updateVoiceLabel();
+    if(bytte){ reset(); syncUrl(); }
+  }
+  document.querySelectorAll(".stemmevalg [data-person]").forEach(b=>b.addEventListener("click",()=>velgPerson(b.dataset.person)));
+  // «Hør Petter/Eva i demoen»: velg stemmen og skru på lyden
+  document.querySelectorAll("[data-velg-stemme]").forEach(a=>a.addEventListener("click",()=>{ velgPerson(a.dataset.velgStemme); if(!voiceOn) voiceBtn.click(); }));
 
   function reset(){
-    run++; if("speechSynthesis" in window) speechSynthesis.cancel();
-    if(curAudio){ curAudio.pause(); curAudio=null; }
+    run++; stoppLyd();
     clearInterval(timerId); timerEl.textContent="";
     chat.innerHTML='<div class="empty"><div class="big">💬</div>Trykk «Spill av samtalen» for å høre en kunde snakke med sekretæren på nettsiden.</div>';
     callbar.className="callbar"; statusText.textContent="Venter på kunde";
@@ -1337,7 +1406,7 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
   function add(el){ const e=chat.querySelector(".empty"); if(e) e.remove(); chat.appendChild(el); chat.scrollTop=chat.scrollHeight; return el; }
   function bubble(who,text){
     const d=document.createElement("div"); d.className="msg "+who;
-    const sm=document.createElement("small"); sm.textContent= who==="ai" ? "KI-sekretær" : SCENARIOS[key].caller;
+    const sm=document.createElement("small"); sm.textContent= who==="ai" ? NAVN[person]+" · KI-sekretær" : SCENARIOS[key].caller;
     d.append(sm, document.createTextNode(text)); return add(d);
   }
   function typing(who){ const d=document.createElement("div"); d.className="typing"+(who==="cust"?" cust":""); d.innerHTML="<i></i><i></i><i></i>"; return add(d); }
@@ -1345,6 +1414,8 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
   async function play(){
     reset(); const myRun=run; const s=SCENARIOS[key];
     playBtn.disabled=true; playBtn.textContent="Samtale pågår…";
+    await Promise.race([manifestKlar, sleep(1500)]); if(myRun!==run) return;
+    if(opptak()) forhandslast();
     callbar.classList.add("ringing"); statusText.textContent="Kobler til…";
     await sleep(1400); if(myRun!==run) return;
     callbar.classList.remove("ringing"); callbar.classList.add("live"); statusText.textContent="Samtale";
@@ -1354,13 +1425,14 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
     for(const [i,step] of s.steps.entries()){
       if(myRun!==run) return;
       const [type,a,b]=step;
+      const raw=a;
       if(type==="sys"){ const d=document.createElement("div"); d.className="sys"; d.textContent=a; add(d); await sleep(500); }
       else if(type==="ai"||type==="cust"){
         const text=fill(a);
         const tp=typing(type); await sleep(type==="ai"?700:900); tp.remove(); if(myRun!==run) return;
         bubble(type,text);
         if(type==="ai") callbar.classList.add("talking");
-        const spoke=await speak(text,type,myRun,i);
+        const spoke=await speak(text,type,myRun,i,raw);
         if(!spoke) await sleep(Math.min(3200, 900 + text.length*28));
         callbar.classList.remove("talking");
       }
@@ -1391,7 +1463,7 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
   $("#missed").oninput=roi; $("#value").oninput=roi; roi();
 
   const y=document.getElementById("year"); if(y) y.textContent=new Date().getFullYear();
-  select(); reset();
+  select(); velgPerson(person); reset();
 })();
 </script>
 <script>
