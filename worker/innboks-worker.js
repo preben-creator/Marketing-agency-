@@ -848,7 +848,7 @@ export default {
     if (url.pathname === "/innboks" || url.pathname.startsWith("/innboks/")) return innboksRute(request, env, ctx, url);
     if (url.pathname === "/oppsett" || url.pathname.startsWith("/oppsett/")) return oppsettRute(request, env, ctx, url);
     if (url.pathname === "/" || url.pathname === "/personvern") {
-      return new Response("Orvelo innboks: KI-sekretæren som svarer på e-post og Facebook-meldinger for bedrifter. Kontakt: hilleren.bedrift@gmail.com", { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+      return new Response("Orvelo innboks: KI-sekretæren som svarer på e-post og Facebook-meldinger for bedrifter. Kontakt: orvelo@epost.no", { headers: { "Content-Type": "text/plain; charset=utf-8" } });
     }
     return new Response("Ikke funnet", { status: 404 });
   },
