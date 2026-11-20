@@ -2654,6 +2654,15 @@ async function chatVerktoy(navn, a, kx) {
     const beskjed = String(a.beskjed || "").replace(/^\s*(haster|akutt|hastesak)\s*[:!.-]?\s*/i, "HASTER: ");
     const rad = { type: "beskjed", tid: new Date().toISOString(), navn: tekst(a.navn, 80), mobil: tekst(a.mobil, 30), epost: tekst(a.epost, 120), beskjed: tekst(beskjed, 1000) };
     if (!rad.beskjed) return { feil: "Beskjeden er tom." };
+    // Modellen legger av og til nummer/e-post bare inne i beskjedteksten. Hent dem derfra, så en hastebeskjed ikke blir stoppet.
+    if (!/\d{8,}/.test(rad.mobil.replace(/\D/g, ""))) {
+      const m = rad.beskjed.match(/(?:\+47[\s-]?)?(?<!\d)\d(?:[\s-]?\d){7}(?!\d)/);
+      if (m) rad.mobil = m[0].trim();
+    }
+    if (!/@/.test(rad.epost)) {
+      const e = rad.beskjed.match(/[^\s@<>()"',;:]+@[^\s@<>()"',;:]+\.[a-z]{2,}/i);
+      if (e) rad.epost = tekst(e[0], 120);
+    }
     // En beskjed uten nummer eller e-post kan ingen svare på. Be modellen spørre først.
     if (!/\d{8,}/.test(rad.mobil.replace(/\D/g, "")) && !/@/.test(rad.epost))
       return { feil: "Beskjeden er IKKE sendt ennå. I svaret ditt nå: haster det, gi først det korte sikkerhetsrådet og si hva som skjer videre slik firmaet har beskrevet det. Spør så om navn og mobilnummer" + (profil.type === "befaring" ? " og adressen" : "") + " i samme setning, og send beskjeden når du har dem." };
