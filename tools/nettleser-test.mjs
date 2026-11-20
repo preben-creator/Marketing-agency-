@@ -60,7 +60,13 @@ try {
         const vert = [...document.querySelectorAll("*")].find((e) => e.shadowRoot && e.shadowRoot.querySelector(".m"));
         return vert && vert.shadowRoot.querySelectorAll(".m.a:not(.skriver)").length > n;
       }, forAntall, { timeout: 60000 });
-      const svar = await side.locator(".m.a:not(.skriver)").last().innerText();
+      // Svaret strømmes inn bit for bit. Vent til teksten har sluttet å vokse før vi leser den.
+      let svar = "", forrige = null;
+      for (let i = 0; i < 40 && svar !== forrige; i++) {
+        forrige = svar;
+        await side.waitForTimeout(750);
+        svar = await side.locator(".m.a:not(.skriver)").last().innerText();
+      }
       sjekk(svar.length > 10 && !/svarer ikke/i.test(svar), "Sekretæren svarer i chatten", svar);
       await side.screenshot({ path: "testbilder/chat-mobil.png" });
     } catch (e) {
