@@ -36,7 +36,7 @@ jobs:
       - name: Tester
         run: |
           set -e
-          for t in sikkerhet drift salgsmotor send-epost nye-agenter anmeldelse-auto innboks ringeagent telefonlinje prov; do
+          for t in sikkerhet drift salgsmotor salgsmotor-kampanje send-epost nye-agenter anmeldelse-auto innboks ringeagent telefonlinje prov; do
             echo "::group::test-$t"
             node tools/test-$t.mjs
             echo "::endgroup::"

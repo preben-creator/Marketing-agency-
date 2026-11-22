@@ -4114,7 +4114,9 @@ const LEAD_BRANSJER = {
 const LEAD_KOMMUNER = { bergen: "4601", oslo: "0301", askøy: "4627", bjørnafjorden: "4624", øygarden: "4626", alver: "4631", voss: "4621",
   stord: "4613", kvinnherad: "4617", sunnfjord: "4647", kinn: "4602", stavanger: "1103", sandnes: "1108", trondheim: "5001",
   bærum: "3201", asker: "3203", lillestrøm: "3205", drammen: "3301", kristiansand: "4204", tromsø: "5501" };
-const ROLLEADRESSE = /^(post|firmapost|kontakt|info|mail|epost|e-post|salong|booking|bestilling|resepsjon|kundeservice|service|admin|firma|hei|hallo|timebestilling)@/i;
+const ROLLEADRESSE = /^(post\d?|postmaster|firmapost|kontakt|kontor|office|info|mail|epost|e-post|salong|booking|bestilling|ordre|resepsjon|kundeservice|service|admin|firma|hei|hallo|timebestilling|vvs|ror|rorlegger)@/i;
+// Resend godtar bare ASCII i adressen (ikke f.eks. «post@rørfirma.no»). Slike hoppes over.
+const ASCII_EPOST = /^[\x21-\x7e]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
 const DEMO_BASE = "https://orvelo.no/demo/";
 
 function scoreLead(e, naa = Date.now()) {
@@ -4435,10 +4437,23 @@ function salgAv(env) {
   const v = String((env && env.SALG_AV) || "").trim().toLowerCase();
   return !!v && !["nei", "0", "false", "no"].includes(v);
 }
+// Kampanje 22.11.2026 (Preben): 90 e-poster om dagen, hver dag, bare til rørlegger-AS, til alle lovlige er nådd.
+// Settes én gang når den nye koden kjører første gang, og står på PAUSE til Preben har sett prøve-e-postene og sagt ja
+// (han slår den på med «Slå på igjen» i fanen Salgsmotor). Etterpå styres alt fra /drift.
+const SALG_KAMPANJE = { id: "ror-2026-11", bransjer: ["ror"], perDag: 90, maksDag: 90, helg: true, pause: true };
 async function salgCfg(env) {
-  const c = (await env.KUNDER.get("salgcfg", "json")) || {};
-  return { pause: !!c.pause, perDag: tilTall(c.perDag ?? env.SALG_PER_DAG, 1, 50, 30), peker: c.peker || { b: 0, side: 0 }, runde: c.runde || 0 };
+  let c = (await env.KUNDER.get("salgcfg", "json")) || {};
+  if (c.kampanje !== SALG_KAMPANJE.id) {
+    const { id, ...k } = SALG_KAMPANJE;
+    c = { ...c, ...k, kampanje: id, peker: { b: 0, side: 0 }, prover: "" };
+    await env.KUNDER.put("salgcfg", JSON.stringify(c));
+  }
+  const bransjer = (Array.isArray(c.bransjer) ? c.bransjer : []).filter((k) => LEAD_BRANSJER[k]);
+  return { pause: !!c.pause, perDag: tilTall(c.perDag ?? env.SALG_PER_DAG, 1, 150, 30), maksDag: tilTall(c.maksDag ?? env.SALG_MAKS_DAG, 1, 95, 95),
+    helg: !!c.helg, bransjer, kampanje: c.kampanje || "", prover: c.prover || "", peker: c.peker || { b: 0, side: 0 }, runde: c.runde || 0 };
 }
+// Fagene (metadata.b på salg:-nøklene) som er valgt. Tom liste = alle bransjer.
+function salgFag(cfg) { return cfg.bransjer.length ? new Set(cfg.bransjer.map((k) => LEAD_BRANSJER[k].fag)) : null; }
 async function lagreSalgCfg(env, c) { await env.KUNDER.put("salgcfg", JSON.stringify(c)); }
 async function lagreSalg(env, f) {
   f.endret = new Date().toISOString();
@@ -4544,7 +4559,7 @@ async function avmeldRute(request, env, url) {
 
 // Natt: ett søk i Enhetsregisteret (én side med 100 AS) og lagrer nye firmaer med rolleadresse
 async function salgFinn(env, cfg) {
-  const nokler = Object.keys(LEAD_BRANSJER);
+  const nokler = cfg.bransjer && cfg.bransjer.length ? cfg.bransjer : Object.keys(LEAD_BRANSJER);
   const p = cfg.peker;
   const bKey = nokler[p.b % nokler.length];
   const b = LEAD_BRANSJER[bKey];
@@ -4555,7 +4570,7 @@ async function salgFinn(env, cfg) {
   let nye = 0;
   for (const e of enheter) {
     const epost = tekst(e.epostadresse, 120).toLowerCase();
-    if (!ROLLEADRESSE.test(epost) || (e.organisasjonsform && e.organisasjonsform.kode) !== "AS") continue;
+    if (!ROLLEADRESSE.test(epost) || !ASCII_EPOST.test(epost) || (e.organisasjonsform && e.organisasjonsform.kode) !== "AS") continue;
     const orgnr = e.organisasjonsnummer;
     if (await env.KUNDER.get("salg:" + orgnr) || await salgSperret(env, orgnr, epost, { navn: e.navn, hjemmeside: e.hjemmeside })) continue;
     const adr = e.forretningsadresse || {};
@@ -4592,9 +4607,11 @@ Svar bare med JSON: {"eposter":[{"emne":"","tekst":""},{"emne":"","tekst":""},{"
 async function salgSkriv(env, f) {
   let demo = `${DEMO_BASE}?fag=${f.fag}&firma=${encodeURIComponent(f.navn.replace(/\s+AS$/i, ""))}`;
   let omSide = "";
-  if (f.hjemmeside) {
+  // Uten nettside i Enhetsregisteret prøver vi domenet i e-postadressen (post@bergror.no -> bergror.no).
+  const nettside = f.hjemmeside || salgDomene(f.epost);
+  if (nettside) {
     try {
-      const profil = await lagSekretaer({ firma: f.navn, nettside: f.hjemmeside, bransje: f.bransje }, env);
+      const profil = await lagSekretaer({ firma: f.navn, nettside, bransje: f.bransje }, env);
       if (!profil.usikkert || !profil.usikkert.some((x) => /kunne ikke leses/i.test(x))) {
         const base = (profil.kortnavn || profil.navn || "firma").toLowerCase().replace(/æ/g, "ae").replace(/ø/g, "o").replace(/å/g, "a").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 26) || "firma";
         const id = "s-" + base + "-" + tilfeldig(4).toLowerCase().replace(/[^a-z0-9]/g, "x");
@@ -4629,10 +4646,10 @@ async function salgFullEpost(env, f, i) {
   const html = `<div style="font:15px/1.55 Arial,sans-serif;color:#1d1b2b;max-width:600px">${esc(tekstUt).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>').replace(/\n/g, "<br>")}</div>`;
   return { emne: e.emne, tekst: tekstUt, html, avmeld };
 }
-async function salgSend(env, f, til) {
+async function salgSend(env, f, til, emneFor = "") {
   const i = f.steg;
   const m = await salgFullEpost(env, f, i);
-  return sendEpost(env, { til: til || f.epost, emne: m.emne, tekst: m.tekst, html: m.html,
+  return sendEpost(env, { til: til || f.epost, emne: emneFor + m.emne, tekst: m.tekst, html: m.html,
     fra: env.SALG_FRA || "Preben i Orvelo <salg@orvelo.no>", svarTil: env.SALG_SVAR_TIL || "orvelo@epost.no",
     hoder: { "List-Unsubscribe": `<${m.avmeld}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } });
 }
@@ -4660,26 +4677,30 @@ async function salgListe(env, status) {
 }
 
 // Én kjøring per kvarter (fra cron). Gjør litt hver gang, så ingen kjøring tar lang tid.
+// Pause stopper all sending, men motoren finner og skriver videre, så det ligger klare e-poster når den slås på.
 async function salgRunde(env, naa = Date.now(), tving = {}) {
   if (!env.KUNDER || salgAv(env)) return null;
   const cfg = await salgCfg(env);
-  if (cfg.pause && !tving.finn && !tving.send) return { pause: true };
+  const fag = salgFag(cfg);
+  const iValgt = (k) => !fag || fag.has(k.metadata && k.metadata.b);
   const nu = osloDeler(naa);
-  const hverdag = ![0, 6].includes(salgUkedag(nu.dato));
+  const sendedag = cfg.helg || ![0, 6].includes(salgUkedag(nu.dato));
   const ut = {};
-  // 1) Natt: finn og skriv til det er nok klare firmaer for neste dag
-  if (tving.finn || (nu.tid >= "01:00" && nu.tid < "05:00")) {
-    const klare = await salgListe(env, ["klar"]);
-    const funnet = await salgListe(env, ["funnet"]);
-    if (klare.length < cfg.perDag * 2) {
-      if (funnet.length < 3) {
+  // 1) Finn og skriv (hele døgnet) til det er nok klare firmaer for neste dag i de valgte bransjene
+  if (tving.finn || !tving.send) {
+    const klare = (await salgListe(env, ["klar"])).filter(iValgt);
+    if (tving.finn || klare.length < cfg.perDag * 1.5) {
+      const funnet = (await salgListe(env, ["funnet"])).filter(iValgt);
+      // Når et helt søk gjennom bransjen ikke gir nye firmaer (alle lovlige er funnet), søkes det bare én gang i døgnet.
+      const tomt = (cfg.peker.tom || 0) >= 30;
+      if (funnet.length < 3 && (!tomt || tving.finn || (nu.tid >= "01:00" && nu.tid < "01:15"))) {
         for (let n = 0; n < 2; n++) {
-          try { ut.finn = await salgFinn(env, cfg); if (ut.finn.nye) break; } catch (e) { ut.finnFeil = tekst(e.message, 120); break; }
+          try { ut.finn = await salgFinn(env, cfg); cfg.peker.tom = ut.finn.nye ? 0 : (cfg.peker.tom || 0) + 1; if (ut.finn.nye) break; } catch (e) { ut.finnFeil = tekst(e.message, 120); break; }
         }
-        await lagreSalgCfg(env, cfg);
+        await lagreSalgCfg(env, await salgCfgMedPeker(env, cfg));
       }
       if (env.XAI_API_KEY) {
-        const kandidater = (await salgListe(env, ["funnet"])).slice(0, tving.antall || 3);
+        const kandidater = (await salgListe(env, ["funnet"])).filter(iValgt).slice(0, tving.antall || 3);
         ut.skrevet = 0;
         for (const k of kandidater) {
           const f = await env.KUNDER.get(k.name, "json");
@@ -4691,20 +4712,37 @@ async function salgRunde(env, naa = Date.now(), tving = {}) {
       }
     }
   }
-  // 2) Dag: send (hverdager 08–16), noen få per kvarter
-  if (tving.send || (hverdag && nu.tid >= "08:00" && nu.tid < "16:00")) {
+  // 1b) Mens kampanjen står på pause: send tre prøver av e-post 1 til Preben én gang, så han ser hva kundene får
+  if (cfg.pause && !cfg.prover && env.RESEND_API_KEY && !tving.finn) {
+    const klare = (await salgListe(env, ["klar"])).filter(iValgt).slice(0, 3);
+    if (klare.length === 3) {
+      ut.prover = 0;
+      for (const k of klare) {
+        const f = await env.KUNDER.get(k.name, "json");
+        if (!f || !f.eposter.length) continue;
+        try { await salgSend(env, { ...f, steg: 0 }, env.VARSEL_EPOST || "hilleren.bedrift@gmail.com", "[PRØVE] "); ut.prover++; } catch (e) { ut.proveFeil = tekst(e.message, 120); }
+      }
+      if (ut.prover) await lagreSalgCfg(env, { ...(await env.KUNDER.get("salgcfg", "json")), prover: new Date().toISOString() });
+    }
+  }
+  // 2) Send 08–16 (hverdager, eller hver dag når helg er slått på), noen få per kvarter.
+  //    Maks maksDag e-poster totalt per dag (oppfølginger først), og maks perDag nye firmaer.
+  if (tving.send || (!cfg.pause && sendedag && nu.tid >= "08:00" && nu.tid < "16:00")) {
     if (!env.RESEND_API_KEY) ut.send = "venter på RESEND_API_KEY og orvelo.no";
+    else if (cfg.pause && !tving.send) ut.send = "pause";
     else {
       const dag = await salgDagTall(env, nu.dato);
+      const igjen = Math.max(0, cfg.maksDag - dag.sendt.length);
       const forfalt = (await salgListe(env, ["sendt"])).filter((k) => k.metadata.n && k.metadata.n <= naa);
-      const nye = cfg.pause ? [] : (await salgListe(env, ["klar"])).sort((a, b) => String(a.name).localeCompare(b.name));
-      const plass = Math.max(0, cfg.perDag - dag.nye);
-      const kø = [...forfalt, ...nye.slice(0, plass)].slice(0, tving.send ? 10 : 4);
+      const nye = cfg.pause ? [] : (await salgListe(env, ["klar"])).filter(iValgt).sort((a, b) => String(a.name).localeCompare(b.name));
+      const plass = Math.max(0, Math.min(cfg.perDag - dag.nye, igjen - forfalt.length));
+      const kø = [...forfalt, ...nye.slice(0, plass)].slice(0, Math.min(igjen, tving.send ? 10 : 4));
       ut.sendt = 0;
       for (const k of kø) {
         const f = await env.KUNDER.get(k.name, "json");
         if (!f || !["klar", "sendt"].includes(f.status)) continue;
         if (await salgSperret(env, f.orgnr, f.epost, f)) { f.status = "stopp"; f.neste = ""; await lagreSalg(env, f); continue; }
+        if (!ASCII_EPOST.test(f.epost || "")) { f.status = "feil"; f.neste = ""; f.logg.push({ tid: new Date().toISOString(), hva: "Hoppet over: adressen har tegn som ikke kan sendes (æ, ø, å)" }); await lagreSalg(env, f); continue; }
         try {
           const r = await salgSend(env, f);
           const ny = f.steg === 0;
@@ -4718,17 +4756,24 @@ async function salgRunde(env, naa = Date.now(), tving = {}) {
         } catch (e) {
           f.logg.push({ tid: new Date().toISOString(), hva: "Sending feilet: " + tekst(e.message, 160) });
           dag.feil.push(`${f.navn}: ${tekst(e.message, 100)}`);
-          if (/Resend svarte 4(03|22)/.test(e.message)) { await lagreSalg(env, f); ut.sendFeil = tekst(e.message, 160); break; }
-          f.status = "feil";
+          // Feil på selve adressen gjelder bare dette firmaet. Andre 4xx (domenet ikke godkjent, kvoten brukt opp) stopper runden.
+          if (/Resend svarte 422/.test(e.message) && /`to`|email address|recipient/i.test(e.message)) f.status = "feil";
+          else if (/Resend svarte 4(03|22|29)/.test(e.message)) { await lagreSalg(env, f); ut.sendFeil = tekst(e.message, 160); break; }
+          else f.status = "feil";
         }
         await lagreSalg(env, f);
       }
       await lagreSalgDag(env, nu.dato, dag);
     }
   }
-  // 3) Kl. 16 på hverdager: oversikt til Preben
-  if (hverdag && nu.tid >= "16:00" && nu.tid < "16:15" && !tving.finn && !tving.send) ut.rapport = await salgDagsrapport(env, nu.dato);
+  // 3) Kl. 16 på sendedager: oversikt til Preben
+  if (sendedag && nu.tid >= "16:00" && nu.tid < "16:15" && !tving.finn && !tving.send) ut.rapport = await salgDagsrapport(env, nu.dato);
   return ut;
+}
+// salgFinn flytter pekeren i cfg. Lagre bare pekeren, så en pause eller innstilling Preben satt i mellomtiden ikke overskrives.
+async function salgCfgMedPeker(env, cfg) {
+  const c = (await env.KUNDER.get("salgcfg", "json")) || {};
+  return { ...c, peker: cfg.peker };
 }
 
 async function salgTelling(env) {
@@ -4742,7 +4787,9 @@ async function salgDagsrapport(env, dato) {
   const t = await salgTelling(env);
   const cfg = await salgCfg(env);
   await varsle(env, `Salgsmotoren ${dato}: ${d.sendt.length} e-poster sendt`, [
-    cfg.pause ? "Salgsmotoren står på PAUSE. Ingen nye firmaer får e-post før du slår den på igjen på /drift." : `Nye firmaer i dag: ${d.nye} av maks ${cfg.perDag}.`,
+    cfg.pause ? "Salgsmotoren står på PAUSE. Ingen nye firmaer får e-post før du slår den på igjen på /drift." : `Nye firmaer i dag: ${d.nye} av maks ${cfg.perDag}. E-poster totalt i dag: ${d.sendt.length} av maks ${cfg.maksDag}.`,
+    (cfg.peker.tom || 0) >= 30 ? "Søket finner ingen nye firmaer lenger: alle med lovlig adresse (AS + rolleadresse) i bransjene under er funnet." : "",
+    `Bransjer: ${cfg.bransjer.length ? cfg.bransjer.map((k) => LEAD_BRANSJER[k].navn).join(", ") : "alle"}${cfg.helg ? " · sender også i helgene" : ""}.`,
     "", d.sendt.length ? "Sendt i dag:\n" + d.sendt.map((x) => "- " + x).join("\n") : "Ingenting sendt i dag.",
     (d.svar || []).length ? "\nSvar i dag:\n" + d.svar.map((x) => "- " + x).join("\n") : "",
     d.avmeldt.length ? "\nMeldte seg av: " + d.avmeldt.join(", ") : "",
@@ -4765,7 +4812,7 @@ async function salgDrift(env, b) {
     const alle = (await listAlle(env, "salg:")).map((k) => ({ orgnr: k.name.slice(5), ...k.metadata }));
     const filter = SALG_STATUS.includes(b.status) ? b.status : "";
     const rader = alle.filter((r) => !filter || r.s === filter).sort((a, c) => (c.n || 0) - (a.n || 0)).slice(0, 300);
-    return { cfg: { pause: cfg.pause, perDag: cfg.perDag, peker: cfg.peker }, av: salgAv(env), resend: !!env.RESEND_API_KEY,
+    return { cfg: { pause: cfg.pause, perDag: cfg.perDag, maksDag: cfg.maksDag, helg: cfg.helg, bransjer: cfg.bransjer, kampanje: cfg.kampanje, prover: cfg.prover, peker: cfg.peker }, av: salgAv(env), resend: !!env.RESEND_API_KEY,
       fra: env.SALG_FRA || "Preben i Orvelo <salg@orvelo.no>", telling: await salgTelling(env), idag: await salgDagTall(env, dato), rader, bransjer: Object.keys(LEAD_BRANSJER) };
   }
   if (h === "salg-firma") {
@@ -4777,7 +4824,14 @@ async function salgDrift(env, b) {
   if (h === "salg-innstilling") {
     const cfg = await salgCfg(env);
     if (typeof b.pause === "boolean") cfg.pause = b.pause;
-    if (b.perDag !== undefined) cfg.perDag = tilTall(b.perDag, 1, 50, cfg.perDag);
+    if (b.perDag !== undefined) cfg.perDag = tilTall(b.perDag, 1, 150, cfg.perDag);
+    if (b.maksDag !== undefined) cfg.maksDag = tilTall(b.maksDag, 1, 95, cfg.maksDag);
+    if (typeof b.helg === "boolean") cfg.helg = b.helg;
+    if (Array.isArray(b.bransjer)) {
+      const ny = b.bransjer.filter((k) => LEAD_BRANSJER[k]);
+      if (ny.join() !== cfg.bransjer.join()) cfg.peker = { b: 0, side: 0 };
+      cfg.bransjer = ny;
+    }
     await lagreSalgCfg(env, cfg);
     return { cfg };
   }

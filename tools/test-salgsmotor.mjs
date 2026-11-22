@@ -57,6 +57,8 @@ const drift = async (body, kode = "admin") => {
   return { status: r.status, d: await r.json() };
 };
 const firma = (nr) => KV.get("salg:" + nr, "json");
+// Den gamle oppførselen (alle bransjer, bare hverdager, uten pause) testes med kampanjen allerede satt opp og endret tilbake.
+lager.set("salgcfg", { v: JSON.stringify({ kampanje: "ror-2026-11", bransjer: [], helg: false, pause: false, prover: "x" }) });
 const salgNokler = () => [...lager.keys()].filter((k) => k.startsWith("salg:"));
 
 // Rå e-post slik Cloudflare Email Routing leverer den
