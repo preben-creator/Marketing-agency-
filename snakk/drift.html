@@ -119,9 +119,9 @@ td.n,th.n{text-align:right;white-space:nowrap}.rod{color:var(--bad)}.gronn{color
 <section id="t-salg" class="skjult">
   <div class="card">
     <h2>Salgsmotor</h2>
-    <p class="muted" style="margin:0 0 10px">Finner AS i hele Norge med rolleadresse (post@, firmapost@ …) om natta, lager egen demo og fire e-poster (dag 0, 4, 9 og 14), og sender dem på hverdager 08–16 uten at du trenger å godkjenne. Sperrelisten sjekkes før hver e-post. Svaragenten sorterer svarene og svarer selv ut fra faste fakta (maks 3 ganger per firma), og du får kopi. Du får oversikten på e-post kl. 16.</p>
+    <p class="muted" style="margin:0 0 10px">Finner AS i hele Norge med rolleadresse (post@, firmapost@ …) i bransjene du velger, lager egen demo (fra nettsiden eller e-postdomenet) og fire e-poster (dag 0, 4, 9 og 14), og sender dem 08–16 uten at du trenger å godkjenne. Pause stopper all sending, men motoren skriver videre. Sperrelisten sjekkes før hver e-post. Svaragenten sorterer svarene og svarer selv ut fra faste fakta (maks 3 ganger per firma), og du får kopi. Du får oversikten på e-post kl. 16.</p>
     <div id="sStatus" class="muted">Ikke hentet ennå.</div>
-    <div class="g" style="margin-top:12px"><label>Nye firmaer per dag<select id="sPerDag"><option>5</option><option>10</option><option>20</option><option>30</option><option>40</option><option>50</option></select></label>
+    <div class="g" style="margin-top:12px"><label>Nye firmaer per dag<select id="sPerDag"><option>5</option><option>10</option><option>20</option><option>30</option><option>40</option><option>50</option><option>60</option><option>90</option><option>120</option></select></label><label>E-poster totalt per dag<select id="sMaksDag"><option>30</option><option>50</option><option>70</option><option>90</option><option>95</option></select></label><label>Bransje<select id="sBransje"><option value="">Alle</option></select></label><label>Helg<select id="sHelg"><option value="0">Bare hverdager</option><option value="1">Hver dag</option></select></label>
       <label>Vis<select id="sFilter"><option value="">Alle</option><option value="klar">Klare</option><option value="sendt">I gang</option><option value="svart">Svart</option><option value="mote">Møte</option><option value="ferdig">Ferdig uten svar</option><option value="avmeldt">Avmeldt</option><option value="stopp">Stoppet</option><option value="feil">Feil</option><option value="funnet">Funnet (ikke skrevet)</option></select></label>
       <div class="row" style="align-self:end;margin:0"><button id="sPause">Pause</button></div></div>
     <div class="row"><button class="p" id="sHent">Oppdater</button><button id="sFinn">Finn og skriv 2 nå</button><button id="sSend">Send det som er klart nå</button><span class="msg" id="msgS2"></span></div>
@@ -280,17 +280,21 @@ const sFeil=(id,e)=>$(id).innerHTML='<span class="err">'+esc(e.message)+'</span>
 async function salgHent(){
   $("msgS2").textContent="Henter …";
   try{const d=await api({handling:"salg",status:$("sFilter").value});SC=d.cfg;$("msgS2").textContent="";
-    $("sPerDag").value=String(d.cfg.perDag);$("sPause").textContent=d.cfg.pause?"Slå på igjen":"Pause";$("sPause").className=d.cfg.pause?"p":"";
+    $("sPerDag").value=String(d.cfg.perDag);$("sMaksDag").value=String(d.cfg.maksDag);$("sHelg").value=d.cfg.helg?"1":"0";
+    if($("sBransje").options.length<2)d.bransjer.forEach(k=>$("sBransje").add(new Option(k,k)));$("sBransje").value=(d.cfg.bransjer||[])[0]||"";$("sPause").textContent=d.cfg.pause?"Slå på igjen":"Pause";$("sPause").className=d.cfg.pause?"p":"";
     const t=d.telling;
     $("sStatus").innerHTML=(d.av?'<b class="rod">SALG_AV = ja: motoren er slått av i Cloudflare.</b><br>':"")+(d.cfg.pause?'<b class="rod">På pause: ingenting sendes.</b><br>':'<b class="gronn">Går automatisk.</b><br>')+
       (d.resend?`Sender fra ${esc(d.fra)}.`:'<span class="rod">Sender ikke ennå: RESEND_API_KEY mangler (venter på orvelo.no). Motoren finner og skriver likevel.</span>')+
-      `<br>I dag: ${d.idag.nye} nye av ${d.cfg.perDag}, ${d.idag.sendt.length} e-poster sendt.`+
+      `<br>I dag: ${d.idag.nye} nye av ${d.cfg.perDag}, ${d.idag.sendt.length} av ${d.cfg.maksDag} e-poster sendt.`+(d.cfg.prover?`<br>Prøve-e-poster sendt til deg ${esc(new Date(d.cfg.prover).toLocaleString("nb-NO"))}.`:"")+
       `<br>${Object.entries(t).filter(([,n])=>n).map(([s,n])=>`${S_NAVN[s]}: <b>${n}</b>`).join(" · ")||"Ingen firmaer ennå."}`;
     $("sRes").innerHTML=d.rader.length?`<table><tr><th>Firma</th><th>Status</th><th>Neste</th><th></th></tr>${d.rader.map(r=>`<tr><td><b>${esc(r.f)}</b><div class="muted">${esc(r.e)} · ${esc(r.b)} · ${esc(r.orgnr)}</div></td><td>${esc(S_NAVN[r.s]||r.s)}${r.st?` (${r.st}/4)`:""}${r.tp?' <span class="tag f">trenger deg</span>':""}</td><td>${r.n?esc(new Date(r.n).toLocaleDateString("nb-NO",{weekday:"short",day:"numeric",month:"short"})):"–"}</td><td><button class="sVis" data-o="${esc(r.orgnr)}">Åpne</button></td></tr>`).join("")}</table>`:"Ingen firmaer her.";
   }catch(e){sFeil("msgS2",e);}
 }
 $("sHent").onclick=salgHent;$("sFilter").onchange=salgHent;
 $("sPerDag").onchange=async()=>{try{await api({handling:"salg-innstilling",perDag:Number($("sPerDag").value)});salgHent();}catch(e){sFeil("msgS2",e);}};
+$("sMaksDag").onchange=async()=>{try{await api({handling:"salg-innstilling",maksDag:Number($("sMaksDag").value)});salgHent();}catch(e){sFeil("msgS2",e);}};
+$("sHelg").onchange=async()=>{try{await api({handling:"salg-innstilling",helg:$("sHelg").value==="1"});salgHent();}catch(e){sFeil("msgS2",e);}};
+$("sBransje").onchange=async()=>{try{await api({handling:"salg-innstilling",bransjer:$("sBransje").value?[$("sBransje").value]:[]});salgHent();}catch(e){sFeil("msgS2",e);}};
 $("sPause").onclick=async()=>{try{await api({handling:"salg-innstilling",pause:!(SC&&SC.pause)});salgHent();}catch(e){sFeil("msgS2",e);}};
 $("sFinn").onclick=async()=>{const b=$("sFinn");b.disabled=true;$("msgS2").textContent="Søker og skriver (opptil ett minutt) …";
   try{const d=await api({handling:"salg-kjor",antall:2});$("msgS2").innerHTML='<span class="ok">'+esc(JSON.stringify(d.resultat))+'</span>';setTimeout(salgHent,800);}catch(e){sFeil("msgS2",e);}finally{b.disabled=false;}};
