@@ -10,13 +10,23 @@ const KV = {
   list: async ({ prefix = "" }) => ({ keys: [...lager.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })), list_complete: true }),
 };
 const env = { XAI_API_KEY: "x", KUNDER: KV, DEMO_KODE: "felles", PROV_PER_DAG: "3" };
-let grok = 0;
-globalThis.fetch = async (u) => {
+let grok = 0, sisteGrok = "";
+globalThis.fetch = async function (u) {
   const url = String(u);
   if (url.includes("bergror.no")) return new Response("<html><body><h1>Berg Rør AS</h1><p>Rørlegger i Bergen. Timepris 950 kr.</p></body></html>", { headers: { "content-type": "text/html" } });
   if (url.includes("dod.no")) return new Response("nei", { status: 500 });
+  if (url.includes("data.brreg.no")) {
+    if (url.includes("/enheter/912345678")) return Response.json({ organisasjonsnummer: "912345678", navn: "FJELL RØR AS", hjemmeside: "",
+      epostadresse: "post@fjellror.no", mobil: "912 34 567", antallAnsatte: 4, naeringskode1: { beskrivelse: "Rørleggerarbeid" },
+      forretningsadresse: { adresse: ["Fjellveien 12b"], postnummer: "5019", poststed: "BERGEN", kommune: "BERGEN" } });
+    if (url.includes("/enheter/913000000")) return Response.json({ organisasjonsnummer: "913000000", navn: "INGENSIDE AS", hjemmeside: "", epostadresse: "ola@gmail.com",
+      telefon: "55 00 00 00", naeringskode1: { beskrivelse: "Frisering" }, forretningsadresse: { adresse: ["Torget 1"], postnummer: "5014", poststed: "BERGEN", kommune: "BERGEN" } });
+    if (url.includes("enheter?navn=")) return Response.json({ _embedded: { enheter: [{ organisasjonsnummer: "912345678", navn: "FJELL RØR AS", naeringskode1: { beskrivelse: "Rørleggerarbeid" }, forretningsadresse: { poststed: "BERGEN" } }] } });
+    return new Response("{}", { status: 404 });
+  }
+  if (url.includes("fjellror.no")) return new Response("<html><body><h1>Fjell Rør</h1><p>Vi fikser lekkasjer.</p></body></html>", { headers: { "content-type": "text/html" } });
   if (url.includes("api.x.ai")) {
-    grok++;
+    grok++; sisteGrok = String(arguments[1] && arguments[1].body || "");
     const p = { navn: "Berg Rør AS", kortnavn: "Berg Rør", bransje: "rørleggerfirma", type: "befaring", tjenester: [], apent: {}, usikkert: [] };
     return Response.json({ choices: [{ message: { content: JSON.stringify(p) } }], usage: {} });
   }
@@ -43,6 +53,24 @@ r = await prov({ nettside: "127.0.0.1", kontakt: "99999999" }, undefined, "2.2.2
 r = await prov({ nettside: "orvelo.no", kontakt: "99999999" }, undefined, "2.2.2.2"); sjekk("egen side avvist", r.status === 400);
 r = await prov({ nettside: "dod.no", kontakt: "412 32 557" }, undefined, "3.3.3.3"); sjekk("uleselig side gir 422", r.status === 422);
 r = await prov({ nettside: "bergror.no", kontakt: "post@a.no", _honey: "x" }, undefined, "4.4.4.4"); sjekk("honningfelle", r.status === 400);
+// Søkefeltet: firma valgt fra Brønnøysund (org.nr)
+const dagKey = [...lager.keys()].find((k) => k.startsWith("provdag:"));
+lager.delete(dagKey);
+r = await prov({ orgnr: "912345678", nettside: "", kontakt: "post@fjellror.no" }, undefined, "7.7.7.7"); d = await r.json();
+const p2 = lager.get("kunde:" + new URL(d.lenke).searchParams.get("kunde"));
+const prof = p2 && JSON.parse(p2.v);
+sjekk("org.nr gir demo", r.status === 200 && d.ok);
+sjekk("nettside fra e-postdomenet", prof && prof.nettside === "fjellror.no");
+sjekk("adresse fra Brønnøysund", prof && /Fjellveien 12B, 5019 Bergen/.test(prof.adresse));
+sjekk("telefon fra Brønnøysund", prof && prof.telefon === "912 34 567");
+sjekk("Brreg-fakta sendt til KI-en", /Brønnøysundregistrene/.test(sisteGrok) && /Rørleggerarbeid/.test(sisteGrok));
+lager.delete(dagKey);
+r = await prov({ orgnr: "913000000", kontakt: "99999999" }, undefined, "8.8.8.8"); d = await r.json();
+sjekk("uten nettside går det likevel", r.status === 200 && d.ok);
+r = await prov({ kontakt: "99999999" }, undefined, "8.8.4.4"); sjekk("verken org.nr eller nettside gir 400", r.status === 400);
+r = await worker.fetch(new Request("https://x.workers.dev/firmasok?q=fjell", { headers: { Origin: "https://orvelo.no" } }), env, { waitUntil() {} });
+d = await r.json(); sjekk("firmasøk", d.treff && d.treff[0] && d.treff[0].orgnr === "912345678");
+lager.set(dagKey, { v: "2" });
 // Dagstaket (3) nås, og en IP stoppes etter 3 forsøk i timen
 await prov({ nettside: "bergror.no", kontakt: "post@a.no" }, undefined, "5.5.5.5");
 r = await prov({ nettside: "bergror.no", kontakt: "post@a.no" }, undefined, "6.6.6.6");
