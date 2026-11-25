@@ -297,6 +297,7 @@ async function hovedFetch(request, env, ctx) {
       return kontaktRute(request, env, url, origin);
     }
     if (url.pathname === "/prov") return provRute(request, env, origin);
+    if (url.pathname === "/firmasok") return firmasokRute(url, origin);
 
     // Til overvåkingen (.github/workflows/overvak.yml). Viser ingen hemmeligheter, bare at ting er koblet til.
     if (url.pathname === "/helse") {
@@ -326,7 +327,7 @@ async function hovedFetch(request, env, ctx) {
 // ======================================================================
 
 const UA = "Mozilla/5.0 (compatible; OrveloDemo/1.0; +https://orvelo.no/)";
-const NYTTIGE_SIDER = /pris|tjenest|behandling|kontakt|om-oss|om_oss|\/om\b|apning|åpning|service|produkt|meny|booking|bestill|fagomr|tilbud/i;
+const NYTTIGE_SIDER = /pris|tjenest|behandling|kontakt|om-oss|om_oss|\/om\b|apning|åpning|service|produkt|meny|booking|bestill|fagomr|tilbud|prosjekt|referanse|utfort|utført|jobber|oppdrag|galleri|portfolio|før-og-etter|for-og-etter|omtale|anmeldelse|kunder-sier/i;
 
 function htmlTilTekst(html) {
   return html
@@ -367,7 +368,7 @@ async function lesNettsted(nettside) {
       if (u.host === host && NYTTIGE_SIDER.test(u.pathname + " " + m[0]) && u.href !== forside.url) lenker.add(u.href.split("#")[0]);
     } catch {}
   }
-  const undersider = [...lenker].slice(0, 5);
+  const undersider = [...lenker].slice(0, 7);
   const resultat = await Promise.allSettled(undersider.map(hentSide));
   const deler = [`=== ${forside.url}\n${htmlTilTekst(forside.html).slice(0, 12000)}`];
   for (const r of resultat) if (r.status === "fulfilled") deler.push(`=== ${r.value.url}\n${htmlTilTekst(r.value.html).slice(0, 9000)}`);
@@ -388,7 +389,7 @@ const SKJEMA = `{
   "apentTekst": "Åpningstidene i en kort setning slik de skal sies i telefonen",
   "ansatte": ["Fornavn på ansatte som nevnes på nettsiden, maks 6, ellers tom liste"],
   "tjenester": [["Kategori", [["Tjeneste", "pris som tekst, f.eks. 'fra 1 200 kr' eller 'pris etter befaring'", 60]]]],
-  "ekstra": "2-4 setninger med annet en sekretær bør vite: spesialiteter, merker de jobber med, garanti, døgnvakt, hva de IKKE gjør",
+  "ekstra": "2-5 setninger med annet en sekretær bør vite: spesialiteter, merker de jobber med, garanti, døgnvakt, hva de IKKE gjør, og 1-3 tidligere jobber/prosjekter fra nettsiden (hva, hvor og pris hvis den står der), f.eks. 'Har nylig pusset opp bad på Landås'",
   "stikkord": ["Navn og fagord som er vanskelige å høre riktig, maks 15"],
   "usikkert": ["Ting du ikke fant og måtte anta, så Preben kan sjekke dem"]
 }`;
@@ -484,6 +485,7 @@ async function lagSekretaer(inn, env) {
   const firma = tekst(inn.firma, 80);
   const nettside = tekst(inn.nettside, 200);
   const bransje = tekst(inn.bransje, 60);
+  const f = inn.fakta || null;
   if (!firma && !nettside) throw new Error("Skriv inn firmanavn eller nettside.");
   let side = { tekst: "", sider: [] };
   let sideFeil = "";
@@ -504,7 +506,7 @@ Regler:
 Bransje/fag: ${bransje || "(se nettsiden)"}
 Kontaktperson: ${tekst(inn.kontaktperson, 40) || "(ukjent)"}
 Nettside: ${nettside || "(ingen)"}
-${sideFeil ? "Klarte ikke å lese nettsiden: " + sideFeil + "\n" : ""}
+${f ? `Opplysninger fra Brønnøysundregistrene (sikre, bruk dem): navn ${f.navn}; adresse ${f.adresse || "ukjent"}; kommune ${f.kommune || "ukjent"}; telefon ${f.telefon || "ukjent"}; e-post ${f.epost || "ukjent"}; næring ${f.fag || "ukjent"}; ansatte ${f.ansatte || "ukjent"}.\n` : ""}${sideFeil ? "Klarte ikke å lese nettsiden: " + sideFeil + "\n" : ""}
 Tekst fra nettsiden:
 ${side.tekst || "(ingen tekst, lag en nøktern profil ut fra firmanavn og bransje, og list alt du har antatt i 'usikkert')"}`;
   const p = await grokJson(env, system, bruker);
@@ -512,6 +514,13 @@ ${side.tekst || "(ingen tekst, lag en nøktern profil ut fra firmanavn og bransj
   p.kontaktperson = tekst(inn.kontaktperson, 40) || p.kontaktperson;
   p.nettside = nettside;
   p.kilder = side.sider;
+  if (f) {
+    if (!p.adresse && f.adresse) p.adresse = f.adresse;
+    if (!p.telefon && f.telefon) p.telefon = f.telefon;
+    if (!p.epost && f.epost) p.epost = f.epost;
+    if (!p.omraade && f.kommune) p.omraade = f.kommune + " og omegn";
+    p.kilder = [...(p.kilder || []), "Brønnøysundregistrene"];
+  }
   if (sideFeil) p.usikkert = [...(p.usikkert || []), "Nettsiden kunne ikke leses (" + sideFeil + "), så alt er antatt."];
   return normaliser(p);
 }
@@ -734,12 +743,17 @@ async function provRute(request, env, origin) {
   try { b = await request.json(); } catch { return json({ feil: "Kunne ikke lese skjemaet." }, 400, origin); }
   if (b._honey) return json({ feil: "Prøv igjen." }, 400, origin);
 
-  const nettside = tekst(b.nettside, 200).replace(/\s+/g, "");
+  // Valgt i søkefeltet: firmaet slås opp i Brønnøysundregistrene, så demoen får adresse, telefon, fag og nettside derfra.
+  const orgnr = String(b.orgnr || "").replace(/\D/g, "");
+  const brreg = orgnr.length === 9 ? await provBrreg(orgnr).catch(() => null) : null;
+  const nettside = (tekst(b.nettside, 200) || (brreg && brreg.nettside) || "").replace(/\s+/g, "");
   let host = "";
-  try { host = new URL(/^https?:\/\//i.test(nettside) ? nettside : "https://" + nettside).hostname.toLowerCase(); } catch {}
-  if (!host || !/^[a-z0-9æøå-]+(\.[a-z0-9æøå-]+)*\.[a-z]{2,}$/.test(host) || /^\d+(\.\d+)+$/.test(host) || /(^|\.)(orvelo\.no|workers\.dev|localhost)$/.test(host)) {
-    return json({ feil: "Skriv inn adressen til nettsiden, for eksempel bergror.no." }, 400, origin);
+  try { if (nettside) host = new URL(/^https?:\/\//i.test(nettside) ? nettside : "https://" + nettside).hostname.toLowerCase(); } catch {}
+  const hostOk = host && /^[a-z0-9æøå-]+(\.[a-z0-9æøå-]+)*\.[a-z]{2,}$/.test(host) && !/^\d+(\.\d+)+$/.test(host) && !/(^|\.)(orvelo\.no|workers\.dev|localhost)$/.test(host);
+  if (!hostOk && (tekst(b.nettside, 200) || !brreg)) {
+    return json({ feil: brreg || tekst(b.nettside, 200) ? "Skriv inn adressen til nettsiden, for eksempel bergror.no." : "Søk opp firmaet ditt, eller skriv inn adressen til nettsiden." }, 400, origin);
   }
+  if (!hostOk) host = "";
   const kontakt = tekst(b.kontakt, 120);
   const epost = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(kontakt) ? kontakt : "";
   const sifre = kontakt.replace(/[^\d+]/g, "");
@@ -763,12 +777,12 @@ async function provRute(request, env, origin) {
   let profil;
   try {
     if (env._maal) env._maal.id = "orvelo"; // Orvelos egen salgskostnad
-    profil = await lagSekretaer({ firma: tekst(b.firma, 80), nettside: host, bransje: tekst(b.bransje, 60) }, env);
+    profil = await lagSekretaer({ firma: tekst(b.firma, 80) || (brreg && brreg.navn) || "", nettside: host, bransje: tekst(b.bransje, 60) || (brreg && brreg.fag) || "", fakta: brreg }, env);
   } catch (e) {
     console.log("prov feilet", e && e.stack);
     return json({ feil: "Noe gikk galt da vi laget demoen. Prøv igjen om litt." }, 500, origin);
   }
-  if ((profil.usikkert || []).some((x) => /kunne ikke leses/i.test(x))) {
+  if (!brreg && (profil.usikkert || []).some((x) => /kunne ikke leses/i.test(x))) {
     return json({ feil: `Vi fikk ikke lest ${host}. Sjekk adressen, eller legg igjen nummeret ditt i skjemaet under.` }, 422, origin);
   }
   const base = (profil.kortnavn || profil.navn || "firma").toLowerCase().replace(/æ/g, "ae").replace(/ø/g, "o").replace(/å/g, "a")
@@ -782,12 +796,42 @@ async function provRute(request, env, origin) {
   const lenke = await demoLenke(new URL(env.SEKRETAR_URL || SEKRETAR_URL_DEFAULT), env, id);
 
   // Salgsmotoren skal ikke sende kald e-post til et firma som selv har prøvd.
-  await salgSperrKunde(env, { epost, nettside: host }).catch(() => {});
-  const h = { navn: "", firma: profil.navn || host, telefon, epost, fag: profil.bransje || "", emne: "Laget demo selv på orvelo.no",
-    melding: `Laget egen demo for ${host}: ${lenke}` };
+  await salgSperrKunde(env, { orgnr: brreg ? orgnr : "", epost, nettside: host }).catch(() => {});
+  const h = { navn: "", firma: profil.navn || host || (brreg && brreg.navn) || "", telefon, epost, fag: profil.bransje || "", emne: "Laget demo selv på orvelo.no",
+    melding: `Laget egen demo for ${host || profil.navn}${brreg ? " (org.nr " + orgnr + ")" : ""}: ${lenke}` };
   await env.KUNDER.put(`henvendelse:${h.tid = new Date().toISOString()}:${crypto.randomUUID().slice(0, 8)}`, JSON.stringify(h), { expirationTtl: KONTAKT_TTL });
   await varsleHenvendelse(env, h).catch((e) => console.log("prov-varsel feilet", e && e.message));
   return json({ ok: true, lenke, navn: profil.navn || host, dager: PROV_DAGER }, 200, origin);
+}
+
+// Søkefeltet i «Lag din egen demo»: reserve når nettleseren ikke når Brønnøysund direkte.
+async function firmasokRute(url, origin) {
+  const q = String(url.searchParams.get("q") || "").trim().slice(0, 80);
+  if (q.length < 2) return json({ treff: [] }, 200, origin);
+  const nr = q.replace(/\s/g, "");
+  try {
+    const d = /^\d{9}$/.test(nr) ? { _embedded: { enheter: [await brregJson("enheter/" + nr)] } }
+      : await brregJson("enheter?navn=" + encodeURIComponent(q) + "&size=8&konkurs=false&underAvvikling=false");
+    const treff = ((d._embedded || {}).enheter || []).map((e) => { const a = e.forretningsadresse || e.postadresse || {};
+      return { orgnr: e.organisasjonsnummer, navn: e.navn, sted: a.poststed || "", adresse: (a.adresse || []).join(", "), postnr: a.postnummer || "",
+        hjemmeside: e.hjemmeside || "", epost: e.epostadresse || "", fag: (e.naeringskode1 || {}).beskrivelse || "" }; });
+    return json({ treff }, 200, origin);
+  } catch { return json({ treff: [], feil: "Fikk ikke søkt akkurat nå." }, 200, origin); }
+}
+
+// Offentlige opplysninger om ett firma fra Enhetsregisteret (org.nr). Nettside: hjemmeside-feltet, ellers domenet i e-posten.
+async function provBrreg(orgnr) {
+  let e;
+  try { e = await brregJson("enheter/" + orgnr); } catch { e = await brregJson("underenheter/" + orgnr); }
+  if (!e || !e.navn) return null;
+  const a = e.forretningsadresse || e.beliggenhetsadresse || e.postadresse || {};
+  const adresse = [(a.adresse || []).join(", "), [a.postnummer, a.poststed].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  const epost = String(e.epostadresse || "").trim().toLowerCase();
+  const nettside = String(e.hjemmeside || "").trim() || salgDomene(epost);
+  const n = e.naeringskode1 || {};
+  const titt = (x) => String(x || "").toLowerCase().replace(/(^|[\s-])\S/g, (c) => c.toUpperCase());
+  return { navn: String(e.navn), adresse: titt(adresse).replace(/\b(\d+)([a-zæøå])\b/g, (m, t, b) => t + b.toUpperCase()), kommune: titt(a.kommune), telefon: String(e.mobil || e.telefon || "").trim(), epost,
+    nettside, fag: String(n.beskrivelse || ""), ansatte: e.antallAnsatte || 0, stiftet: e.stiftelsesdato || "" };
 }
 
 async function avtaleRute(request, env, ctx, url) {

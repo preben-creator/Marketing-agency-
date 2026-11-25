@@ -119,7 +119,13 @@ header img{height:34px;width:auto}
 .form .status{margin:0;padding:12px 14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--border);font-weight:600}
 .form .status.feil{border-color:var(--accent-2);color:var(--accent-2)}
 .lagdemo{margin-top:40px}
+.fsok{position:relative}.fsok ul{position:absolute;left:0;right:0;top:100%;z-index:20;margin:4px 0 0;padding:4px;list-style:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;max-height:300px;overflow:auto;box-shadow:0 12px 30px rgba(0,0,0,.35)}
+.fsok li button{display:block;width:100%;text-align:left;background:transparent;border:0;color:var(--text);font:inherit;padding:8px 10px;border-radius:8px;cursor:pointer}
+.fsok li button:hover,.fsok li button:focus{background:color-mix(in srgb,var(--accent) 18%,transparent);outline:0}
+.fsok li small{display:block;color:var(--muted);font-size:.78rem}
+.fvalgt{font-size:.85rem;color:var(--muted);margin:0}.fvalgt b{color:var(--text)}.fvalgt button{background:none;border:0;color:var(--accent-2);font:inherit;cursor:pointer;padding:0 0 0 6px;text-decoration:underline}
 .form .status.klar{display:grid;gap:12px}
+.form .status[hidden],.fsok ul[hidden],.fvalgt[hidden]{display:none}
 .form .status a.btn{justify-content:center;white-space:nowrap}
 .form .info{grid-column:1/-1;margin:0;font-size:.78rem;color:var(--muted)}
 .form .info a,footer a{color:inherit}
@@ -427,7 +433,7 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
     <div>
       <div class="eyebrow">Prøv med ditt eget firma</div>
       <h2 id="lagH">Lag din egen demo på ett minutt</h2>
-      <p class="muted">Skriv inn adressen til nettsiden din. Vi leser tjenestene, prisene og åpningstidene dine og lager en KI-sekretær for firmaet ditt, Du kan snakke og chatte med den med en gang.</p>
+      <p class="muted">Søk opp firmaet ditt. Vi henter adresse, telefon og fag fra Brønnøysundregistrene, leser tjenestene, prisene og åpningstidene på nettsiden din og lager en KI-sekretær for firmaet ditt. Du kan snakke og chatte med den med en gang.</p>
       <ul class="contact-list">
         <li>✅ Gratis og uforpliktende</li>
         <li>⏱️ Klar på rundt ett minutt</li>
@@ -436,13 +442,16 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
     </div>
     <form class="form" id="lagDemoForm" novalidate>
       <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off">
-      <label class="full">Nettsiden din<input name="nettside" required inputmode="url" autocomplete="url" placeholder="For eksempel bergror.no"></label>
+      <label class="full fsok">Søk opp firmaet ditt<input id="firmaSok" type="search" autocomplete="off" placeholder="Firmanavn eller org.nr" aria-autocomplete="list" aria-controls="firmaTreff"><ul id="firmaTreff" role="listbox" hidden></ul></label>
+      <p class="fvalgt full" id="firmaValgt" hidden></p>
+      <input type="hidden" name="orgnr">
+      <label class="full">Nettsiden din<input name="nettside" inputmode="url" autocomplete="url" placeholder="For eksempel bergror.no (fylles ut når du velger firmaet)"></label>
       <label>Firmanavn (valgfritt)<input name="firma" autocomplete="organization"></label>
       <label>Fag (valgfritt)<input name="bransje" placeholder="F.eks. rørlegger"></label>
       <label class="full">E-post eller mobil<input name="kontakt" required autocomplete="email" placeholder="Så vi kan hjelpe deg videre"></label>
       <button class="btn full" type="submit">Lag min demo</button>
       <p class="status full" id="lagDemoStatus" role="status" aria-live="polite" hidden></p>
-      <p class="info">Vi bruker bare det som står åpent på nettsiden din, og kontaktopplysningene dine bare til å følge deg opp. Les mer i <a href="personvern/">personvernerklæringen</a>.</p>
+      <p class="info">Vi bruker bare det som står åpent på nettsiden din og i Brønnøysundregistrene, og kontaktopplysningene dine bare til å følge deg opp. Les mer i <a href="personvern/">personvernerklæringen</a>.</p>
     </form>
   </section>
 
@@ -1512,17 +1521,53 @@ if(!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentEle
     const sett=(n,v)=>{ const el=k.elements[n]; if(el&&v&&!el.value) el.value=v; };
     sett("firma",d.firma); sett("fag",d.bransje);
     if(/@/.test(d.kontakt)) sett("epost",d.kontakt); else sett("telefon",d.kontakt);
-    sett("melding","Jeg vil gjerne ha en demo av KI-sekretæren for "+d.nettside+".");
+    sett("melding","Jeg vil gjerne ha en demo av KI-sekretæren for "+(d.nettside||d.firma)+(d.orgnr?" (org.nr "+d.orgnr+")":"")+".");
     vis("Vi fikk ikke laget demoen automatisk akkurat nå. Vi har fylt ut skjemaet under for deg. Skriv inn navnet ditt og trykk Send, så lager vi den innen én arbeidsdag.",true);
     setTimeout(()=>document.getElementById("kontakt").scrollIntoView({behavior:"smooth"}),1800);
+  }
+  // Søk i Brønnøysundregistrene mens man skriver. Direkte fra nettleseren, med workeren som reserve.
+  const sok=document.getElementById("firmaSok"), ul=document.getElementById("firmaTreff"), valgt=document.getElementById("firmaValgt");
+  const VANLIG=/^(gmail|googlemail|hotmail|outlook|live|yahoo|ymail|icloud|me|mac|msn|online|getmail|frisurf|broadpark|lyse|c2i|start|tele2|epost|mail|gmx|protonmail|proton|altibox|bluezone|aol|haugnett|sol)\./;
+  const domene=ep=>{ const d=String(ep||"").toLowerCase().split("@")[1]||""; return d&&!VANLIG.test(d)?d:""; };
+  const tit=t=>String(t||"").toLowerCase().replace(/(^|[\s-])\S/g,c=>c.toUpperCase());
+  const somEnhet=e=>{ const a=e.forretningsadresse||e.postadresse||{}; return {orgnr:e.organisasjonsnummer,navn:e.navn,sted:a.poststed||"",adresse:(a.adresse||[]).join(", "),postnr:a.postnummer||"",hjemmeside:e.hjemmeside||"",epost:e.epostadresse||"",fag:(e.naeringskode1||{}).beskrivelse||""}; };
+  async function finn(q){
+    const nr=q.replace(/\s/g,""), b="https://data.brreg.no/enhetsregisteret/api/";
+    try{
+      const r=await fetch(/^\d{9}$/.test(nr)?b+"enheter/"+nr:b+"enheter?navn="+encodeURIComponent(q)+"&size=8&konkurs=false&underAvvikling=false",{headers:{Accept:"application/json"}});
+      if(r.status===404) return []; if(!r.ok) throw 0; const d=await r.json();
+      return d.organisasjonsnummer?[somEnhet(d)]:((d._embedded||{}).enheter||[]).map(somEnhet);
+    }catch{ const r=await fetch(URL_PROV.replace(/\/prov$/,"/firmasok")+"?q="+encodeURIComponent(q)); return ((await r.json()).treff)||[]; }
+  }
+  let tid=0, siste="", treff=[];
+  const lukk=()=>{ ul.hidden=true; sok.setAttribute("aria-expanded","false"); };
+  if(sok){
+    sok.addEventListener("input",()=>{ clearTimeout(tid); const q=sok.value.trim(); if(q.length<2){ lukk(); return; }
+      tid=setTimeout(async()=>{ siste=q; let t=[]; try{ t=await finn(q); }catch{} if(siste!==q) return; treff=t;
+        ul.innerHTML=t.length?t.map((e,i)=>`<li><button type="button" role="option" data-i="${i}">${esc(e.navn)}<small>${esc([e.sted&&tit(e.sted),e.fag,"org.nr "+e.orgnr].filter(Boolean).join(" · "))}</small></button></li>`).join(""):`<li><small style="padding:8px 10px">Fant ingen firma med det navnet. Skriv inn nettsiden under i stedet.</small></li>`;
+        ul.hidden=false; sok.setAttribute("aria-expanded","true"); },300); });
+    sok.addEventListener("keydown",e=>{ if(e.key==="ArrowDown"&&!ul.hidden){ e.preventDefault(); const b=ul.querySelector("button"); if(b) b.focus(); } if(e.key==="Escape") lukk(); });
+    ul.addEventListener("keydown",e=>{ const b=e.target.closest("button"); if(!b) return; const li=b.parentElement;
+      if(e.key==="ArrowDown"){ e.preventDefault(); const n=li.nextElementSibling; if(n) n.querySelector("button").focus(); }
+      if(e.key==="ArrowUp"){ e.preventDefault(); const p=li.previousElementSibling; (p?p.querySelector("button"):sok).focus(); }
+      if(e.key==="Escape"){ lukk(); sok.focus(); } });
+    ul.addEventListener("click",e=>{ const b=e.target.closest("button[data-i]"); if(!b) return; const x=treff[+b.dataset.i]; if(!x) return;
+      f.elements.orgnr.value=x.orgnr; f.elements.firma.value=x.navn;
+      if(!f.elements.bransje.value&&x.fag) f.elements.bransje.value=x.fag;
+      const ns=String(x.hjemmeside||"").replace(/^https?:\/\//i,"").replace(/\/$/,"")||domene(x.epost);
+      if(ns) f.elements.nettside.value=ns.toLowerCase();
+      valgt.innerHTML=`Valgt: <b>${esc(x.navn)}</b>, ${esc([x.adresse,[x.postnr,tit(x.sted)].filter(Boolean).join(" ")].filter(Boolean).join(", "))} · org.nr ${esc(x.orgnr)}${ns?"":". Vi fant ingen nettside, så skriv den inn under hvis dere har en"}<button type="button" id="firmaBytt">Bytt</button>`;
+      valgt.hidden=false; sok.value=x.navn; lukk(); });
+    valgt.addEventListener("click",e=>{ if(e.target.id!=="firmaBytt") return; f.elements.orgnr.value=""; valgt.hidden=true; sok.value=""; sok.focus(); });
+    document.addEventListener("click",e=>{ if(!e.target.closest(".fsok")) lukk(); });
   }
   f.addEventListener("submit",async e=>{
     e.preventDefault();
     const d=Object.fromEntries(new FormData(f));
-    if(!d.nettside.trim()){ vis("Skriv inn adressen til nettsiden din.",true); return; }
+    if(!d.nettside.trim() && !d.orgnr){ vis("Søk opp firmaet ditt, eller skriv inn adressen til nettsiden.",true); return; }
     if(!d.kontakt.trim()){ vis("Skriv inn e-post eller mobilnummer.",true); return; }
     const knapp=f.querySelector('button[type="submit"]'), tekst=knapp.textContent;
-    knapp.disabled=true; knapp.textContent="Leser nettsiden og lager sekretæren …";
+    knapp.disabled=true; knapp.textContent=d.nettside.trim()?"Leser nettsiden og lager sekretæren …":"Lager sekretæren …";
     vis("Dette tar rundt ett minutt. Ikke lukk siden.");
     try{
       const r=await fetch(URL_PROV,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)});
