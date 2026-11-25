@@ -327,7 +327,7 @@ async function hovedFetch(request, env, ctx) {
 // ======================================================================
 
 const UA = "Mozilla/5.0 (compatible; OrveloDemo/1.0; +https://orvelo.no/)";
-const NYTTIGE_SIDER = /pris|tjenest|behandling|kontakt|om-oss|om_oss|\/om\b|apning|åpning|service|produkt|meny|booking|bestill|fagomr|tilbud/i;
+const NYTTIGE_SIDER = /pris|tjenest|behandling|kontakt|om-oss|om_oss|\/om\b|apning|åpning|service|produkt|meny|booking|bestill|fagomr|tilbud|prosjekt|referanse|utfort|utført|jobber|oppdrag|galleri|portfolio|før-og-etter|for-og-etter|omtale|anmeldelse|kunder-sier/i;
 
 function htmlTilTekst(html) {
   return html
@@ -368,7 +368,7 @@ async function lesNettsted(nettside) {
       if (u.host === host && NYTTIGE_SIDER.test(u.pathname + " " + m[0]) && u.href !== forside.url) lenker.add(u.href.split("#")[0]);
     } catch {}
   }
-  const undersider = [...lenker].slice(0, 5);
+  const undersider = [...lenker].slice(0, 7);
   const resultat = await Promise.allSettled(undersider.map(hentSide));
   const deler = [`=== ${forside.url}\n${htmlTilTekst(forside.html).slice(0, 12000)}`];
   for (const r of resultat) if (r.status === "fulfilled") deler.push(`=== ${r.value.url}\n${htmlTilTekst(r.value.html).slice(0, 9000)}`);
@@ -389,7 +389,7 @@ const SKJEMA = `{
   "apentTekst": "Åpningstidene i en kort setning slik de skal sies i telefonen",
   "ansatte": ["Fornavn på ansatte som nevnes på nettsiden, maks 6, ellers tom liste"],
   "tjenester": [["Kategori", [["Tjeneste", "pris som tekst, f.eks. 'fra 1 200 kr' eller 'pris etter befaring'", 60]]]],
-  "ekstra": "2-4 setninger med annet en sekretær bør vite: spesialiteter, merker de jobber med, garanti, døgnvakt, hva de IKKE gjør",
+  "ekstra": "2-5 setninger med annet en sekretær bør vite: spesialiteter, merker de jobber med, garanti, døgnvakt, hva de IKKE gjør, og 1-3 tidligere jobber/prosjekter fra nettsiden (hva, hvor og pris hvis den står der), f.eks. 'Har nylig pusset opp bad på Landås'",
   "stikkord": ["Navn og fagord som er vanskelige å høre riktig, maks 15"],
   "usikkert": ["Ting du ikke fant og måtte anta, så Preben kan sjekke dem"]
 }`;
