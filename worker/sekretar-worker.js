@@ -4462,6 +4462,7 @@ async function driftRute(request, env, ctx, url) {
       const sum = rader.reduce((s, r) => ({ kost: s.kost + r.kost, inntekt: s.inntekt + r.inntekt }), { kost: 0, inntekt: 0 });
       return json({ mnd, priser: pr, pakker: PAKKE_PRIS, rader, sum }, 200);
     }
+    if (String(b.handling || "").startsWith("feilsjekk")) return json(...await feilsjekkHandling(env, b));
     if (b.handling === "rydd") return json(await ryddAlle(env), 200);
     if (b.handling === "slett-kunde") {
       const id = rensId(b.kunde);
@@ -5146,4 +5147,61 @@ Svar bare med JSON: {"kategori":"","svar":"","trenger_preben":false,"oppsummerin
     ].filter((x, i, a) => !(x === "" && a[i - 1] === "")));
   }
   return { hva: kat, sendt, trengerPreben: f.trengerPreben };
+}
+
+
+// ---------- Feilsjekk av telefonsamtaler (data fra orvelo-ring, se feilsjekk() der) ----------
+// feilsjekk:<id>:<omvendt tid> = funnene fra én samtale. laerdom:<id> = godtatte regler, som orvelo-ring legger
+// til Petters og Evas instruksjoner fra neste samtale. id = «orvelo» (demonummeret) eller kunde-id (egen telefonlinje).
+const FEILSJEKK_DAGER = 60, MAKS_LAERDOM = 40;
+const rensNummer = (t) => String(t || "").replace(/\+?\d[\d ]{7,}/g, "[nummer]");
+async function hentLaerdomS(env, id) {
+  try { const l = await env.KUNDER.get("laerdom:" + id, "json"); return Array.isArray(l) ? l : []; } catch { return []; }
+}
+async function feilsjekkHandling(env, b) {
+  const id = String(b.id || "orvelo").replace(/[^a-z0-9-]/gi, "").slice(0, 60) || "orvelo";
+  if (b.handling === "feilsjekk-liste") {
+    // Alle telefon-id-er som har funn, så Preben kan velge kunde.
+    const alle = await listAlle(env, "feilsjekk:");
+    const ider = [...new Set(alle.map((k) => k.name.split(":")[1]))].sort();
+    const mine = alle.filter((k) => k.name.startsWith(`feilsjekk:${id}:`)).sort((x, y) => x.name < y.name ? -1 : 1).slice(0, 40);
+    const samtaler = (await Promise.all(mine.map(async (k) => { const r = await env.KUNDER.get(k.name, "json"); return r ? { key: k.name, ...r } : null; }))).filter(Boolean);
+    const ubesvart = alle.reduce((n, k) => n + ((k.metadata && k.metadata.a) || 0), 0);
+    return [{ id, ider: ider.length ? ider : ["orvelo"], samtaler, laerdom: await hentLaerdomS(env, id), ubesvart }, 200];
+  }
+  if (b.handling === "feilsjekk-svar") {
+    const key = String(b.key || "");
+    if (!key.startsWith(`feilsjekk:${id}:`)) return [{ feil: "Ugyldig samtale." }, 400];
+    const rec = await env.KUNDER.get(key, "json");
+    const f = rec && rec.funn && rec.funn.find((x) => x.nr === Number(b.nr));
+    if (!f) return [{ feil: "Fant ikke forslaget." }, 404];
+    if (!["godta", "avvis"].includes(b.svar)) return [{ feil: "Velg godta eller avvis." }, 400];
+    const laerdom = await hentLaerdomS(env, id);
+    if (b.svar === "godta") {
+      const regel = rensNummer(b.regel || f.regel).trim().slice(0, 300);
+      if (!regel) return [{ feil: "Regelen er tom." }, 400];
+      f.regel = regel; f.status = "godtatt";
+      if (!laerdom.some((x) => x.regel === regel)) laerdom.push({ regel, t: new Date().toISOString() });
+      while (laerdom.length > MAKS_LAERDOM) laerdom.shift();
+      await env.KUNDER.put("laerdom:" + id, JSON.stringify(laerdom));
+    } else f.status = "avvist";
+    await env.KUNDER.put(key, JSON.stringify(rec), { expirationTtl: FEILSJEKK_DAGER * 86400,
+      metadata: { n: rec.funn.length, a: rec.funn.filter((x) => x.status === "ny").length, t: rec.t, k: rec.kanal } });
+    return [{ ok: true, laerdom }, 200];
+  }
+  if (b.handling === "feilsjekk-ny-regel") {
+    const regel = rensNummer(b.regel).trim().slice(0, 300);
+    if (!regel) return [{ feil: "Skriv en regel." }, 400];
+    const laerdom = await hentLaerdomS(env, id);
+    if (!laerdom.some((x) => x.regel === regel)) laerdom.push({ regel, t: new Date().toISOString() });
+    while (laerdom.length > MAKS_LAERDOM) laerdom.shift();
+    await env.KUNDER.put("laerdom:" + id, JSON.stringify(laerdom));
+    return [{ ok: true, laerdom }, 200];
+  }
+  if (b.handling === "feilsjekk-fjern") {
+    const laerdom = (await hentLaerdomS(env, id)).filter((x, i) => i !== Number(b.nr));
+    await env.KUNDER.put("laerdom:" + id, JSON.stringify(laerdom));
+    return [{ ok: true, laerdom }, 200];
+  }
+  return [{ feil: "Ukjent handling." }, 400];
 }

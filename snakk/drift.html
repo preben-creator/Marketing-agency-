@@ -48,7 +48,7 @@ td.n,th.n{text-align:right;white-space:nowrap}.rod{color:var(--bad)}.gronn{color
   <p class="msg" id="msg" style="margin:8px 0 0"></p>
 </div>
 
-<div class="tabs"><button data-t="kvalitet" class="on">Kvalitet</button><button data-t="kost">Kostnad per kunde</button><button data-t="slett">Sletting</button><button data-t="revisor">Agent-revisor</button><button data-t="leads">Lead-finner</button><button data-t="salg">Salgsmotor</button></div>
+<div class="tabs"><button data-t="kvalitet" class="on">Kvalitet</button><button data-t="feilsjekk">Feilsjekk telefon</button><button data-t="kost">Kostnad per kunde</button><button data-t="slett">Sletting</button><button data-t="revisor">Agent-revisor</button><button data-t="leads">Lead-finner</button><button data-t="salg">Salgsmotor</button></div>
 
 <section id="t-kvalitet">
   <div class="card">
@@ -88,6 +88,18 @@ td.n,th.n{text-align:right;white-space:nowrap}.rod{color:var(--bad)}.gronn{color
     <div class="row"><button id="slettSe">Se hva som slettes</button><button id="slettEkte" disabled>Slett for godt</button><span class="msg" id="msgS"></span></div>
     <div id="slettListe" class="vk"></div>
   </div>
+</section>
+
+<section id="t-feilsjekk" class="skjult">
+  <div class="card">
+    <h2>Feilsjekk av telefonsamtaler</h2>
+    <p class="muted" style="margin:0 0 10px">Etter hver samtale leser en KI samtalen og finner feil Petter eller Eva gjorde, med et forslag til ny regel. Godta (eventuelt rett teksten først) eller avvis. Godtatte regler brukes fra neste samtale.</p>
+    <div class="g"><label>Telefon<select id="fId"><option value="orvelo">Orvelo (demonummeret)</option></select></label></div>
+    <div class="row"><button class="p" id="fVis">Hent</button><span class="msg" id="msgF"></span></div>
+  </div>
+  <div class="card"><h2>Regler som brukes nå</h2><div id="fRegler" class="muted">–</div>
+    <div class="row"><input id="fNy" placeholder="Skriv en egen regel" style="flex:1"><button id="fLeggTil">Legg til</button></div></div>
+  <div id="fRes"></div>
 </section>
 
 <section id="t-revisor" class="skjult">
@@ -155,8 +167,8 @@ async function api(body){
   if(!r.ok) throw new Error(d.feil||("Feil "+r.status));
   return d;
 }
-function vis(t){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));["kvalitet","kost","slett","revisor","leads","salg"].forEach(x=>$("t-"+x).classList.toggle("skjult",x!==t));}
-document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{vis(b.dataset.t);if(b.dataset.t==="kost")hentKost();if(b.dataset.t==="slett")oppbevaring();if(b.dataset.t==="revisor")revKunder();if(b.dataset.t==="leads")leadValg();if(b.dataset.t==="salg")salgHent();});
+function vis(t){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));["kvalitet","feilsjekk","kost","slett","revisor","leads","salg"].forEach(x=>$("t-"+x).classList.toggle("skjult",x!==t));}
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{vis(b.dataset.t);if(b.dataset.t==="kost")hentKost();if(b.dataset.t==="feilsjekk")fHent();if(b.dataset.t==="slett")oppbevaring();if(b.dataset.t==="revisor")revKunder();if(b.dataset.t==="leads")leadValg();if(b.dataset.t==="salg")salgHent();});
 $("start").onclick=async()=>{
   try{localStorage.setItem("orvelo-admin",$("kode").value);}catch{}
   $("msg").textContent="";
@@ -318,5 +330,33 @@ $("svKnapp").onclick=async()=>{const b=$("svKnapp");b.disabled=true;$("msgSv").t
     $("msgSv").innerHTML='<span class="ok">'+esc(r.hva==="ukjent"?"Fant ikke firmaet i salgsmotoren. Du fikk e-post om det.":`Sortert som «${r.hva}». ${r.sendt?"Agenten svarte (kopi til deg).":"Agenten svarte ikke."}${r.trengerPreben?" Trenger deg.":""}`)+'</span>';
     $("svTekst").value="";salgHent();}catch(e){sFeil("msgSv",e);}finally{b.disabled=false;}};
 $("sSperrKnapp").onclick=async()=>{try{const d=await api({handling:"salg-sperr",liste:$("sSperr").value});$("msgS3").innerHTML=`<span class="ok">${d.lagt} lagt på sperrelisten.</span>`;$("sSperr").value="";}catch(e){sFeil("msgS3",e);}};
+
+// ---------- Feilsjekk telefon ----------
+const ALVOR={hoy:"Alvorlig",middels:"Middels",lav:"Liten"};
+function fRegler(l){$("fRegler").innerHTML=l.length?l.map((x,i)=>`<div class="m ai">${esc(x.regel)} <button class="fFjern" data-nr="${i}">Fjern</button></div>`).join(""):"Ingen ennå.";
+  document.querySelectorAll(".fFjern").forEach(b=>b.onclick=async()=>{try{const d=await api({handling:"feilsjekk-fjern",id:$("fId").value,nr:+b.dataset.nr});fRegler(d.laerdom);}catch(e){$("msgF").textContent=e.message;}});}
+async function fHent(){
+  $("msgF").textContent="Henter…";
+  try{
+    const d=await api({handling:"feilsjekk-liste",id:$("fId").value});
+    const valgt=$("fId").value;
+    $("fId").innerHTML=[...new Set(["orvelo",...d.ider])].map(i=>`<option value="${esc(i)}"${i===valgt?" selected":""}>${i==="orvelo"?"Orvelo (demonummeret)":esc(i)}</option>`).join("");
+    fRegler(d.laerdom);
+    $("msgF").textContent=d.ubesvart?`${d.ubesvart} forslag venter på svar`:"Ingen forslag venter";
+    $("fRes").innerHTML=d.samtaler.length?d.samtaler.map(s=>`<div class="card"><b>${esc(new Date(s.t).toLocaleString("nb-NO",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</b> <span class="muted">${esc(s.kanal)}</span>
+      ${s.funn.length?s.funn.map(f=>`<div style="margin:10px 0;padding-top:8px;border-top:1px solid var(--line)"><span class="tag${f.alvor==="hoy"?" f":""}">${esc(ALVOR[f.alvor]||f.alvor)}</span> ${esc(f.hva)}
+        ${f.sitat?`<div class="m kunde">«${esc(f.sitat)}»</div>`:""}
+        ${f.status==="ny"?`<textarea data-k="${esc(s.key)}" data-nr="${f.nr}" rows="2">${esc(f.regel)}</textarea><div class="row"><button class="p fSvar" data-svar="godta" data-k="${esc(s.key)}" data-nr="${f.nr}">Godta regelen</button><button class="fSvar" data-svar="avvis" data-k="${esc(s.key)}" data-nr="${f.nr}">Avvis</button></div>`
+          :`<div class="m ai">${esc(f.regel)}</div><span class="muted">${f.status==="godtatt"?"Godtatt":"Avvist"}</span>`}</div>`).join(""):'<p class="muted">Ingen feil funnet.</p>'}
+      <details><summary style="cursor:pointer;color:var(--acc2)">Hele samtalen</summary>${(s.samtale||[]).map(l=>`<div class="m ${/ Kunde: /.test(l)?"kunde":"ai"}">${esc(l)}</div>`).join("")}</details></div>`).join(""):'<div class="card muted">Ingen samtaler er sjekket ennå.</div>';
+    document.querySelectorAll(".fSvar").forEach(b=>b.onclick=async()=>{
+      const t=document.querySelector(`textarea[data-k="${b.dataset.k}"][data-nr="${b.dataset.nr}"]`);
+      b.disabled=true;
+      try{await api({handling:"feilsjekk-svar",id:$("fId").value,key:b.dataset.k,nr:+b.dataset.nr,svar:b.dataset.svar,regel:t?t.value:""});await fHent();}catch(e){$("msgF").textContent=e.message;b.disabled=false;}
+    });
+  }catch(e){$("msgF").textContent=e.message;}
+}
+$("fVis").onclick=fHent;$("fId").onchange=fHent;
+$("fLeggTil").onclick=async()=>{try{const d=await api({handling:"feilsjekk-ny-regel",id:$("fId").value,regel:$("fNy").value});$("fNy").value="";fRegler(d.laerdom);}catch(e){$("msgF").textContent=e.message;}};
 </script>
 </div></body></html>
