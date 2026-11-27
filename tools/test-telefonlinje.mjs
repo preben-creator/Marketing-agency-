@@ -50,6 +50,14 @@ globalThis.fetch = async (url, opt = {}) => {
   kall.push({ url, body: opt.body });
   if (url.startsWith("https://api.x.ai/v1/realtime")) { xaiWs = new FakeWs(); return { webSocket: xaiWs, status: 101 }; }
   if (url.startsWith("https://api.openai.com/v1/realtime")) { const w = new FakeWs(); openaiWs.push(w); return { webSocket: w, status: 101 }; }
+  if (url.includes("data.brreg.no")) {
+    if (url.includes("enheter?navn=")) return OrigResponse.json({ _embedded: { enheter: [{ organisasjonsnummer: "912345678", navn: "FJELL RØR AS", naeringskode1: { beskrivelse: "Rørleggerarbeid" }, forretningsadresse: { poststed: "BERGEN" } }] } });
+    if (url.includes("/enheter/912345678")) return OrigResponse.json({ organisasjonsnummer: "912345678", navn: "FJELL RØR AS", hjemmeside: "", epostadresse: "post@gmail.com",
+      naeringskode1: { beskrivelse: "Rørleggerarbeid" }, forretningsadresse: { adresse: ["Fjellveien 12"], postnummer: "5019", poststed: "BERGEN", kommune: "BERGEN" } });
+    return new OrigResponse("{}", { status: 404 });
+  }
+  if (url.includes("api.x.ai/v1/chat/completions") && String(opt.body || "").includes("Du lager en profil"))
+    return OrigResponse.json({ choices: [{ message: { content: JSON.stringify({ navn: "Fjell Rør AS", kortnavn: "Fjell Rør", bransje: "rørleggerfirma", type: "befaring", tjenester: [["Rør", [["Lekkasje", "pris etter befaring"]]]], apent: {}, usikkert: [] }) } }], usage: {} });
   if (url.includes("api.x.ai/v1/chat/completions")) return OrigResponse.json({ choices: [{ message: { role: "assistant", content: '{"tema":"Bestilte dameklipp","kategori":"booking"}' } }], usage: {} });
   if (url.includes("raw.githubusercontent.com")) return new OrigResponse("<html></html>");
   if (url.includes("orvelo-sekretar")) throw new Error("Skal gå via service-bindingen, ikke workers.dev");
@@ -317,6 +325,37 @@ await test("Kundens egen linje (OpenAI) spør ikke om stemme", async () => {
     assert.doesNotMatch(okt.instructions, /mannlig eller kvinnelig/);
     serverWs.close();
   } finally { delete ringEnv.OPENAI_API_KEY; }
+});
+
+// 3d. Demonummeret: ukjent firma slås opp i Brønnøysund, og Petter lager sekretæren under samtalen
+await test("Demo: ukjent firma gir treff fra Brønnøysund, og lag_demo lager sekretæren", async () => {
+  const r = await twilioInn({ CallSid: "CAbrreg", From: "+4798700000", To: "+4755608323" });
+  xaiWs = null;
+  await ring.fetch(new Request("https://ring.example/media", { headers: { Upgrade: "websocket" } }), ringEnv);
+  const tlf = serverWs;
+  tlf.emit({ event: "start", start: { callSid: "CAbrreg", streamSid: "MZ5", customParameters: tParam(r.xml) } });
+  await vent(30);
+  const ai = xaiWs;
+  assert.ok(ai.ut.find((m) => m.type === "session.update").session.tools.some((t) => t.name === "lag_demo"));
+  const svar = async (navn, args, id) => {
+    ai.emit({ type: "response.function_call_arguments.done", name: navn, call_id: id, arguments: JSON.stringify(args) });
+    for (let i = 0; i < 50 && !ai.ut.some((m) => m.item?.call_id === id); i++) await vent(20);
+    return JSON.parse(ai.ut.find((m) => m.item?.call_id === id).item.output);
+  };
+  const f = await svar("finn_firma", { navn: "Fjell Rør" }, "f1");
+  assert.equal(f.funnet, false);
+  assert.equal(f.brreg[0].orgnr, "912345678");
+  assert.equal(f.brreg[0].sted, "Bergen");
+  const feilNr = await svar("lag_demo", { orgnr: "999999999" }, "f2");
+  assert.equal(feilNr.ok, false, "bare org.nr fra treffene");
+  const laget = await svar("lag_demo", { orgnr: "912 345 678" }, "f3");
+  assert.equal(laget.funnet, true);
+  assert.match(laget.instruksjoner, /Fjell Rør/);
+  assert.ok(ai.ut.some((m) => m.type === "session.update" && /sekretæren til Fjell Rør/.test(m.session.instructions || "")));
+  const id = [...lager.keys()].find((k) => k.startsWith("kunde:p-fjell-ror-"));
+  assert.ok(id, "prøve-sekretæren er lagret");
+  assert.equal(JSON.parse(lager.get(id)).provDemo.kilde, "telefon");
+  tlf.close();
 });
 
 // 4. Linjen slås av

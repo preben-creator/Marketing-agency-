@@ -94,3 +94,11 @@ Ringer noen Orvelos demonummer (et nummer som ikke står på `/lag`), hilser Pet
 «Vil du ha en mannlig eller kvinnelig KI-sekretær?» Svarer de kvinnelig, tar Eva (stemmen marin) over samtalen.
 Hun får med seg det som er sagt så langt. Det virker bare med OpenAI som motor. Variabelen `STEMMEVALG` = `av` slår spørsmålet av.
 Kundenes egne nummer spør ikke. Der brukes stemmen som er valgt på `/lag`.
+
+### Demonummeret: firmaer uten sekretær
+
+Har Orvelo ikke laget en sekretær for firmaet som ringer, søker Petter i Brønnøysundregistrene og spør om det er riktig firma.
+Svarer innringeren ja, lager han en prøve-sekretær mens de venter, på samme måte som «Lag din egen demo» på orvelo.no.
+Det tar rundt et halvt minutt. Sekretæren lages ut fra Brønnøysund og nettsiden til firmaet, og lagres i 14 dager.
+Grenser: samme dagsgrense som på nettsiden (`PROV_PER_DAG`), høyst 3 per innringer per døgn og 2 per samtale.
+Dette skjer i orvelo-sekretar (`/telefon/firmasok` og `/telefon/lagdemo`).
