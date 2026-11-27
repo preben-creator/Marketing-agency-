@@ -87,3 +87,10 @@ Twilio leverte et norsk lokalnummer (+47 55 60 83 23) etter at bundelen «Orvelo
   og legg nummeret inn på `/lag` (del 4, Telefonlinje). Kunden viderekobler firmatelefonen sin til nummeret
   (ved ikke svar/opptatt, eller alltid). Da svarer Petter som kundens egen sekretær: ledige tider, booking, SMS og beskjeder.
 - Et nummer som ikke står på `/lag`, svarer som Orvelos demonummer (spør hvilket firma du ringer fra og spiller sekretæren deres).
+
+### Demonummeret: velg Petter eller Eva
+
+Ringer noen Orvelos demonummer (et nummer som ikke står på `/lag`), hilser Petter som før og spør så:
+«Vil du ha en mannlig eller kvinnelig KI-sekretær?» Svarer de kvinnelig, tar Eva (stemmen marin) over samtalen.
+Hun får med seg det som er sagt så langt. Det virker bare med OpenAI som motor. Variabelen `STEMMEVALG` = `av` slår spørsmålet av.
+Kundenes egne nummer spør ikke. Der brukes stemmen som er valgt på `/lag`.

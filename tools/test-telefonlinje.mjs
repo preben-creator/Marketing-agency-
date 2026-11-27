@@ -38,6 +38,7 @@ class FakeWs {
   emit(obj) { for (const f of this.l.message || []) f({ data: JSON.stringify(obj) }); }
 }
 let serverWs, xaiWs;
+const openaiWs = [];
 globalThis.WebSocketPair = function () { serverWs = new FakeWs(); return { 0: new FakeWs(), 1: serverWs }; };
 const OrigResponse = globalThis.Response;
 globalThis.Response = class extends OrigResponse {
@@ -48,6 +49,7 @@ globalThis.fetch = async (url, opt = {}) => {
   url = String(url);
   kall.push({ url, body: opt.body });
   if (url.startsWith("https://api.x.ai/v1/realtime")) { xaiWs = new FakeWs(); return { webSocket: xaiWs, status: 101 }; }
+  if (url.startsWith("https://api.openai.com/v1/realtime")) { const w = new FakeWs(); openaiWs.push(w); return { webSocket: w, status: 101 }; }
   if (url.includes("api.x.ai/v1/chat/completions")) return OrigResponse.json({ choices: [{ message: { role: "assistant", content: '{"tema":"Bestilte dameklipp","kategori":"booking"}' } }], usage: {} });
   if (url.includes("raw.githubusercontent.com")) return new OrigResponse("<html></html>");
   if (url.includes("orvelo-sekretar")) throw new Error("Skal gå via service-bindingen, ikke workers.dev");
@@ -263,6 +265,58 @@ await test("Twilio: INNRING=av avviser samtalen", async () => {
   const r = await twilioInn({ CallSid: "CAav", From: "+4791111111", To: "+4756994025" });
   delete ringEnv.INNRING;
   assert.match(r.xml, /<Reject/);
+});
+
+// 3c. Demonummeret med OpenAI: Petter spør om mannlig eller kvinnelig sekretær, og Eva tar over ved «kvinnelig»
+await test("Demo (OpenAI): Petter spør først om mannlig eller kvinnelig KI-sekretær", async () => {
+  ringEnv.OPENAI_API_KEY = "o";
+  try {
+    const r = await twilioInn({ CallSid: "CAeva", From: "+4798765432", To: "+4755608323" });
+    openaiWs.length = 0;
+    await ring.fetch(new Request("https://ring.example/media", { headers: { Upgrade: "websocket" } }), ringEnv);
+    const tlf = serverWs;
+    tlf.emit({ event: "start", start: { callSid: "CAeva", streamSid: "MZ3", customParameters: tParam(r.xml) } });
+    await vent(30);
+    const petter = openaiWs[0];
+    const okt = petter.ut.find((m) => m.type === "session.update").session;
+    assert.equal(okt.audio.output.voice, "cedar");
+    assert.ok(okt.tools.some((t) => t.name === "bytt_stemme"));
+    assert.match(petter.ut.find((m) => m.type === "response.create").response.instructions, /Jeg er Petter.*mannlig eller kvinnelig KI-sekretær/);
+    // Innringeren sier «kvinnelig»: Petter bruker bytt_stemme, og en ny økt med stemmen marin hilser som Eva.
+    petter.emit({ type: "conversation.item.input_audio_transcription.completed", transcript: "Kvinnelig, takk." });
+    petter.emit({ type: "response.function_call_arguments.done", name: "bytt_stemme", call_id: "c1", arguments: '{"stemme":"kvinne"}' });
+    await vent(30);
+    assert.equal(openaiWs.length, 2, "ny økt for Eva");
+    const eva = openaiWs[1];
+    const evaOkt = eva.ut.find((m) => m.type === "session.update").session;
+    assert.equal(evaOkt.audio.output.voice, "marin");
+    assert.match(evaOkt.instructions, /Du er Eva/);
+    assert.match(evaOkt.instructions, /Kunde: Kvinnelig, takk/);
+    assert.match(eva.ut.find((m) => m.type === "response.create").response.instructions, /jeg er Eva/);
+    assert.ok(petter.lukket, "Petters økt lukkes");
+    assert.ok(!tlf.lukket, "telefonsamtalen fortsetter");
+    assert.ok(!petter.ut.some((m) => m.item?.type === "function_call_output"), "ingen svar til den gamle økten");
+    // Lyd fra Eva går til telefonen, og lyd fra kunden går til Eva.
+    eva.emit({ type: "response.output_audio.delta", delta: "BBBB" });
+    tlf.emit({ event: "media", media: { payload: "CCCC" } });
+    await vent(10);
+    assert.ok(tlf.ut.some((m) => m.event === "media" && m.media.payload === "BBBB"));
+    assert.ok(eva.ut.some((m) => m.type === "input_audio_buffer.append" && m.audio === "CCCC"));
+    tlf.close();
+  } finally { delete ringEnv.OPENAI_API_KEY; }
+});
+await test("Kundens egen linje (OpenAI) spør ikke om stemme", async () => {
+  ringEnv.OPENAI_API_KEY = "o";
+  try {
+    openaiWs.length = 0;
+    await ring.fetch(new Request("https://ring.example/media", { headers: { Upgrade: "websocket" } }), ringEnv);
+    serverWs.emit({ event: "start", start: { callSid: "CAinn1", streamSid: "MZ4", customParameters: tStrom } });
+    await vent(50);
+    const okt = openaiWs[0].ut.find((m) => m.type === "session.update").session;
+    assert.ok(!okt.tools.some((t) => t.name === "bytt_stemme"));
+    assert.doesNotMatch(okt.instructions, /mannlig eller kvinnelig/);
+    serverWs.close();
+  } finally { delete ringEnv.OPENAI_API_KEY; }
 });
 
 // 4. Linjen slås av

@@ -323,12 +323,18 @@ Tre pakker med fast månedspris eks. mva. og uten oppstartskostnad: Starter 790 
 Tilby et kort møte med Preben (send_bookinglenke), skriv sammendrag med noter_for_preben, si ha det og bruk legg_paa.`;
 }
 
-export function innringInstruks() {
-  return `Du er Petter, en KI-assistent fra Orvelo, et lite norsk selskap i Bergen drevet av Preben Hilleren. Orvelo lager KI-sekretærer som svarer telefonen for håndverkere og andre små bedrifter.
+// Demonummeret: k.velgStemme = innringeren får velge mannlig (Petter) eller kvinnelig (Eva) sekretær først (bare OpenAI).
+// k.agent = "Eva" etter at de har valgt kvinnestemmen.
+export function innringInstruks(k = {}) {
+  const navn = k.agent || "Petter";
+  const valg = k.velgStemme && navn === "Petter"
+    ? `0. Du har spurt om de vil ha en mannlig eller kvinnelig KI-sekretær. Svarer de kvinnelig (eller «dame», «Eva» o.l.): bruk bytt_stemme med stemme «kvinne» med en gang, uten å si noe først. Da tar kollegaen din Eva over. Svarer de mannlig eller at det er det samme: si «Flott!» og gå videre til punkt 1.\n`
+    : k.velgStemme ? `0. Innringeren valgte kvinnelig KI-sekretær, så du er Eva og har tatt over samtalen fra Petter. Vil de likevel ha mannsstemmen, bruk bytt_stemme med stemme «mann».\n` : "";
+  return `Du er ${navn}, en KI-assistent fra Orvelo, et lite norsk selskap i Bergen drevet av Preben Hilleren. Orvelo lager KI-sekretærer som svarer telefonen for håndverkere og andre små bedrifter.
 Du snakker norsk (bokmål), varmt og kort, maks to setninger om gangen. Si tydelig at du er en KI hvis noen spør.
 
 Noen har ringt Orvelos demonummer, trolig etter en e-post der vi skrev at vi har laget en KI-sekretær til firmaet deres.
-1. Spør hvilket firma de ringer fra, og bruk verktøyet finn_firma med navnet. Er du usikker på navnet, spør dem om å si det en gang til.
+${valg}1. Spør hvilket firma de ringer fra, og bruk verktøyet finn_firma med navnet. Er du usikker på navnet, spør dem om å si det en gang til.
 2. Finner du firmaet: følg instruksjonene i svaret fra verktøyet og spill sekretæren deres.
 3. Finner du flere: les opp valgene kort og spør hvilket. Bruk så finn_firma med det fulle navnet.
 4. Finner du det ikke etter to forsøk: si at sekretæren deres ikke er laget ennå, men at de kan høre et eksempel. Spør hva slags bedrift de har, og spill en vennlig sekretær for et eksempelfirma i den bransjen (navn: «Eksempelfirmaet»). Ikke nevn priser for eksempelfirmaet.
@@ -336,7 +342,15 @@ Hvis noen bare vil vite hva Orvelo er: forklar kort, tilby et møte med Preben (
 Før du avslutter: bruk noter_for_preben med et kort sammendrag, si ha det og bruk legg_paa.`;
 }
 
-export const INN_VERKTOY = () => [
+export const BYTT_STEMME = {
+  type: "function",
+  name: "bytt_stemme",
+  description: "Bytt til kvinnestemmen Eva eller mannsstemmen Petter når innringeren velger det.",
+  parameters: { type: "object", properties: { stemme: { type: "string", enum: ["kvinne", "mann"] } }, required: ["stemme"] },
+};
+
+export const INN_VERKTOY = (k = {}) => [
+  ...(k.velgStemme ? [BYTT_STEMME] : []),
   {
     type: "function",
     name: "finn_firma",
@@ -423,7 +437,7 @@ export function openaiSesjon(env, kunde) {
         turn_detection: { ...s.turn_detection, interrupt_response: true, create_response: true },
       },
       // Kundens egen linje kan ha valgt kvinnestemme og eget tempo (fra profilen i orvelo-sekretar).
-      output: { format: { type: "audio/pcmu" }, voice: (o && o.stemme) || env.OPENAI_STEMME || OPENAI_STEMME, speed: fart((o && o.fart) || env.OPENAI_FART) },
+      output: { format: { type: "audio/pcmu" }, voice: (o && o.stemme) || (kunde.agent === "Eva" ? "marin" : kunde.agent === "Petter" ? "cedar" : "") || env.OPENAI_STEMME || OPENAI_STEMME, speed: fart((o && o.fart) || env.OPENAI_FART) },
     },
   };
 }
@@ -564,8 +578,8 @@ export function sesjon(env, kunde) {
   const o = kunde.oppsett; // telefonlinje for en kunde
   return {
     voice: env.STEMME || "liora",
-    instructions: o ? o.instruksjoner : kunde.inn ? innringInstruks() : instruksjoner(kunde.navn, kunde.firma),
-    tools: o ? o.verktoy : kunde.inn ? INN_VERKTOY() : VERKTOY,
+    instructions: o ? o.instruksjoner : kunde.inn ? innringInstruks(kunde) + (kunde.rolle ? "\n\n" + kunde.rolle : "") : instruksjoner(kunde.navn, kunde.firma),
+    tools: o ? o.verktoy : kunde.inn ? INN_VERKTOY(kunde) : VERKTOY,
     // Telefonlinjer har støy, og folk tar små pauser midt i setninger. Litt høyere terskel og lengre pause
     // før Petter svarer gir færre falske avbrytelser og færre ganger han snakker i munnen på kunden.
     turn_detection: {
@@ -585,7 +599,9 @@ export function forsteReplikk(kunde) {
   if (kunde.oppsett) return kunde.oppsett.forste;
   const hei = kunde.navn ? `Hei, ${kunde.navn.split(" ")[0]}!` : "Hei!";
   return kunde.inn
-    ? "Hei, du har ringt Orvelo! Jeg er Petter, en KI-assistent. Hvilket firma ringer du fra?"
+    ? kunde.velgStemme
+      ? "Hei, du har ringt Orvelo! Jeg er Petter, en KI-assistent. Vil du ha en mannlig eller kvinnelig KI-sekretær?"
+      : "Hei, du har ringt Orvelo! Jeg er Petter, en KI-assistent. Hvilket firma ringer du fra?"
     : `${hei} Det er Petter fra Orvelo, en KI-assistent. Du ba om en samtale for å høre hvordan en KI-sekretær høres ut. Passer det nå?`;
 }
 
@@ -642,7 +658,8 @@ export async function koblSamtale(env, tlfWs, urlParam) {
     if (gemini) tilXai({ realtimeInput: { audio: { data: ulawTilPcm16k(pcmu, innSt), mimeType: "audio/pcm;rate=16000" } } });
     else tilXai({ type: "input_audio_buffer.append", audio: pcmu });
   };
-  const motorKlar = () => xai && xai.readyState === 1 && (!gemini || geminiKlar);
+  let bytter = false; // holder på å bytte stemme (ny OpenAI-økt)
+  const motorKlar = () => !bytter && xai && xai.readyState === 1 && (!gemini || geminiKlar);
   // Be Petter si noe (f.eks. «er du der?»), uten at kunden har sagt noe.
   const be = (instruks) => gemini
     ? tilXai({ clientContent: { turns: [{ role: "user", parts: [{ text: `(${instruks})` }] }], turnComplete: true } })
@@ -698,11 +715,18 @@ export async function koblSamtale(env, tlfWs, urlParam) {
         kunde.firma = p.navn;
         demoHendelser.push(`Fant sekretæren til ${p.navn} (${p.id})`);
         const rolle = rolleInstruks(p);
-        if (!gemini) tilXai({ type: "session.update", session: { ...(openai ? { type: "realtime" } : {}), instructions: innringInstruks() + "\n\n" + rolle } });
+        kunde.rolle = rolle;
+        if (!gemini) tilXai({ type: "session.update", session: { ...(openai ? { type: "realtime" } : {}), instructions: innringInstruks(kunde) + "\n\n" + rolle } });
         return { funnet: true, firma: p.navn, instruksjoner: rolle, merk: "Følg disse instruksjonene fra nå av, når du spiller sekretæren." };
       }
       demoHendelser.push(`Søkte etter «${String(args.navn || "").slice(0, 60)}»: ${r.flere ? "flere treff" : "ingen treff"}`);
       return r;
+    }
+    if (navn === "bytt_stemme") {
+      const til = args.stemme === "kvinne" ? "Eva" : "Petter";
+      if ((kunde.agent || "Petter") === til) return { ok: true, info: `Du er allerede ${til}. Fortsett samtalen.` };
+      if (await byttStemme(til)) return { byttet: true };
+      return { ok: false, info: "Stemmen kunne ikke byttes akkurat nå. Beklag kort og fortsett selv." };
     }
     if (navn === "bestill_demo") {
       demoHendelser.push(`Demo-bestilling: ${[args.hva, args.dag, args.klokkeslett, args.navn, args.mobil, args.adresse].filter(Boolean).join(" · ")}`);
@@ -781,8 +805,51 @@ export async function koblSamtale(env, tlfWs, urlParam) {
       });
     }
     while (ventende.length) sendInnLyd(ventende.shift());
+    lytt(xai);
+  }
 
-    xai.addEventListener("message", async (m) => {
+  // Ny OpenAI-økt med en annen stemme midt i samtalen (OpenAI lar ikke stemmen byttes etter at økten har snakket).
+  // Den nye økten får samtalen så langt i instruksjonene og hilser selv. Lyd fra kunden mens vi bytter, venter i køen.
+  async function byttStemme(til) {
+    if (!openai || kunde.linje || bytter) return false;
+    bytter = true;
+    try {
+      const r = await fetch(`https://api.openai.com/v1/realtime?model=${encodeURIComponent(env.OPENAI_MODELL || OPENAI_MODELL)}`, {
+        headers: { Upgrade: "websocket", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+      });
+      if (!r.webSocket) { console.log("Stemmebytte: fikk ikke kontakt med OpenAI", r.status); return false; }
+      const ny = r.webSocket;
+      ny.accept();
+      const gammel = xai;
+      const fra = kunde.agent || "Petter";
+      kunde.agent = til;
+      demoHendelser.push(`Byttet stemme: ${fra} -> ${til}`);
+      logg.push(`[${tid()}] (byttet til ${til})`);
+      xai = ny;
+      lytt(ny);
+      const s = openaiSesjon(env, kunde);
+      const sa = logg.filter((l) => / (Kunde|Petter|Eva): /.test(l)).slice(-16).join("\n");
+      if (sa) s.instructions += `\n\n# Samtalen så langt (${fra} snakket før deg)\n${sa}`;
+      tilXai({ type: "session.update", session: s });
+      const hei = til === "Eva"
+        ? (kunde.firma ? "Hei, jeg er Eva! Da tar jeg over herfra." : "Hei, jeg er Eva, en KI-sekretær fra Orvelo. Hvilket firma ringer du fra?")
+        : "Hei igjen, det er Petter. Da tar jeg over.";
+      tilXai({ type: "response.create", response: { instructions: `Si nøyaktig dette, og ikke noe mer: «${hei}»` } });
+      try { gammel && gammel.close(1000, "byttet stemme"); } catch {}
+      return true;
+    } catch (e) {
+      console.log("Stemmebytte feilet", e && e.message);
+      return false;
+    } finally {
+      bytter = false;
+      while (ventende.length) sendInnLyd(ventende.shift());
+    }
+  }
+
+  // Hendelser fra OpenAI/Grok. Hendelser fra en økt vi har byttet bort fra, ignoreres.
+  function lytt(ws) {
+    ws.addEventListener("message", async (m) => {
+      if (ws !== xai) return;
       let e;
       try { e = JSON.parse(m.data); } catch { return; }
       const t = e.type;
@@ -792,7 +859,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
         return;
       }
       if (t === "response.output_audio_transcript.done" || t === "response.audio_transcript.done") {
-        if (e.transcript && e.transcript.trim()) logg.push(`[${tid()}] Petter: ${e.transcript.trim()}${avbrutt ? " (avbrutt)" : ""}`);
+        if (e.transcript && e.transcript.trim()) logg.push(`[${tid()}] ${kunde.agent || "Petter"}: ${e.transcript.trim()}${avbrutt ? " (avbrutt)" : ""}`);
         return;
       }
       if (t.includes("input_audio_transcription.completed")) {
@@ -817,13 +884,14 @@ export async function koblSamtale(env, tlfWs, urlParam) {
         try { args = JSON.parse(e.arguments || "{}"); } catch {}
         const navn = e.name || funksjonsnavn[e.call_id];
         const res = await kjorVerktoy(navn, args);
+        if (res && res.byttet) return; // ny økt med ny stemme har tatt over
         tilXai({ type: "conversation.item.create", item: { type: "function_call_output", call_id: e.call_id, output: JSON.stringify(res) } });
         if (navn !== "legg_paa") tilXai({ type: "response.create" });
         return;
       }
       if (t === "error") console.log(`${motor}-feil`, JSON.stringify(e).slice(0, 300));
     });
-    xai.addEventListener("close", () => { clearInterval(stilleSjekk); try { tlfWs.close(1000, "grok lukket"); } catch {} });
+    ws.addEventListener("close", () => { if (ws !== xai) return; clearInterval(stilleSjekk); try { tlfWs.close(1000, "grok lukket"); } catch {} });
   }
 
   function startGemini() {
@@ -944,7 +1012,9 @@ export async function koblSamtale(env, tlfWs, urlParam) {
     if (p.modus === "inn") {
       const forventet = await hmac(env.TWILIO_AUTH_TOKEN, `inn|${p.cid}|${p.fra}|${p.ts}` + (p.kunde ? `|${p.kunde}` : ""));
       if (!likt(p.sig, forventet) || Date.now() - Number(p.ts) > 2 * 60 * 1000) { console.log("Ugyldig innringing-signatur"); return null; }
-      return { til: p.fra || "ukjent", navn: "", firma: "", inn: true, linje: p.kunde || "" };
+      // Demonummeret (ikke en kundes linje): innringeren velger mannlig eller kvinnelig sekretær først. STEMMEVALG=av slår det av.
+      const velgStemme = !p.kunde && openai && env.STEMMEVALG !== "av";
+      return { til: p.fra || "ukjent", navn: "", firma: "", inn: true, linje: p.kunde || "", ...(velgStemme ? { velgStemme } : {}) };
     }
     // Sjekk at samtalen faktisk ble startet av /ring (signert), ellers legg på.
     const forventet = await hmac(env.TWILIO_AUTH_TOKEN, `samtale|${p.til}|${p.ts}`);
