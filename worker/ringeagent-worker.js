@@ -5,7 +5,7 @@
 //   2. POST /kode  -> vi sender en SMS-kode for å bekrefte at nummeret er kundens eget (dobbelt samtykke).
 //   3. POST /ring  -> riktig kode? Da ringer Telnyx (norsk nummer) eller Twilio kunden, og samtalen kobles til Grok.
 //   4. GET  /media -> WebSocket mellom telefonlyden (Telnyx/Twilio) og Gemini Live (stemmen Aoede), eller Grok som reserve.
-//   Innringing (Telnyx): ringer noen nummeret, svarer agenten, spør hvilket firma de ringer fra, henter
+//   Innringing (Telnyx eller Twilio): ringer noen nummeret, svarer agenten, spør hvilket firma de ringer fra, henter
 //   firmaets KI-sekretær (laget med /lag i orvelo-sekretar) og spiller den, så de hører hvordan den høres ut.
 //   SMS (kode og bookinglenke) sendes alltid via Twilio, fra avsendernavnet «Orvelo».
 //   Under samtalen kan agenten sende bookinglenken på SMS og sende Preben et sammendrag på e-post.
@@ -36,10 +36,12 @@
 //   INNRING              (Text,   valgfri)  «av» = ikke svar på innkommende anrop
 //   SEKRETAR             (Service-binding)   til orvelo-sekretar. Brukes av telefonlinjen (under).
 //
-// Telefonlinje for kunder: har Preben lagt inn et Telnyx-nummer for en kunde på /lag (del 4), står det i
+// Telefonlinje for kunder: har Preben lagt inn et Telnyx- eller Twilio-nummer for en kunde på /lag (del 4), står det i
 // KV som linje:<nummer> -> kunde-id. Ringer noen det nummeret (kunden viderekobler telefonen sin dit), svarer
 // Petter som kundens egen sekretær: instruksjonene og verktøyene (ledige tider, booking, SMS, beskjed) kommer
 // fra orvelo-sekretar via /telefon/*, så telefonen, chatten og stemmen på nettsiden svarer likt.
+// Twilio-nummer: sett «A call comes in» til Webhook, HTTP POST, https://orvelo-ring.<navn>.workers.dev/twilio/innring
+// (samme adresse for alle nummer). Telnyx-nummer: koble nummeret til Voice API-appen (webhook /telnyx).
 //   TEST_NUMMER          (Text,   valgfri)  ditt eget nummer: hopper over SMS-koden (koden blir 0000) mens Twilio er prøvekonto
 
 const BOOKING_URL_DEFAULT = "https://calendar.app.google/24niGvpRRwPqNqr28";
@@ -914,8 +916,13 @@ export async function koblSamtale(env, tlfWs, urlParam) {
       }
       tlfKlar = true;
       const p = e.start.customParameters || {};
-      const kjent = p.modus === "inn" ? null : await sjekkParam(p); // innringing går bare via Telnyx
-      if (!kjent) { try { tlfWs.close(1008, "ugyldig"); } catch {} return; }
+      const kjent = await sjekkParam(p);
+      // Innringing via Twilio: parameterne er signert for akkurat denne samtalen.
+      if (!kjent || (kjent.inn && p.cid !== callSid)) {
+        if (kjent) console.log("Innringing: feil samtale-id");
+        try { tlfWs.close(1008, "ugyldig"); } catch {}
+        return;
+      }
       kunde = kjent;
       setTimeout(() => leggPaa(0), MAKS_SEK * 1000);
       await startGrok();
@@ -1128,6 +1135,39 @@ async function svarInnringing(env, url, pl) {
   if (!r.ok) console.log("Klarte ikke å svare innringing", telnyxFeil(r));
 }
 
+// Twilio signerer webhooken: HMAC-SHA1 av adressen + alle feltene sortert, med TWILIO_AUTH_TOKEN, i base64.
+export async function twilioSignaturOk(env, adresse, felt, signatur) {
+  let data = adresse;
+  for (const k of Object.keys(felt).sort()) data += k + felt[k];
+  const key = await crypto.subtle.importKey("raw", enc.encode(env.TWILIO_AUTH_TOKEN), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(data)));
+  return likt(String(signatur || ""), btoa(String.fromCharCode(...mac)));
+}
+
+const twimlSvar = (xml) => new Response(`<?xml version="1.0" encoding="UTF-8"?><Response>${xml}</Response>`, { headers: { "Content-Type": "text/xml; charset=utf-8" } });
+
+// Innringing til et Twilio-nummer (kundens telefonlinje eller Orvelos eget nummer). Samme flyt som Telnyx:
+// finn kunden på nummeret som ble ringt, og koble samtalen til /media med signerte parametere.
+async function twilioInnringing(request, env, url, mangler) {
+  const felt = Object.fromEntries(new URLSearchParams(await request.text()));
+  if (!(await twilioSignaturOk(env, request.url, felt, request.headers.get("X-Twilio-Signature")))) {
+    console.log("Twilio-innringing: ugyldig signatur");
+    return new Response("Ugyldig signatur", { status: 403 });
+  }
+  if (mangler.length || env.INNRING === "av") return twimlSvar(`<Reject reason="busy"/>`);
+  const cid = String(felt.CallSid || "");
+  const fra = String(felt.From || "").slice(0, 20);
+  if (!cid) return twimlSvar(`<Reject/>`);
+  const kunde = await finnLinje(env, felt.To);
+  const grense = kunde ? forMange("inn:" + kunde, 120, 60 * 60 * 1000) : forMange("inn:alle", 60, 60 * 60 * 1000);
+  if (forMange("inn:" + fra, 6, 60 * 60 * 1000) || grense) return twimlSvar(`<Reject reason="busy"/>`);
+  const ts = String(Date.now());
+  const sig = await hmac(env.TWILIO_AUTH_TOKEN, `inn|${cid}|${fra}|${ts}` + (kunde ? `|${kunde}` : ""));
+  const p = { modus: "inn", cid, fra, ts, sig, ...(kunde ? { kunde } : {}) };
+  const param = Object.entries(p).map(([k, v]) => `<Parameter name="${k}" value="${xmlEsc(v)}"/>`).join("");
+  return twimlSvar(`<Connect><Stream url="${xmlEsc(`wss://${url.host}/media`)}">${param}</Stream></Connect>`);
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -1145,6 +1185,9 @@ export default {
       }
       return new Response("ok");
     }
+
+    // Twilio: «A call comes in» på et Twilio-nummer peker hit.
+    if (url.pathname === "/twilio/innring" && request.method === "POST") return twilioInnringing(request, env, url, mangler);
 
     if (url.pathname === "/media") {
       if (request.headers.get("Upgrade") !== "websocket") return new Response("Forventer WebSocket", { status: 426 });

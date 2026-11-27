@@ -72,3 +72,18 @@ Derfor går selve samtalene via Telnyx, som har norske lokalnummer. SMS-ene går
 Når alle tre `TELNYX_*` er satt, ringer workeren via Telnyx. Fjerner du dem, går den tilbake til Twilio (`TWILIO_FROM`).
 
 SMS-ene kommer fra avsendernavnet «Orvelo» (kan endres med `SMS_AVSENDER`).
+
+## Norsk nummer via Twilio (fra 27.11.2026)
+
+Twilio leverte et norsk lokalnummer (+47 55 60 83 23) etter at bundelen «Orvelo Norge» ble godkjent.
+
+- **Ringe ut:** sett `TWILIO_FROM` = `+4755608323`. Workeren ringer via Telnyx så lenge alle tre `TELNYX_*` er satt,
+  så `TELNYX_FROM` må være slettet for at Twilio skal brukes.
+- **Ta imot samtaler** (Orvelos demonummer eller en kundes telefonlinje): i Twilio-konsollen, Phone Numbers → Manage →
+  Active numbers → nummeret → Voice Configuration:
+  - A call comes in: **Webhook**, `https://orvelo-ring.preben-m-hilleren.workers.dev/twilio/innring`, **HTTP POST**
+  - Lagre. Webhooken sjekker Twilio-signaturen (med `TWILIO_AUTH_TOKEN`), så adressen må være nøyaktig den samme som her.
+- **Kundens telefonlinje:** kjøp ett Twilio-nummer per kunde (Norway, Local, bundelen «Orvelo Norge»), sett webhooken som over,
+  og legg nummeret inn på `/lag` (del 4, Telefonlinje). Kunden viderekobler firmatelefonen sin til nummeret
+  (ved ikke svar/opptatt, eller alltid). Da svarer Petter som kundens egen sekretær: ledige tider, booking, SMS og beskjeder.
+- Et nummer som ikke står på `/lag`, svarer som Orvelos demonummer (spør hvilket firma du ringer fra og spiller sekretæren deres).
