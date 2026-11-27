@@ -328,7 +328,7 @@ await test("Kundens egen linje (OpenAI) spør ikke om stemme", async () => {
   } finally { delete ringEnv.OPENAI_API_KEY; }
 });
 
-await test("Demo (Gemini): Petter er Puck, sier «hallo», og Eva (Aoede) tar over i en ny økt", async () => {
+await test("Demo (Gemini): Petter er Puck, sier «god dag», og Eva (Aoede) tar over i en ny økt", async () => {
   ringEnv.GEMINI_API_KEY = "g"; ringEnv.GEMINI_STEMME = "Aoede"; // gammel verdi fra Ada-tiden skal ikke gjøre Petter til kvinne
   try {
     const r = await twilioInn({ CallSid: "CAgem", From: "+4798765400", To: "+4755608323" });
@@ -342,10 +342,12 @@ await test("Demo (Gemini): Petter er Puck, sier «hallo», og Eva (Aoede) tar ov
     const oppsett = petter.ut[0].setup;
     assert.equal(oppsett.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName, "Puck");
     assert.ok(oppsett.tools[0].functionDeclarations.some((f) => f.name === "bytt_stemme"));
-    assert.match(oppsett.systemInstruction.parts[0].text, /Hils med «hallo»/);
+    assert.match(oppsett.systemInstruction.parts[0].text, /Hils med «god dag»/);
+    assert.match(oppsett.systemInstruction.parts[0].text, /Murer: baderom.*fasadeoppussing/, "fagkunnskap for murer");
+    assert.match(oppsett.systemInstruction.parts[0].text, /firmaet med navnet de ga deg/);
     petter.emit({ setupComplete: {} });
     await vent(10);
-    assert.match(petter.ut[1].clientContent.turns[0].parts[0].text, /Hallo, du har ringt Orvelo! Jeg er Petter.*mannlig eller kvinnelig/);
+    assert.match(petter.ut[1].clientContent.turns[0].parts[0].text, /God dag, du har ringt Orvelo! Jeg er Petter.*mannlig eller kvinnelig/);
     petter.emit({ serverContent: { modelTurn: { parts: [{ inlineData: { mimeType: "audio/pcm;rate=24000", data: Buffer.alloc(4800).toString("base64") } }] } } });
     await vent(10);
     assert.ok(tlf.ut.some((m) => m.event === "media" && m.streamSid === "MZ6"), "lyden fra Gemini (Blob) når telefonen");
@@ -364,7 +366,7 @@ await test("Demo (Gemini): Petter er Puck, sier «hallo», og Eva (Aoede) tar ov
     tlf.emit({ event: "media", media: { payload: "//8=" } }); // venter til Eva er klar
     eva.emit({ setupComplete: {} });
     await vent(10);
-    assert.match(eva.ut[1].clientContent.turns[0].parts[0].text, /Hallo, jeg er Eva/);
+    assert.match(eva.ut[1].clientContent.turns[0].parts[0].text, /God dag, jeg er Eva/);
     assert.ok(eva.ut.some((m) => m.realtimeInput), "lyden fra kunden går til Eva");
     tlf.close();
   } finally { delete ringEnv.GEMINI_API_KEY; delete ringEnv.GEMINI_STEMME; }

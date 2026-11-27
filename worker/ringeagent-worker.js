@@ -326,6 +326,23 @@ Tre pakker med fast månedspris eks. mva. og uten oppstartskostnad: Starter 790 
 Tilby et kort møte med Preben (send_bookinglenke), skriv sammendrag med noter_for_preben, si ha det og bruk legg_paa.`;
 }
 
+// Vanlige oppdrag per fag, så sekretæren forstår hva kundene ber om (brukes når firmaet ikke har en egen sekretær ennå).
+export const FAG_KUNNSKAP = `- Murer: baderom (riving, membran, flis, oppussing av bad), fasadepuss og fasadeoppussing, mur- og pussreparasjon, peis og pipe (pipehatt, pipereparasjon, rehabilitering), grunnmur, støttemur, forblending, flislegging, natursteinsmur. Spør om størrelse (kvadratmeter), alder og skader, og tilby befaring.
+- Flislegger: bad og vaskerom, kjøkkenvegg, gulvvarme under flis, membran og tettesjikt.
+- Rørlegger: lekkasje (haster), tett avløp, varmtvannsbereder, baderom og kjøkken, vannbåren varme, varmepumpe, nye rør og stoppekran. Ved lekkasje: be dem stenge hovedkranen.
+- Elektriker: nye stikk og lys, sikringsskap, el-kontroll, elbillader, gulvvarme, feil og strømbrudd (kan haste), samsvarserklæring.
+- Snekker/tømrer: tilbygg, terrasse, kjøkken og innredning, vinduer og dører, tak, etterisolering, oppussing, garasje.
+- Maler: innvendig og utvendig maling, fasade, tapet, sparkling, beising, takrenner og vinduer.
+- Taktekker: nytt tak, lekkasje i tak, takrenner, takstein, papp og shingel, takvinduer.
+- Blikkenslager: takrenner, beslag, pipebeslag.
+- Anlegg/graving: drenering, grunnarbeid, oppkjørsel, støttemur, avløp, belegningsstein.
+- Glassmester: knust rute, nye vinduer, speil, dusjvegg.
+- Låsesmed: låst ute (haster), bytte lås, nøkler, kodelås.
+- Bilverksted: EU-kontroll, service, dekkskift, bremser, feilsøk, lakk og bulk.
+- Frisør og skjønnhet: klipp, farge, striper, permanent, skjegg, behandlinger. Spør om tjeneste, frisør og ønsket dag.
+- Rengjøring: fast vask, flyttevask, byggvask, vindusvask, kontorvask. Spør om størrelse og dato.
+- Flytting: flytting, pakking, magasinering. Spør om fra–til, størrelse og dato.`;
+
 // Demonummeret: k.velgStemme = innringeren får velge mannlig (Petter) eller kvinnelig (Eva) sekretær først (bare OpenAI).
 // k.agent = "Eva" etter at de har valgt kvinnestemmen.
 export function innringInstruks(k = {}) {
@@ -341,7 +358,16 @@ ${valg}1. Spør hvilket firma de ringer fra, og bruk verktøyet finn_firma med n
 2. Finner du firmaet: følg instruksjonene i svaret fra verktøyet og spill sekretæren deres.
 3. Finner du flere: les opp valgene kort og spør hvilket. Bruk så finn_firma med det fulle navnet.
 4. Har vi ikke laget en sekretær ennå, gir finn_firma treff fra Brønnøysundregistrene. Spør om det er riktig firma, med navn og sted (for eksempel «Er det Berg Rør AS i Bergen?»). Er det flere, nevn høyst tre. Bekrefter de: si «Et øyeblikk, så setter jeg opp sekretæren deres. Det tar rundt et halvt minutt.» og bruk lag_demo med org.nr-et. Følg så instruksjonene i svaret.
-5. Finner du det ikke, eller lag_demo feiler: si at sekretæren deres ikke er laget ennå, men at de kan høre et eksempel. Spør hva slags bedrift de har, og spill en vennlig sekretær for et eksempelfirma i den bransjen (navn: «Eksempelfirmaet»). Ikke nevn priser for eksempelfirmaet.
+5. Finner du det ikke, eller lag_demo feiler: si at sekretæren deres ikke er laget ennå, men at de kan høre hvordan den vil svare. Spør hva slags bedrift de har hvis du ikke vet det. Si så «Lat som du er en kunde som ringer», og spill sekretæren for firmaet med navnet de ga deg (ikke et oppdiktet navn, og ikke bare yrket). Svar «[firmanavn], god dag! Hva kan jeg hjelpe deg med?». Bruk fagkunnskapen under. Ikke nevn priser eller lov tider du ikke vet; si at fagfolkene ringer tilbake.
+
+# Slik tar sekretæren imot en kunde (alle bransjer)
+- Forstå hva kunden vil ha gjort, og gjenta det kort med egne ord («Så dere vil pusse opp badet?»).
+- Still to–tre korte spørsmål som fagfolkene trenger, ett om gangen: hva og hvor stort, adresse eller sted, når det passer, og om det haster.
+- Ta imot navn og telefonnummer, les nummeret tilbake to og to siffer, og si at firmaet ringer tilbake. Tilby befaring der det passer.
+- Forstår du ikke et ord, spør hva de mener i stedet for å gjette.
+
+# Fagkunnskap (vanlige oppdrag)
+${FAG_KUNNSKAP}
 Hvis noen bare vil vite hva Orvelo er: forklar kort, tilby et møte med Preben (send_bookinglenke).
 Før du avslutter: bruk noter_for_preben med et kort sammendrag, si ha det og bruk legg_paa.`;
 }
@@ -437,7 +463,7 @@ export const brukGemini = (env) => velgMotor(env) === "gemini";
 export const SPRAK_REGEL = `# Språk og uttale (gjelder hele samtalen)
 - Snakk bare norsk bokmål, med vanlig østnorsk uttale, som en norsk sekretær. Aldri svensk eller dansk uttale. Hold samme stemme, tonefall og uttale hele samtalen, også når du sier tall og navn.
 - Bruk aldri engelske ord eller uttrykk, heller ikke enkeltord som «okay», «sure», «great», «perfect», «sorry», «appointment» eller «anyway». Si heller «ja», «greit», «flott», «supert», «beklager» og «time».
-- Hils med «hallo» eller «god dag», ikke «hei» (på telefon høres det ut som engelsk «hey»). Si «ha det» når dere avslutter.
+- Hils med «god dag», aldri «hei» eller «hallo» (på telefon høres de ut som engelsk «hey» og «hello»). Si «ha det» når dere avslutter.
 - Les tall, priser, klokkeslett, datoer og adresser på norsk. Telefonnummer leser du to og to siffer på norsk, for eksempel «fire-en, to-tre, to-fem, fem-sju».
 - Snakker kunden bare engelsk, kan du svare på engelsk. Ellers svarer du alltid på norsk, også om kunden bruker et engelsk ord.
 - Snakk i et rolig, behagelig tempo, med små pauser mellom setningene. Ikke forhast deg.`;
@@ -625,11 +651,11 @@ export function sesjon(env, kunde) {
 
 export function forsteReplikk(kunde) {
   if (kunde.oppsett) return kunde.oppsett.forste;
-  const hei = kunde.navn ? `Hallo, ${kunde.navn.split(" ")[0]}!` : "Hallo!";
+  const hei = kunde.navn ? `God dag, ${kunde.navn.split(" ")[0]}!` : "God dag!";
   return kunde.inn
     ? kunde.velgStemme
-      ? "Hallo, du har ringt Orvelo! Jeg er Petter, en KI-assistent. Vil du ha en mannlig eller kvinnelig KI-sekretær?"
-      : "Hallo, du har ringt Orvelo! Jeg er Petter, en KI-assistent. Hvilket firma ringer du fra?"
+      ? "God dag, du har ringt Orvelo! Jeg er Petter, en KI-assistent. Vil du ha en mannlig eller kvinnelig KI-sekretær?"
+      : "God dag, du har ringt Orvelo! Jeg er Petter, en KI-assistent. Hvilket firma ringer du fra?"
     : `${hei} Det er Petter fra Orvelo, en KI-assistent. Du ba om en samtale for å høre hvordan en KI-sekretær høres ut. Passer det nå?`;
 }
 
@@ -841,7 +867,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
     if (kunde.linje && !kunde.oppsett) {
       // Fikk vi ikke hentet sekretæren: si det kort og legg på (bedre enn en sekretær som ikke vet noe).
       kunde.oppsett = { instruksjoner: "Si bare replikken du har fått, ikke noe mer.", verktoy: [], keyterms: [],
-        forste: "Hallo! Beklager, vi har et teknisk problem akkurat nå. Prøv å ringe igjen om litt." };
+        forste: "God dag! Beklager, vi har et teknisk problem akkurat nå. Prøv å ringe igjen om litt." };
       logg.push(`[${tid()}] (fikk ikke hentet sekretæren, la på)`);
       leggPaa(9000);
     }
@@ -889,8 +915,8 @@ export async function koblSamtale(env, tlfWs, urlParam) {
       const sa = logg.filter((l) => / (Kunde|Petter|Eva): /.test(l)).slice(-16).join("\n");
       const historikk = sa ? `# Samtalen så langt (${fra} snakket før deg)\n${sa}` : "";
       const hei = til === "Eva"
-        ? (kunde.firma ? "Hallo, jeg er Eva! Da tar jeg over herfra." : "Hallo, jeg er Eva, en KI-sekretær fra Orvelo. Hvilket firma ringer du fra?")
-        : "Hallo igjen, det er Petter. Da tar jeg over.";
+        ? (kunde.firma ? "God dag, jeg er Eva! Da tar jeg over herfra." : "God dag, jeg er Eva, en KI-sekretær fra Orvelo. Hvilket firma ringer du fra?")
+        : "Det er Petter igjen. Da tar jeg over.";
       if (gemini) {
         // Gemini: ny økt med den nye stemmen. Lyden fra kunden venter i køen til oppsettet er godtatt.
         geminiKlar = false;
