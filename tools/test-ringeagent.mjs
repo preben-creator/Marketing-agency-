@@ -95,10 +95,12 @@ const lyd = (ms) => Buffer.alloc(Math.round(ms * 8)).toString("base64"); // PCMU
 {
   const { tlf } = await nySamtale();
   tlf.emit({ event: "start", start: { call_control_id: "cc2" } });
-  await vent(1700);
-  assert.ok(xaiWs.ut.some((m) => m.type === "response.create" && /stille/.test(m.response?.instructions || "")), "spør om personen er der");
-  await vent(1500);
-  assert.ok(kall.some((k) => k.url.includes("cc2/actions/hangup")), "legger på etter stillhet");
+  // Stillhetssjekken går hvert 375. ms, så første spørsmål kommer mellom 1,5 og ca. 1,9 sek. Vent på det (maks 4 sek), ikke en fast tid.
+  const ventPaa = async (f, maks) => { for (const t0 = Date.now(); !f() && Date.now() - t0 < maks;) await vent(50); return f(); };
+  const t0 = Date.now();
+  assert.ok(await ventPaa(() => xaiWs.ut.some((m) => m.type === "response.create" && /stille/.test(m.response?.instructions || "")), 4000), "spør om personen er der");
+  assert.ok(Date.now() - t0 >= 1200, "spør ikke før det har vært stille en stund");
+  assert.ok(await ventPaa(() => kall.some((k) => k.url.includes("cc2/actions/hangup")), 4000), "legger på etter stillhet");
   console.log("✓ Stillhet: spør om de er der, og legger på hvis ingen svarer");
 }
 
