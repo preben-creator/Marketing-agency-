@@ -222,11 +222,13 @@ const MODEL = "grok-voice-latest";        // reserve hvis serveren gir Grok
 // Samme språkregel som telefonen (worker/ringeagent-worker.js), så stemmene ikke glir over i engelsk.
 const SPRAK_REGEL = `# Språk og uttale (gjelder hele samtalen)
 - Snakk bare norsk bokmål, med vanlig østnorsk uttale, som en norsk sekretær. Aldri svensk eller dansk uttale. Hold samme stemme, tonefall og uttale hele samtalen, også når du sier tall og navn.
-- Bruk aldri engelske ord eller uttrykk, heller ikke enkeltord som «okay», «sure», «great», «perfect», «sorry», «appointment» eller «anyway». Si heller «ja», «greit», «flott», «supert», «beklager» og «time».
+- Bruk aldri engelske ord eller uttrykk, heller ikke enkeltord som «okay», «okei», «ok», «sure», «great», «perfect», «sorry», «appointment» eller «anyway». Si heller «ja», «bra», «flott», «beklager» og «time».
+- Når kunden har gitt deg en opplysning, kvitter med «bra» (eller «flott») og gå rett videre til neste spørsmål i samme replikk. Si aldri «okei».
 - Hils med «god dag», aldri «hei» eller «hallo» (det kan høres ut som engelsk «hey» og «hello»). Si «ha det» når dere avslutter.
 - Les tall, priser, klokkeslett, datoer og adresser på norsk. Telefonnummer leser du to og to siffer på norsk, for eksempel «fire-en, to-tre, to-fem, fem-sju».
 - Snakker kunden bare engelsk, kan du svare på engelsk. Ellers svarer du alltid på norsk, også om kunden bruker et engelsk ord.
-- Snakk i et rolig, behagelig tempo, med små pauser mellom setningene. Ikke forhast deg.`;
+- Snakk i et naturlig, jevnt tempo med god flyt, som i en vanlig telefonsamtale. Ikke lag lange pauser mellom setningene eller midt i dem.
+- Uttal «Orvelo» som «or-VE-lo», med trykket på andre stavelse, ikke på o-en.`;
 let MOTOR = "grok", OPENAI_MODELL = "gpt-realtime-2.1", FART = 0.9; // settes av /token: «openai» = Petter-stemmen (cedar)
 let VOICE = P.get("stemme") || "ara";
 const FUNKSJONSNAVN = {};                 // OpenAI: call_id -> verktøynavn

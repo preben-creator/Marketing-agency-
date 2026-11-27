@@ -326,6 +326,9 @@ Tre pakker med fast månedspris eks. mva. og uten oppstartskostnad: Starter 790 
 Tilby et kort møte med Preben (send_bookinglenke), skriv sammendrag med noter_for_preben, si ha det og bruk legg_paa.`;
 }
 
+// +4741232557 -> «412 32 557» (bare norske 8-sifrede nummer).
+const nrTekst = (nr) => { const d = String(nr || "").replace(/^\+47/, ""); return /^\d{8}$/.test(d) ? `${d.slice(0, 3)} ${d.slice(3, 5)} ${d.slice(5)}` : ""; };
+
 // Vanlige oppdrag per fag, så sekretæren forstår hva kundene ber om (brukes når firmaet ikke har en egen sekretær ennå).
 export const FAG_KUNNSKAP = `- Murer: baderom (riving, membran, flis, oppussing av bad), fasadepuss og fasadeoppussing, mur- og pussreparasjon, peis og pipe (pipehatt, pipereparasjon, rehabilitering), grunnmur, støttemur, forblending, flislegging, natursteinsmur. Spør om størrelse (kvadratmeter), alder og skader, og tilby befaring.
 - Flislegger: bad og vaskerom, kjøkkenvegg, gulvvarme under flis, membran og tettesjikt.
@@ -354,7 +357,8 @@ export function innringInstruks(k = {}) {
 Du snakker norsk (bokmål), varmt og kort, maks to setninger om gangen. Si tydelig at du er en KI hvis noen spør.
 
 Noen har ringt Orvelos demonummer, trolig etter en e-post der vi skrev at vi har laget en KI-sekretær til firmaet deres.
-${valg}1. Spør hvilket firma de ringer fra, og bruk verktøyet finn_firma med navnet. Er du usikker på navnet, spør dem om å si det en gang til.
+${nrTekst(k.til) ? `Innringeren ringer fra ${nrTekst(k.til)}. Når du (eller sekretæren du spiller) trenger telefonnummeret, spør «Kan vi ringe deg på nummeret du ringer fra?». Sier de ja eller «bruk dette nummeret», bruk det, og ikke be om nummeret på nytt.
+` : ""}${valg}1. Spør hvilket firma de ringer fra, og bruk verktøyet finn_firma med navnet. Er du usikker på navnet, spør dem om å si det en gang til.
 2. Finner du firmaet: følg instruksjonene i svaret fra verktøyet og spill sekretæren deres.
 3. Finner du flere: les opp valgene kort og spør hvilket. Bruk så finn_firma med det fulle navnet.
 4. Har vi ikke laget en sekretær ennå, gir finn_firma treff fra Brønnøysundregistrene. Spør om det er riktig firma, med navn og sted (for eksempel «Er det Berg Rør AS i Bergen?»). Er det flere, nevn høyst tre. Bekrefter de: si «Et øyeblikk, så setter jeg opp sekretæren deres. Det tar rundt et halvt minutt.» og bruk lag_demo med org.nr-et. Følg så instruksjonene i svaret.
@@ -462,11 +466,13 @@ export const brukGemini = (env) => velgMotor(env) === "gemini";
 // Samme tekst står i snakk/index.html. tools/test-stemmer.mjs sjekker at begge stemmene holder seg til norsk.
 export const SPRAK_REGEL = `# Språk og uttale (gjelder hele samtalen)
 - Snakk bare norsk bokmål, med vanlig østnorsk uttale, som en norsk sekretær. Aldri svensk eller dansk uttale. Hold samme stemme, tonefall og uttale hele samtalen, også når du sier tall og navn.
-- Bruk aldri engelske ord eller uttrykk, heller ikke enkeltord som «okay», «sure», «great», «perfect», «sorry», «appointment» eller «anyway». Si heller «ja», «greit», «flott», «supert», «beklager» og «time».
+- Bruk aldri engelske ord eller uttrykk, heller ikke enkeltord som «okay», «okei», «ok», «sure», «great», «perfect», «sorry», «appointment» eller «anyway». Si heller «ja», «bra», «flott», «beklager» og «time».
+- Når kunden har gitt deg en opplysning, kvitter med «bra» (eller «flott») og gå rett videre til neste spørsmål i samme replikk. Si aldri «okei».
 - Hils med «god dag», aldri «hei» eller «hallo» (på telefon høres de ut som engelsk «hey» og «hello»). Si «ha det» når dere avslutter.
 - Les tall, priser, klokkeslett, datoer og adresser på norsk. Telefonnummer leser du to og to siffer på norsk, for eksempel «fire-en, to-tre, to-fem, fem-sju».
 - Snakker kunden bare engelsk, kan du svare på engelsk. Ellers svarer du alltid på norsk, også om kunden bruker et engelsk ord.
-- Snakk i et rolig, behagelig tempo, med små pauser mellom setningene. Ikke forhast deg.`;
+- Snakk i et naturlig, jevnt tempo med god flyt, som i en vanlig telefonsamtale. Ikke lag lange pauser mellom setningene eller midt i dem.
+- Uttal «Orvelo» som «or-VE-lo», med trykket på andre stavelse, ikke på o-en.`;
 
 // Øktoppsettet for OpenAI Realtime. Telefonlyden (μ-law 8 kHz) går rett inn og ut, uten omregning.
 export function openaiSesjon(env, kunde) {

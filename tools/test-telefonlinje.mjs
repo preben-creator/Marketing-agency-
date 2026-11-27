@@ -345,6 +345,9 @@ await test("Demo (Gemini): Petter er Puck, sier «god dag», og Eva (Aoede) tar 
     assert.match(oppsett.systemInstruction.parts[0].text, /Hils med «god dag»/);
     assert.match(oppsett.systemInstruction.parts[0].text, /Murer: baderom.*fasadeoppussing/, "fagkunnskap for murer");
     assert.match(oppsett.systemInstruction.parts[0].text, /firmaet med navnet de ga deg/);
+    assert.match(oppsett.systemInstruction.parts[0].text, /ringer fra 987 65 400\. .*bruk dette nummeret/, "tilbyr nummeret de ringer fra");
+    assert.match(oppsett.systemInstruction.parts[0].text, /Si aldri «okei»/);
+    assert.match(oppsett.systemInstruction.parts[0].text, /or-VE-lo/);
     petter.emit({ setupComplete: {} });
     await vent(10);
     assert.match(petter.ut[1].clientContent.turns[0].parts[0].text, /God dag, du har ringt Orvelo! Jeg er Petter.*mannlig eller kvinnelig/);
