@@ -476,11 +476,11 @@ export const SPRAK_REGEL = `# Språk og uttale (gjelder hele samtalen)
 - Snakk bare norsk bokmål, med vanlig østnorsk uttale, som en norsk sekretær. Aldri svensk eller dansk uttale. Hold samme stemme, tonefall og uttale hele samtalen, også når du sier tall og navn.
 - Bruk aldri engelske ord eller uttrykk, heller ikke enkeltord som «okay», «okei», «ok», «sure», «great», «perfect», «sorry», «appointment» eller «anyway». Si heller «ja», «bra», «flott», «beklager» og «time».
 - Når kunden har gitt deg en opplysning, kvitter med «bra» (eller «flott») og gå rett videre til neste spørsmål i samme replikk. Si aldri «okei».
-- Hils med «god dag», aldri «hei» eller «hallo» (på telefon høres de ut som engelsk «hey» og «hello»). Si «ha det» når dere avslutter.
+- Første hilsen er «Hei, god dag!». Ellers hilser du med «god dag», aldri «hallo». Si «ha det» når dere avslutter.
 - Les tall, priser, klokkeslett, datoer og adresser på norsk. Telefonnummer leser du to og to siffer på norsk, for eksempel «fire-en, to-tre, to-fem, fem-sju».
 - Snakker kunden bare engelsk, kan du svare på engelsk. Ellers svarer du alltid på norsk, også om kunden bruker et engelsk ord.
 - Snakk i et naturlig, jevnt tempo med god flyt, som i en vanlig telefonsamtale. Ikke lag lange pauser mellom setningene eller midt i dem.
-- Uttal «Orvelo» som «orve-LO», med trykket på siste stavelse (lo), ikke på o-en først.`;
+- Navnet skrives Orvelo, men uttales «Orvello»: rolig og jevnt, uten ekstra trykk på verken første eller siste o.`;
 
 // Øktoppsettet for OpenAI Realtime. Telefonlyden (μ-law 8 kHz) går rett inn og ut, uten omregning.
 export function openaiSesjon(env, kunde) {
@@ -668,8 +668,8 @@ export function forsteReplikk(kunde) {
   const hei = kunde.navn ? `God dag, ${kunde.navn.split(" ")[0]}!` : "God dag!";
   return kunde.inn
     ? kunde.velgStemme
-      ? "God dag, du har ringt Orvelo! Jeg er Petter, en KI-assistent. Vil du ha en mannlig eller kvinnelig KI-sekretær?"
-      : "God dag, du har ringt Orvelo! Jeg er Petter, en KI-assistent. Hvilket firma ringer du fra?"
+      ? "Hei, god dag! Du har kommet til Petter, KI-sekretær for Orvello. Vil du ha en mannlig eller kvinnelig KI-sekretær?"
+      : "Hei, god dag! Du har kommet til Petter, KI-sekretær for Orvello. Hvilket firma ringer du fra?"
     : `${hei} Det er Petter fra Orvelo, en KI-assistent. Du ba om en samtale for å høre hvordan en KI-sekretær høres ut. Passer det nå?`;
 }
 
@@ -947,7 +947,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
       const sa = logg.filter((l) => / (Kunde|Petter|Eva): /.test(l)).slice(-16).join("\n");
       const historikk = sa ? `# Samtalen så langt (${fra} snakket før deg)\n${sa}` : "";
       const hei = til === "Eva"
-        ? (kunde.firma ? "God dag, jeg er Eva! Da tar jeg over herfra." : "God dag, jeg er Eva, en KI-sekretær fra Orvelo. Hvilket firma ringer du fra?")
+        ? (kunde.firma ? "Hei, god dag! Jeg er Eva, og jeg tar over herfra." : "Hei, god dag! Du har kommet til Eva, KI-sekretær for Orvello. Hvilket firma ringer du fra?")
         : "Det er Petter igjen. Da tar jeg over.";
       if (gemini) {
         // Gemini: ny økt med den nye stemmen. Lyden fra kunden venter i køen til oppsettet er godtatt.
