@@ -350,7 +350,7 @@ await test("Demo (Gemini): Petter er Puck, sier «god dag», og Eva (Aoede) tar 
     assert.match(oppsett.systemInstruction.parts[0].text, /uttales «Orvello»/);
     petter.emit({ setupComplete: {} });
     await vent(10);
-    assert.match(petter.ut[1].clientContent.turns[0].parts[0].text, /God dag! Du har kommet til Petter, kå-i-sekretær for Orvello.*mannlig eller kvinnelig/);
+    assert.match(petter.ut[1].clientContent.turns[0].parts[0].text, /God dag! Du har kommet til Petter, den digitale sekretæren til Orvello.*mannlig eller kvinnelig/);
     petter.emit({ serverContent: { modelTurn: { parts: [{ inlineData: { mimeType: "audio/pcm;rate=24000", data: Buffer.alloc(4800).toString("base64") } }] } } });
     await vent(10);
     assert.ok(tlf.ut.some((m) => m.event === "media" && m.streamSid === "MZ6"), "lyden fra Gemini (Blob) når telefonen");
@@ -373,6 +373,26 @@ await test("Demo (Gemini): Petter er Puck, sier «god dag», og Eva (Aoede) tar 
     assert.ok(eva.ut.some((m) => m.realtimeInput), "lyden fra kunden går til Eva");
     tlf.close();
   } finally { delete ringEnv.GEMINI_API_KEY; delete ringEnv.GEMINI_STEMME; }
+});
+await test("Demo (Gemini): «går for den kvinnelige» bytter til Eva selv om modellen ikke bruker verktøyet", async () => {
+  ringEnv.GEMINI_API_KEY = "g";
+  try {
+    const r = await twilioInn({ CallSid: "CAgem3", From: "+4798765402", To: "+4755608323" });
+    geminiWs.length = 0;
+    await ring.fetch(new Request("https://ring.example/media", { headers: { Upgrade: "websocket" } }), ringEnv);
+    const tlf = serverWs;
+    tlf.emit({ event: "start", start: { callSid: "CAgem3", streamSid: "MZ8", customParameters: tParam(r.xml) } });
+    await vent(30);
+    const petter = geminiWs[0];
+    petter.emit({ setupComplete: {} });
+    await vent(10);
+    petter.emit({ serverContent: { inputTranscription: { text: "Jeg går for den kvinnelige." } } });
+    petter.emit({ serverContent: { modelTurn: { parts: [{ inlineData: { mimeType: "audio/pcm;rate=24000", data: Buffer.alloc(480).toString("base64") } }] } } });
+    await vent(30);
+    assert.equal(geminiWs.length, 2, "ny økt for Eva");
+    assert.match(geminiWs[1].ut[0].setup.systemInstruction.parts[0].text, /Du er Eva/);
+    tlf.close();
+  } finally { delete ringEnv.GEMINI_API_KEY; }
 });
 await test("Demo (Gemini): «du passer fint» bytter ikke til Eva", async () => {
   ringEnv.GEMINI_API_KEY = "g";
