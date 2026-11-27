@@ -38,6 +38,7 @@ class FakeWs {
   emit(obj) { for (const f of this.l.message || []) f({ data: JSON.stringify(obj) }); }
 }
 let serverWs, xaiWs;
+const openaiWs = [];
 globalThis.WebSocketPair = function () { serverWs = new FakeWs(); return { 0: new FakeWs(), 1: serverWs }; };
 const OrigResponse = globalThis.Response;
 globalThis.Response = class extends OrigResponse {
@@ -48,6 +49,7 @@ globalThis.fetch = async (url, opt = {}) => {
   url = String(url);
   kall.push({ url, body: opt.body });
   if (url.startsWith("https://api.x.ai/v1/realtime")) { xaiWs = new FakeWs(); return { webSocket: xaiWs, status: 101 }; }
+  if (url.startsWith("https://api.openai.com/v1/realtime")) { const w = new FakeWs(); openaiWs.push(w); return { webSocket: w, status: 101 }; }
   if (url.includes("api.x.ai/v1/chat/completions")) return OrigResponse.json({ choices: [{ message: { role: "assistant", content: '{"tema":"Bestilte dameklipp","kategori":"booking"}' } }], usage: {} });
   if (url.includes("raw.githubusercontent.com")) return new OrigResponse("<html></html>");
   if (url.includes("orvelo-sekretar")) throw new Error("Skal gå via service-bindingen, ikke workers.dev");
@@ -182,6 +184,139 @@ await test("Etter samtalen: logg til ukesrapport og kvalitetssjekk, uten nummere
   assert.doesNotMatch(spor[0], /912 34 567/);
   assert.match(spor[0], /"kanal":"telefon"/);
   assert.ok(!kall.some((k) => /formsubmit/.test(k.url) && /Innringing/.test(k.body || "")), "Preben får ikke utskriften på e-post");
+});
+
+// 3b. Samme linje på et Twilio-nummer: webhooken må være signert av Twilio, og strømmen gjelder bare den samtalen
+const { twilioSignaturOk } = await import("../worker/ringeagent-worker.js");
+async function twilioSig(adresse, felt) {
+  let data = adresse;
+  for (const k of Object.keys(felt).sort()) data += k + felt[k];
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode("hemmelig"), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+  return btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data)))));
+}
+async function twilioInn(felt, sig) {
+  const adresse = "https://ring.example/twilio/innring";
+  const r = await ring.fetch(new Request(adresse, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Twilio-Signature": sig ?? await twilioSig(adresse, felt) }, body: new URLSearchParams(felt) }), ringEnv);
+  return { status: r.status, xml: await r.text() };
+}
+const tParam = (xml) => Object.fromEntries([...xml.matchAll(/<Parameter name="([^"]+)" value="([^"]*)"\/>/g)].map((m) => [m[1], m[2]]));
+await test("Twilio: signaturen regnes ut som Twilio gjør (kjent eksempel)", async () => {
+  // Eksempelet fra Twilios dokumentasjon om webhook-sikkerhet.
+  const ok = await twilioSignaturOk({ TWILIO_AUTH_TOKEN: "12345" }, "https://mycompany.com/myapp.php?foo=1&bar=2",
+    { CallSid: "CA1234567890ABCDE", Caller: "+12349013030", Digits: "1234", From: "+12349013030", To: "+18005551212" }, "0/KCTR6DLpKmkAf8muzZqo1nDgQ=");
+  assert.equal(ok, true);
+});
+await test("Twilio: innringing uten gyldig signatur blir avvist", async () => {
+  const r = await twilioInn({ CallSid: "CA1", From: "+4791234567", To: "+4756994025" }, "feil");
+  assert.equal(r.status, 403);
+});
+let tStrom;
+await test("Twilio: innringing til linjen kobles til strømmen med kundens id", async () => {
+  const r = await twilioInn({ CallSid: "CAinn1", From: "+4791234567", To: "+4756994025" });
+  assert.equal(r.status, 200);
+  assert.match(r.xml, /<Connect><Stream url="wss:\/\/ring\.example\/media">/);
+  tStrom = tParam(r.xml);
+  assert.equal(tStrom.kunde, "lia-frisor");
+  assert.equal(tStrom.modus, "inn");
+});
+await test("Twilio: strømmen for en annen samtale blir avvist", async () => {
+  xaiWs = null;
+  await ring.fetch(new Request("https://ring.example/media", { headers: { Upgrade: "websocket" } }), ringEnv);
+  serverWs.emit({ event: "start", start: { callSid: "CAannen", streamSid: "MZ1", customParameters: tStrom } });
+  await vent(30);
+  assert.equal(xaiWs, null, "Petter skal ikke startes");
+});
+await test("Twilio: endret kunde-id blir avvist", async () => {
+  xaiWs = null;
+  await ring.fetch(new Request("https://ring.example/media", { headers: { Upgrade: "websocket" } }), ringEnv);
+  serverWs.emit({ event: "start", start: { callSid: "CAinn1", streamSid: "MZ1", customParameters: { ...tStrom, kunde: "annen-kunde" } } });
+  await vent(30);
+  assert.equal(xaiWs, null, "Petter skal ikke startes");
+});
+await test("Twilio: Petter svarer som kundens sekretær og sender lyd med streamSid", async () => {
+  xaiWs = null;
+  await ring.fetch(new Request("https://ring.example/media", { headers: { Upgrade: "websocket" } }), ringEnv);
+  const ws = serverWs;
+  ws.emit({ event: "start", start: { callSid: "CAinn1", streamSid: "MZ1", customParameters: tStrom } });
+  await vent(50);
+  assert.ok(xaiWs, "Petter startet");
+  const okt = xaiWs.ut.find((m) => m.type === "session.update").session;
+  assert.match(okt.instructions, /Lia Frisør/);
+  assert.match(xaiWs.ut.find((m) => m.item?.type === "force_message").item.content[0].text, /^Lia Frisør, hei!/);
+  xaiWs.emit({ type: "response.output_audio.delta", delta: "AAAA" });
+  await vent(10);
+  assert.ok(ws.ut.some((m) => m.event === "media" && m.streamSid === "MZ1"), "lyden går til Twilio-strømmen");
+  ws.close();
+});
+await test("Twilio: Orvelos eget nummer (uten linje) svarer som demonummer", async () => {
+  const r = await twilioInn({ CallSid: "CAdemo", From: "+4798765432", To: "+4755608323" });
+  const p = tParam(r.xml);
+  assert.equal(p.kunde, undefined);
+  xaiWs = null;
+  await ring.fetch(new Request("https://ring.example/media", { headers: { Upgrade: "websocket" } }), ringEnv);
+  serverWs.emit({ event: "start", start: { callSid: "CAdemo", streamSid: "MZ2", customParameters: p } });
+  await vent(30);
+  const okt = xaiWs.ut.find((m) => m.type === "session.update").session;
+  assert.match(okt.instructions, /Orvelos demonummer/);
+  serverWs.close();
+});
+await test("Twilio: INNRING=av avviser samtalen", async () => {
+  ringEnv.INNRING = "av";
+  const r = await twilioInn({ CallSid: "CAav", From: "+4791111111", To: "+4756994025" });
+  delete ringEnv.INNRING;
+  assert.match(r.xml, /<Reject/);
+});
+
+// 3c. Demonummeret med OpenAI: Petter spør om mannlig eller kvinnelig sekretær, og Eva tar over ved «kvinnelig»
+await test("Demo (OpenAI): Petter spør først om mannlig eller kvinnelig KI-sekretær", async () => {
+  ringEnv.OPENAI_API_KEY = "o";
+  try {
+    const r = await twilioInn({ CallSid: "CAeva", From: "+4798765432", To: "+4755608323" });
+    openaiWs.length = 0;
+    await ring.fetch(new Request("https://ring.example/media", { headers: { Upgrade: "websocket" } }), ringEnv);
+    const tlf = serverWs;
+    tlf.emit({ event: "start", start: { callSid: "CAeva", streamSid: "MZ3", customParameters: tParam(r.xml) } });
+    await vent(30);
+    const petter = openaiWs[0];
+    const okt = petter.ut.find((m) => m.type === "session.update").session;
+    assert.equal(okt.audio.output.voice, "cedar");
+    assert.ok(okt.tools.some((t) => t.name === "bytt_stemme"));
+    assert.match(petter.ut.find((m) => m.type === "response.create").response.instructions, /Jeg er Petter.*mannlig eller kvinnelig KI-sekretær/);
+    // Innringeren sier «kvinnelig»: Petter bruker bytt_stemme, og en ny økt med stemmen marin hilser som Eva.
+    petter.emit({ type: "conversation.item.input_audio_transcription.completed", transcript: "Kvinnelig, takk." });
+    petter.emit({ type: "response.function_call_arguments.done", name: "bytt_stemme", call_id: "c1", arguments: '{"stemme":"kvinne"}' });
+    await vent(30);
+    assert.equal(openaiWs.length, 2, "ny økt for Eva");
+    const eva = openaiWs[1];
+    const evaOkt = eva.ut.find((m) => m.type === "session.update").session;
+    assert.equal(evaOkt.audio.output.voice, "marin");
+    assert.match(evaOkt.instructions, /Du er Eva/);
+    assert.match(evaOkt.instructions, /Kunde: Kvinnelig, takk/);
+    assert.match(eva.ut.find((m) => m.type === "response.create").response.instructions, /jeg er Eva/);
+    assert.ok(petter.lukket, "Petters økt lukkes");
+    assert.ok(!tlf.lukket, "telefonsamtalen fortsetter");
+    assert.ok(!petter.ut.some((m) => m.item?.type === "function_call_output"), "ingen svar til den gamle økten");
+    // Lyd fra Eva går til telefonen, og lyd fra kunden går til Eva.
+    eva.emit({ type: "response.output_audio.delta", delta: "BBBB" });
+    tlf.emit({ event: "media", media: { payload: "CCCC" } });
+    await vent(10);
+    assert.ok(tlf.ut.some((m) => m.event === "media" && m.media.payload === "BBBB"));
+    assert.ok(eva.ut.some((m) => m.type === "input_audio_buffer.append" && m.audio === "CCCC"));
+    tlf.close();
+  } finally { delete ringEnv.OPENAI_API_KEY; }
+});
+await test("Kundens egen linje (OpenAI) spør ikke om stemme", async () => {
+  ringEnv.OPENAI_API_KEY = "o";
+  try {
+    openaiWs.length = 0;
+    await ring.fetch(new Request("https://ring.example/media", { headers: { Upgrade: "websocket" } }), ringEnv);
+    serverWs.emit({ event: "start", start: { callSid: "CAinn1", streamSid: "MZ4", customParameters: tStrom } });
+    await vent(50);
+    const okt = openaiWs[0].ut.find((m) => m.type === "session.update").session;
+    assert.ok(!okt.tools.some((t) => t.name === "bytt_stemme"));
+    assert.doesNotMatch(okt.instructions, /mannlig eller kvinnelig/);
+    serverWs.close();
+  } finally { delete ringEnv.OPENAI_API_KEY; }
 });
 
 // 4. Linjen slås av

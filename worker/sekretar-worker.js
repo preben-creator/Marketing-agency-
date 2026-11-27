@@ -2773,7 +2773,7 @@ async function chatTilgang(env, url, origin, id, k) {
 }
 
 // ---------- Telefonlinje: Petter svarer kundens egen telefon ----------
-// Kunden viderekobler telefonen sin til et Orvelo-nummer (Telnyx). orvelo-ring svarer, finner kunden i
+// Kunden viderekobler telefonen sin til et Orvelo-nummer (Telnyx eller Twilio). orvelo-ring svarer, finner kunden i
 // linje:<nummer> og kaller disse endepunktene for å få sekretærens instruksjoner og kjøre verktøyene:
 //   POST /telefon/oppsett {kunde, fra}                         -> instruksjoner, verktøy og første replikk
 //   POST /telefon/verktoy {kunde, fra, navn, args}             -> samme verktøy som chatten (ledige tider, booking, beskjed, venteliste)
