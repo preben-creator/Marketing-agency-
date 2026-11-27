@@ -367,7 +367,7 @@ ${nrTekst(k.til) ? `Innringeren ringer fra ${nrTekst(k.til)}. Når du (eller sek
 ` : ""}${valg}1. Spør hvilket firma de ringer fra. Gjenta navnet og be dem bekrefte, for eksempel «Murmester Hilleren, stemmer det?». Retter de deg, bruk rettelsen; er du fortsatt usikker, be dem stave det. Bruk så finn_firma med det bekreftede navnet. Sier navnet hva slags firma det er (murmester, rør, elektro, frisør …), vet du bransjen og skal ikke spørre om den.
 2. Finner du firmaet: følg instruksjonene i svaret fra verktøyet og spill sekretæren deres.
 3. Finner du flere: les opp valgene kort og spør hvilket. Bruk så finn_firma med det fulle navnet.
-4. Har vi ikke laget en sekretær ennå, gir finn_firma treff fra Brønnøysundregistrene. Spør om det er riktig firma, med navn og sted (for eksempel «Er det Berg Rør AS i Bergen?»). Er det flere, nevn høyst tre. Bekrefter de: si «Et øyeblikk, så setter jeg opp sekretæren deres. Det tar rundt et halvt minutt.» og bruk lag_demo med org.nr-et. Følg så instruksjonene i svaret.
+4. Har vi ikke laget en sekretær ennå, gir finn_firma treff fra Brønnøysundregistrene. Spør om det er riktig firma, med navn og sted (for eksempel «Er det Berg Rør AS i Bergen?»). Er det flere, nevn høyst tre. Sier de nei eller at navnet er feil: be dem si navnet igjen eller stave det, og søk på nytt med finn_firma. Etter to forsøk uten riktig treff går du til punkt 5. Bli aldri stille; si alltid noe tilbake. Bekrefter de: si «Et øyeblikk, så setter jeg opp sekretæren deres. Det tar rundt et halvt minutt.» og bruk lag_demo med org.nr-et. Følg så instruksjonene i svaret.
 5. Finner du det ikke, eller lag_demo feiler: si at sekretæren deres ikke er laget ennå, men at de kan høre hvordan den vil svare. Spør hva slags bedrift de har bare hvis navnet ikke sier det (Murmester Hilleren er en murer, Berg Rør er en rørlegger). Si så «Lat som du er en kunde som ringer», og spill sekretæren for firmaet med nøyaktig det navnet de bekreftet (ikke et oppdiktet navn, ikke bare yrket, og ikke et navn du har endret). Svar «[firmanavn], god dag! Hva kan jeg hjelpe deg med?». Bruk fagkunnskapen under. Ikke nevn priser eller lov tider du ikke vet; si at fagfolkene ringer tilbake.
 
 # Slik tar sekretæren imot en kunde (alle bransjer)
@@ -480,7 +480,7 @@ export const SPRAK_REGEL = `# Språk og uttale (gjelder hele samtalen)
 - Les tall, priser, klokkeslett, datoer og adresser på norsk. Telefonnummer leser du to og to siffer på norsk, for eksempel «fire-en, to-tre, to-fem, fem-sju».
 - Snakker kunden bare engelsk, kan du svare på engelsk. Ellers svarer du alltid på norsk, også om kunden bruker et engelsk ord.
 - Snakk i et naturlig, jevnt tempo med god flyt, som i en vanlig telefonsamtale. Ikke lag lange pauser mellom setningene eller midt i dem.
-- Uttal «Orvelo» som «or-VE-lo», med trykket på andre stavelse, ikke på o-en.`;
+- Uttal «Orvelo» som «orve-LO», med trykket på siste stavelse (lo), ikke på o-en først.`;
 
 // Øktoppsettet for OpenAI Realtime. Telefonlyden (μ-law 8 kHz) går rett inn og ut, uten omregning.
 export function openaiSesjon(env, kunde) {
@@ -687,6 +687,8 @@ export async function koblSamtale(env, tlfWs, urlParam) {
   const logg = []; // hele samtalen, som tekst
   const demoHendelser = []; // hva som skjedde i demoen ved innringing
   const brregTreff = new Map(); // org.nr -> treff fra Brønnøysund i denne samtalen
+  // Gemini kan bli stille etter et verktøysvar eller når kunden snakket mens den svarte. Da dytter vi den i gang igjen.
+  let venterSvarFra = 0, dyttet = false;
   let demoLaget = 0, jobber = false; // jobber: lager sekretær nå, ikke spør «er du der?»
   const linjeData = { bookinger: [], beskjeder: [], verktoy: [] }; // telefonlinje: det som ble booket og sendt
   const tid = () => {
@@ -747,6 +749,11 @@ export async function koblSamtale(env, tlfWs, urlParam) {
   const stilleSjekk = setInterval(() => {
     if (avslutter || !xai) return;
     if (jobber) { sisteAktivitet = Date.now(); return; }
+    if (gemini && venterSvarFra && !dyttet && Date.now() - venterSvarFra > (Number(env.DYTT_MS) || 4000) && Date.now() > lydSlutt) {
+      dyttet = true;
+      logg.push(`[${tid()}] (svarte ikke, dyttet)`);
+      be("Innringeren venter på svar. Svar nå kort på det de sa sist, eller si hva som skjer videre.");
+    }
     const stille = Date.now() - Math.max(sisteAktivitet, lydSlutt);
     if (!spurtOmTilstede && stille > stilleMs) {
       spurtOmTilstede = true;
@@ -1047,6 +1054,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
         if (sc.inputTranscription && sc.inputTranscription.text) {
           innTekst += sc.inputTranscription.text;
           uloggetKunde = innTekst;
+          venterSvarFra = Date.now(); dyttet = false;
           sisteAktivitet = Date.now();
           spurtOmTilstede = false;
         }
@@ -1062,6 +1070,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
           loggKunde();
           for (const p of sc.modelTurn.parts) {
             if (p.inlineData && p.inlineData.data) {
+              venterSvarFra = 0;
               const ut = pcm24kTilUlaw(p.inlineData.data, utSt);
               if (ut) sendLyd(ut);
             }
@@ -1080,6 +1089,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
           svar.push({ id: f.id, name: f.name, response: f.name === "legg_paa" ? { ok: true, info: "Samtalen avsluttes. Ikke si mer." } : res });
         }
         tilXai({ toolResponse: { functionResponses: svar } });
+        if (!svar.some((x) => x.name === "legg_paa")) { venterSvarFra = Date.now(); dyttet = false; }
         return;
       }
       if (e.error) console.log("Gemini-feil", JSON.stringify(e).slice(0, 300));
