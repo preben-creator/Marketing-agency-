@@ -337,7 +337,8 @@ Noen har ringt Orvelos demonummer, trolig etter en e-post der vi skrev at vi har
 ${valg}1. Spør hvilket firma de ringer fra, og bruk verktøyet finn_firma med navnet. Er du usikker på navnet, spør dem om å si det en gang til.
 2. Finner du firmaet: følg instruksjonene i svaret fra verktøyet og spill sekretæren deres.
 3. Finner du flere: les opp valgene kort og spør hvilket. Bruk så finn_firma med det fulle navnet.
-4. Finner du det ikke etter to forsøk: si at sekretæren deres ikke er laget ennå, men at de kan høre et eksempel. Spør hva slags bedrift de har, og spill en vennlig sekretær for et eksempelfirma i den bransjen (navn: «Eksempelfirmaet»). Ikke nevn priser for eksempelfirmaet.
+4. Har vi ikke laget en sekretær ennå, gir finn_firma treff fra Brønnøysundregistrene. Spør om det er riktig firma, med navn og sted (for eksempel «Er det Berg Rør AS i Bergen?»). Er det flere, nevn høyst tre. Bekrefter de: si «Et øyeblikk, så setter jeg opp sekretæren deres. Det tar rundt et halvt minutt.» og bruk lag_demo med org.nr-et. Følg så instruksjonene i svaret.
+5. Finner du det ikke, eller lag_demo feiler: si at sekretæren deres ikke er laget ennå, men at de kan høre et eksempel. Spør hva slags bedrift de har, og spill en vennlig sekretær for et eksempelfirma i den bransjen (navn: «Eksempelfirmaet»). Ikke nevn priser for eksempelfirmaet.
 Hvis noen bare vil vite hva Orvelo er: forklar kort, tilby et møte med Preben (send_bookinglenke).
 Før du avslutter: bruk noter_for_preben med et kort sammendrag, si ha det og bruk legg_paa.`;
 }
@@ -351,6 +352,12 @@ export const BYTT_STEMME = {
 
 export const INN_VERKTOY = (k = {}) => [
   ...(k.velgStemme ? [BYTT_STEMME] : []),
+  {
+    type: "function",
+    name: "lag_demo",
+    description: "Lag en KI-sekretær for et firma fra Brønnøysundregistrene (etter at innringeren har bekreftet firmaet). Tar rundt et halvt minutt.",
+    parameters: { type: "object", properties: { orgnr: { type: "string", description: "Org.nr fra treffet i finn_firma" } }, required: ["orgnr"] },
+  },
   {
     type: "function",
     name: "finn_firma",
@@ -618,6 +625,8 @@ export async function koblSamtale(env, tlfWs, urlParam) {
   let rapportSendt = false;
   const logg = []; // hele samtalen, som tekst
   const demoHendelser = []; // hva som skjedde i demoen ved innringing
+  const brregTreff = new Map(); // org.nr -> treff fra Brønnøysund i denne samtalen
+  let demoLaget = 0, jobber = false; // jobber: lager sekretær nå, ikke spør «er du der?»
   const linjeData = { bookinger: [], beskjeder: [], verktoy: [] }; // telefonlinje: det som ble booket og sendt
   const tid = () => {
     const sek = Math.round((Date.now() - startet) / 1000);
@@ -669,6 +678,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
   const stilleMs = Number(env.STILLE_MS) || 20000;
   const stilleSjekk = setInterval(() => {
     if (avslutter || !xai) return;
+    if (jobber) { sisteAktivitet = Date.now(); return; }
     const stille = Date.now() - Math.max(sisteAktivitet, lydSlutt);
     if (!spurtOmTilstede && stille > stilleMs) {
       spurtOmTilstede = true;
@@ -693,6 +703,16 @@ export async function koblSamtale(env, tlfWs, urlParam) {
     try { xai && xai.close(1000, "ferdig"); } catch {}
   }
 
+  // Gi Petter rollen som firmaets sekretær (funnet eller nylig laget).
+  function spillSekretaer(p, hendelse) {
+    kunde.firma = p.navn;
+    demoHendelser.push(hendelse);
+    const rolle = rolleInstruks(p);
+    kunde.rolle = rolle;
+    if (!gemini) tilXai({ type: "session.update", session: { ...(openai ? { type: "realtime" } : {}), instructions: innringInstruks(kunde) + "\n\n" + rolle } });
+    return { funnet: true, firma: p.navn, instruksjoner: rolle, merk: "Følg disse instruksjonene fra nå av, når du spiller sekretæren." };
+  }
+
   async function kjorVerktoy(navn, args) {
     if (kunde.linje && navn !== "legg_paa") {
       // Kundens egen sekretær: verktøyet kjøres i orvelo-sekretar, likt med chatten.
@@ -710,17 +730,30 @@ export async function koblSamtale(env, tlfWs, urlParam) {
     }
     if (navn === "finn_firma") {
       const r = await finnFirma(env, args.navn);
-      if (r.funnet) {
-        const p = r.profil;
-        kunde.firma = p.navn;
-        demoHendelser.push(`Fant sekretæren til ${p.navn} (${p.id})`);
-        const rolle = rolleInstruks(p);
-        kunde.rolle = rolle;
-        if (!gemini) tilXai({ type: "session.update", session: { ...(openai ? { type: "realtime" } : {}), instructions: innringInstruks(kunde) + "\n\n" + rolle } });
-        return { funnet: true, firma: p.navn, instruksjoner: rolle, merk: "Følg disse instruksjonene fra nå av, når du spiller sekretæren." };
-      }
+      if (r.funnet) return spillSekretaer(r.profil, `Fant sekretæren til ${r.profil.navn} (${r.profil.id})`);
       demoHendelser.push(`Søkte etter «${String(args.navn || "").slice(0, 60)}»: ${r.flere ? "flere treff" : "ingen treff"}`);
-      return r;
+      if (r.flere) return r;
+      // Ingen sekretær ennå: søk i Brønnøysundregistrene, så Petter kan lage en med en gang.
+      const treff = await tilSekretar(env, "/telefon/firmasok", { navn: args.navn }).then((d) => d.treff || []).catch(() => []);
+      for (const t of treff) brregTreff.set(t.orgnr, t);
+      if (!treff.length) return { funnet: false, grunn: "Fant verken en sekretær eller firmaet i Brønnøysundregistrene." };
+      demoHendelser.push(`Brønnøysund: ${treff.map((t) => `${t.navn} (${t.sted})`).join(", ")}`);
+      return { funnet: false, brreg: treff.map((t) => ({ orgnr: t.orgnr, navn: t.navn, sted: t.sted, fag: t.fag })),
+        merk: "Vi har ikke laget en sekretær for dette firmaet ennå. Spør om det er ett av disse (navn og sted). Bekrefter de, bruk lag_demo." };
+    }
+    if (navn === "lag_demo") {
+      const orgnr = String(args.orgnr || "").replace(/\D/g, "");
+      if (!brregTreff.has(orgnr)) return { ok: false, feil: "Bruk bare et org.nr fra treffene i finn_firma." };
+      if (demoLaget >= 2) return { ok: false, feil: "Du har allerede laget to sekretærer i denne samtalen." };
+      demoLaget++;
+      jobber = true;
+      try {
+        const d = await tilSekretar(env, "/telefon/lagdemo", { orgnr, fra: kunde.til });
+        return spillSekretaer(d.profil, `Laget ny sekretær for ${d.profil.navn} (${d.profil.id})${d.nettside ? " fra " + d.nettside : " uten nettside"}`);
+      } catch (e) {
+        demoHendelser.push(`Fikk ikke laget sekretær (${orgnr}): ${e && e.message}`);
+        return { ok: false, feil: "Det gikk ikke å lage sekretæren akkurat nå. Følg punkt 5 i instruksjonene." };
+      } finally { jobber = false; sisteAktivitet = Date.now(); }
     }
     if (navn === "bytt_stemme") {
       const til = args.stemme === "kvinne" ? "Eva" : "Petter";

@@ -820,6 +820,50 @@ async function firmasokRute(url, origin) {
 }
 
 // Offentlige opplysninger om ett firma fra Enhetsregisteret (org.nr). Nettside: hjemmeside-feltet, ellers domenet i e-posten.
+// Telefon-demo: søk etter firmanavnet slik innringeren sa det. Gir høyst 5 aktive firmaer.
+async function telefonFirmasok(navn) {
+  const q = tekst(navn, 80).replace(/\b(as|asa|ans|da|enk)\b\.?/gi, "").trim();
+  if (q.length < 2) return [];
+  try {
+    const d = await brregJson("enheter?navn=" + encodeURIComponent(q) + "&size=5&konkurs=false&underAvvikling=false");
+    return ((d._embedded || {}).enheter || []).map((e) => { const a = e.forretningsadresse || e.postadresse || {};
+      return { orgnr: e.organisasjonsnummer, navn: e.navn, sted: String(a.poststed || "").toLowerCase().replace(/(^|[\s-])\S/g, (c) => c.toUpperCase()), fag: (e.naeringskode1 || {}).beskrivelse || "" }; });
+  } catch { return []; }
+}
+
+// Telefon-demo: lager en prøve-sekretær fra Brønnøysund og nettsiden, akkurat som «Lag din egen demo» på orvelo.no.
+// Samme dagsgrense som nettsiden, og høyst 3 per innringer per døgn.
+async function telefonLagDemo(env, b) {
+  const orgnr = String(b.orgnr || "").replace(/\D/g, "");
+  if (orgnr.length !== 9) return json({ feil: "Ugyldig org.nr." }, 400);
+  if (!env.XAI_API_KEY) return json({ feil: "Demoen er ikke klar akkurat nå." }, 503);
+  const fra = String(b.fra || "").replace(/[^\d+]/g, "").slice(0, 16) || "ukjent";
+  const naa = Date.now();
+  const dag = new Date(naa + 3600000).toISOString().slice(0, 10);
+  const [antall, perNr] = await Promise.all([env.KUNDER.get("provdag:" + dag), env.KUNDER.get(`provtlf:${dag}:${fra}`)]);
+  if ((Number(antall) || 0) >= tallEnv(env.PROV_PER_DAG, 30) || (Number(perNr) || 0) >= 3) return json({ feil: "Grensen for demoer i dag er nådd." }, 429);
+  const brreg = await provBrreg(orgnr).catch(() => null);
+  if (!brreg) return json({ feil: "Fant ikke firmaet i Brønnøysund." }, 404);
+  await Promise.all([env.KUNDER.put("provdag:" + dag, String((Number(antall) || 0) + 1), { expirationTtl: 3 * 86400 }),
+    env.KUNDER.put(`provtlf:${dag}:${fra}`, String((Number(perNr) || 0) + 1), { expirationTtl: 2 * 86400 })]);
+  let host = "";
+  try { if (brreg.nettside) host = new URL(/^https?:\/\//i.test(brreg.nettside) ? brreg.nettside : "https://" + brreg.nettside).hostname.toLowerCase(); } catch {}
+  if (!/^[a-z0-9æøå-]+(\.[a-z0-9æøå-]+)*\.[a-z]{2,}$/.test(host) || /(^|\.)(orvelo\.no|workers\.dev|localhost)$/.test(host)) host = "";
+  if (env._maal) env._maal.id = "orvelo";
+  let profil;
+  try { profil = await lagSekretaer({ firma: brreg.navn, nettside: host, bransje: brreg.fag, fakta: brreg }, env); }
+  catch (e) { console.log("telefon-demo feilet", e && e.message); return json({ feil: "Fikk ikke laget sekretæren." }, 500); }
+  const base = (profil.kortnavn || profil.navn || "firma").toLowerCase().replace(/æ/g, "ae").replace(/ø/g, "o").replace(/å/g, "a")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 26) || "firma";
+  const id = "p-" + base + "-" + Math.random().toString(36).slice(2, 6);
+  profil.id = id; profil.provDemo = { tid: new Date().toISOString(), telefon: /^\+?\d{8,}$/.test(fra) ? fra : "", kilde: "telefon" }; profil.oppdatert = profil.provDemo.tid;
+  const ttl = PROV_DAGER * 86400;
+  await env.KUNDER.put("kunde:" + id, JSON.stringify(profil), { expirationTtl: ttl });
+  await env.KUNDER.put("demoutl:" + id, new Date(naa + ttl * 1000).toISOString(), { expirationTtl: ttl });
+  await salgSperrKunde(env, { orgnr, epost: "", nettside: host }).catch(() => {});
+  return json({ profil, nettside: host }, 200);
+}
+
 async function provBrreg(orgnr) {
   let e;
   try { e = await brregJson("enheter/" + orgnr); } catch { e = await brregJson("underenheter/" + orgnr); }
@@ -2778,6 +2822,9 @@ async function chatTilgang(env, url, origin, id, k) {
 //   POST /telefon/oppsett {kunde, fra}                         -> instruksjoner, verktøy og første replikk
 //   POST /telefon/verktoy {kunde, fra, navn, args}             -> samme verktøy som chatten (ledige tider, booking, beskjed, venteliste)
 //   POST /telefon/slutt   {kunde, start, sek, utskrift, ...}   -> ukesrapport, kostnad og kvalitetssjekk
+// Demonummeret (firmaet har ingen sekretær ennå):
+//   POST /telefon/firmasok {navn}                              -> treff i Brønnøysundregistrene
+//   POST /telefon/lagdemo  {orgnr, fra}                        -> lager en prøve-sekretær (som «Lag din egen demo»)
 // Kallene signeres med TWILIO_AUTH_TOKEN (begge workerne har den): X-Orvelo-Ts og
 // X-Orvelo-Sig = hmac("tlf|" + ts + "|" + body). Gyldig i 5 minutter.
 async function tlfSig(hemmelig, msg) {
@@ -2819,6 +2866,8 @@ async function telefonRute(request, env, ctx, url) {
     return json({ feil: "Ugyldig signatur." }, 401);
   let b = {};
   try { b = JSON.parse(raa); } catch {}
+  if (p === "/telefon/firmasok") return json({ treff: await telefonFirmasok(b.navn) }, 200);
+  if (p === "/telefon/lagdemo") return telefonLagDemo(env, b);
   const id = rensId(b.kunde);
   const [profilRaw, chatRaw, tillegg] = await Promise.all([
     id ? env.KUNDER.get("kunde:" + id, "json") : null, id ? env.KUNDER.get("chat:" + id, "json") : null, id ? env.KUNDER.get("tillegg:" + id, "json") : null]);
