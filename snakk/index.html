@@ -219,6 +219,13 @@ const P = new URLSearchParams(location.search);
 const TOKEN_URL = P.get("api") || "/token";       // samme adresse som siden (Cloudflare Worker)
 const DEMO_KODE = P.get("k") || "";
 const MODEL = "grok-voice-latest";        // reserve hvis serveren gir Grok
+// Samme språkregel som telefonen (worker/ringeagent-worker.js), så stemmene ikke glir over i engelsk.
+const SPRAK_REGEL = `# Språk og uttale (gjelder hele samtalen)
+- Snakk bare norsk bokmål, med vanlig østnorsk uttale, som en norsk sekretær. Aldri svensk eller dansk uttale. Hold samme stemme, tonefall og uttale hele samtalen, også når du sier tall og navn.
+- Bruk aldri engelske ord eller uttrykk, heller ikke enkeltord som «okay», «sure», «great», «perfect», «sorry», «appointment» eller «anyway». Si heller «ja», «greit», «flott», «supert», «beklager» og «time».
+- Les tall, priser, klokkeslett, datoer og adresser på norsk. Telefonnummer leser du to og to siffer på norsk, for eksempel «fire-en, to-tre, to-fem, fem-sju».
+- Snakker kunden bare engelsk, kan du svare på engelsk. Ellers svarer du alltid på norsk, også om kunden bruker et engelsk ord.
+- Snakk i et rolig, behagelig tempo, med små pauser mellom setningene. Ikke forhast deg.`;
 let MOTOR = "grok", OPENAI_MODELL = "gpt-realtime-2.1", FART = 0.9; // settes av /token: «openai» = Petter-stemmen (cedar)
 let VOICE = P.get("stemme") || "ara";
 const FUNKSJONSNAVN = {};                 // OpenAI: call_id -> verktøynavn
@@ -512,7 +519,7 @@ async function kobleTil(medMikrofon){
     const hilsen=`Hei, du har kommet til ${KUNDE.navn}! Jeg er den digitale assistenten deres. Hva kan jeg hjelpe deg med?`;
     if(MOTOR==="openai"){
       ws.send(JSON.stringify({type:"session.update",session:{
-        type:"realtime", instructions:instruksjoner()+"\n\nSnakk alltid naturlig norsk bokmål. Snakk i et rolig, behagelig tempo, med små pauser mellom setningene. Ikke forhast deg.", tools:TOOLS, tool_choice:"auto",
+        type:"realtime", instructions:instruksjoner()+"\n\n"+SPRAK_REGEL, tools:TOOLS, tool_choice:"auto",
         audio:{input:{format:{type:"audio/pcm",rate:24000},transcription:{model:"gpt-4o-transcribe",language:"no"},
                       turn_detection:{type:"server_vad",interrupt_response:true,create_response:true}},
                output:{format:{type:"audio/pcm",rate:24000},voice:VOICE,speed:FART}},

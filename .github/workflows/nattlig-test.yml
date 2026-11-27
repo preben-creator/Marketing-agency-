@@ -2,12 +2,14 @@
 #  1. Nettet akkurat nå: workeren, nettsiden, chat.js, låsene, og noen ekte samtaler med en demo-sekretær (prøvemodus).
 #  2. Nettleseren: åpner forsiden (mobil og PC) og chatten i en ekte Chrome, slik en kunde ville gjort.
 #  3. Kvaliteten på svarene: alle agentene og 20+ chatsamtaler med ekte Grok, der en annen Grok-modell vurderer hvert svar.
+#  4. Stemmene: Petter og Eva (ekte OpenAI Realtime) svarer på en innringer, og lyden sjekkes for engelsk og feil aksent.
 # Ingenting sendes til ekte kunder: chatten kjører i prøvemodus, og agent-testene bruker et lager i minnet.
 # Feiler noe, sender GitHub e-post til Preben. Rapporten og skjermbildene ligger under «Summary» i kjøringen.
 #
 # Hemmeligheter (GitHub -> Settings -> Secrets and variables -> Actions):
 #   XAI_API_KEY  samme Grok-nøkkel som i Cloudflare. Uten den hoppes del 3 over.
 #   LIVE_KODE    demokoden til demo-rorlegger (k= i demolenken). Uten den hoppes de ekte samtalene over.
+#   OPENAI_API_KEY  samme OpenAI-nøkkel som i Cloudflare. Uten den hoppes del 4 over.
 name: Nattlig agenttest
 
 on:
@@ -91,4 +93,40 @@ jobs:
         with:
           name: agentsvar
           path: ut-*.txt
+          retention-days: 14
+
+  stemmer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Petter og Eva holder seg til norsk (ekte OpenAI)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "## Stemmer: hoppet over (OPENAI_API_KEY mangler som hemmelighet i GitHub)" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          npm i --no-save ws > /dev/null
+          set +e
+          node tools/test-stemmer.mjs stemmetest > ut-stemmer.txt 2>&1
+          status=$?
+          set -e
+          cat ut-stemmer.txt
+          echo "## Stemmene Petter og Eva" >> "$GITHUB_STEP_SUMMARY"
+          grep -E "holdt seg til norsk" ut-stemmer.txt | sed 's/^/- /' >> "$GITHUB_STEP_SUMMARY" || true
+          grep -E -A3 "^FEIL" ut-stemmer.txt | sed 's/^/    /' >> "$GITHUB_STEP_SUMMARY" || true
+          exit $status
+      - name: Lydfilene
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stemmetest
+          path: |
+            stemmetest/
+            ut-stemmer.txt
           retention-days: 14

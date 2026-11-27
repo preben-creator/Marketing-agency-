@@ -431,7 +431,7 @@ const KL = /^\d{1,2}:\d{2}$/;
 const kl = (t) => { const [h, m] = t.split(":"); return h.padStart(2, "0") + ":" + m; };
 
 // Rydder og begrenser en profil, så demosiden alltid får noe den kan bruke
-function normaliser(p) {
+export function normaliser(p) {
   const type = p.type === "time" ? "time" : "befaring";
   const apent = {};
   for (let d = 0; d < 7; d++) {
