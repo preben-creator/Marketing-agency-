@@ -328,7 +328,7 @@ Tilby et kort møte med Preben (send_bookinglenke), skriv sammendrag med noter_f
 
 // Ord som betyr at innringeren vil ha den andre stemmen. Brukes for å stoppe et bytte de ikke ba om.
 export const STEMMEORD = {
-  Eva: /kvinn|kvinne|dame|jente|eva\b|hun\b|henne|kone|female|woman/i,
+  Eva: /kvin|kvinl|dame|jente|eva\b|hun\b|henne|kone|frue|female|woman/i,
   Petter: /mann|mannlig|gutt|petter|han\b|ham\b|herre|male\b|\bman\b/i,
 };
 
@@ -477,7 +477,7 @@ export const SPRAK_REGEL = `# Språk og uttale (gjelder hele samtalen)
 - Bruk aldri engelske ord eller uttrykk, heller ikke enkeltord som «okay», «okei», «ok», «sure», «great», «perfect», «sorry», «appointment» eller «anyway». Si heller «ja», «bra», «flott», «beklager» og «time».
 - Når kunden har gitt deg en opplysning, kvitter med «bra» (eller «flott») og gå rett videre til neste spørsmål i samme replikk. Si aldri «okei».
 - Hils med «God dag!», aldri «hei» eller «hallo» (på telefon høres de ut som engelsk «hey» og «hello»).
-- «KI» uttales med norske bokstaver, «kå-i», aldri engelsk «key» eller «kei». «KI-sekretær» uttales «kå-i-sekretær». Si «ha det» når dere avslutter.
+- Si aldri forkortelsen «KI» høyt (den blir uttalt feil). Si «digital sekretær» eller «sekretær med kunstig intelligens» i stedet for KI-sekretær, og «kunstig intelligens» i stedet for KI. Si «ha det» når dere avslutter.
 - Les tall, priser, klokkeslett, datoer og adresser på norsk. Telefonnummer leser du to og to siffer på norsk, for eksempel «fire-en, to-tre, to-fem, fem-sju».
 - Snakker kunden bare engelsk, kan du svare på engelsk. Ellers svarer du alltid på norsk, også om kunden bruker et engelsk ord.
 - Snakk i et naturlig, jevnt tempo med god flyt, som i en vanlig telefonsamtale. Ikke lag lange pauser mellom setningene eller midt i dem.
@@ -669,8 +669,8 @@ export function forsteReplikk(kunde) {
   const hei = kunde.navn ? `God dag, ${kunde.navn.split(" ")[0]}!` : "God dag!";
   return kunde.inn
     ? kunde.velgStemme
-      ? "God dag! Du har kommet til Petter, kå-i-sekretær for Orvello. Vil du ha en mannlig eller kvinnelig sekretær?"
-      : "God dag! Du har kommet til Petter, kå-i-sekretær for Orvello. Hvilket firma ringer du fra?"
+      ? "God dag! Du har kommet til Petter, den digitale sekretæren til Orvello. Vil du ha en mannlig eller kvinnelig sekretær?"
+      : "God dag! Du har kommet til Petter, den digitale sekretæren til Orvello. Hvilket firma ringer du fra?"
     : `${hei} Det er Petter fra Orvelo, en KI-assistent. Du ba om en samtale for å høre hvordan en KI-sekretær høres ut. Passer det nå?`;
 }
 
@@ -708,6 +708,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
 
   // Det innringeren sa sist (Gemini: teksten som ikke er logget ennå, ellers siste «Kunde:»-linje).
   let uloggetKunde = "";
+  let stemmevalgFerdig = false; // demonummeret: første svar på «mannlig eller kvinnelig?» er sjekket
   const sisteKundeTekst = () => {
     if (uloggetKunde.trim()) return uloggetKunde.trim();
     const l = [...logg].reverse().find((x) => / Kunde: /.test(x));
@@ -948,7 +949,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
       const sa = logg.filter((l) => / (Kunde|Petter|Eva): /.test(l)).slice(-16).join("\n");
       const historikk = sa ? `# Samtalen så langt (${fra} snakket før deg)\n${sa}` : "";
       const hei = til === "Eva"
-        ? (kunde.firma ? "God dag! Jeg er Eva, og jeg tar over herfra." : "God dag! Du har kommet til Eva, kå-i-sekretær for Orvello. Hvilket firma ringer du fra?")
+        ? (kunde.firma ? "God dag! Jeg er Eva, og jeg tar over herfra." : "God dag! Du har kommet til Eva, den digitale sekretæren til Orvello. Hvilket firma ringer du fra?")
         : "Det er Petter igjen. Da tar jeg over.";
       if (gemini) {
         // Gemini: ny økt med den nye stemmen. Lyden fra kunden venter i køen til oppsettet er godtatt.
@@ -1027,6 +1028,16 @@ export async function koblSamtale(env, tlfWs, urlParam) {
     tilXai(oppsett);
     let innTekst = "", utTekst = "";
     const loggKunde = () => { if (innTekst.trim()) logg.push(`[${tid()}] Kunde: ${innTekst.trim()}`); innTekst = ""; uloggetKunde = ""; };
+    // Demonummeret: svarer innringeren «kvinnelig» på første spørsmål, bytter vi til Eva selv, også om modellen glemmer verktøyet.
+    const sjekkStemmevalg = async () => {
+      if (!kunde.velgStemme || stemmevalgFerdig || (kunde.agent || "Petter") !== "Petter") return false;
+      const t = innTekst.trim();
+      if (!t) return false;
+      stemmevalgFerdig = true;
+      if (!STEMMEORD.Eva.test(t) || /ikke\s+(en\s+)?(kvin|dame)/i.test(t)) return false;
+      loggKunde();
+      return await byttStemme("Eva");
+    };
     const loggAda = () => {
       if (/[\p{L}\d]/u.test(utTekst)) logg.push(`[${tid()}] ${kunde.agent || "Petter"}: ${utTekst.trim()}${avbrutt ? " (avbrutt)" : ""}`);
       utTekst = ""; avbrutt = false;
@@ -1068,6 +1079,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
           loggAda();
         }
         if (sc.modelTurn && sc.modelTurn.parts) {
+          if (await sjekkStemmevalg()) return;
           loggKunde();
           for (const p of sc.modelTurn.parts) {
             if (p.inlineData && p.inlineData.data) {
@@ -1078,10 +1090,11 @@ export async function koblSamtale(env, tlfWs, urlParam) {
           }
         }
         if (sc.outputTranscription && sc.outputTranscription.text) utTekst += sc.outputTranscription.text;
-        if (sc.turnComplete) { loggKunde(); loggAda(); }
+        if (sc.turnComplete) { if (await sjekkStemmevalg()) return; loggKunde(); loggAda(); }
         return;
       }
       if (e.toolCall && e.toolCall.functionCalls) {
+        if (await sjekkStemmevalg()) return;
         loggKunde();
         const svar = [];
         for (const f of e.toolCall.functionCalls) {
