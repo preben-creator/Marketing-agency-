@@ -428,13 +428,22 @@ export function velgMotor(env) {
 }
 export const brukGemini = (env) => velgMotor(env) === "gemini";
 
+// Språkregelen legges sist i instruksjonene for alle stemmene (også etter at rollen er byttet), så de ikke glir over i engelsk.
+// Samme tekst står i snakk/index.html. tools/test-stemmer.mjs sjekker at begge stemmene holder seg til norsk.
+export const SPRAK_REGEL = `# Språk og uttale (gjelder hele samtalen)
+- Snakk bare norsk bokmål, med vanlig østnorsk uttale, som en norsk sekretær. Aldri svensk eller dansk uttale. Hold samme stemme, tonefall og uttale hele samtalen, også når du sier tall og navn.
+- Bruk aldri engelske ord eller uttrykk, heller ikke enkeltord som «okay», «sure», «great», «perfect», «sorry», «appointment» eller «anyway». Si heller «ja», «greit», «flott», «supert», «beklager» og «time».
+- Les tall, priser, klokkeslett, datoer og adresser på norsk. Telefonnummer leser du to og to siffer på norsk, for eksempel «fire-en, to-tre, to-fem, fem-sju».
+- Snakker kunden bare engelsk, kan du svare på engelsk. Ellers svarer du alltid på norsk, også om kunden bruker et engelsk ord.
+- Snakk i et rolig, behagelig tempo, med små pauser mellom setningene. Ikke forhast deg.`;
+
 // Øktoppsettet for OpenAI Realtime. Telefonlyden (μ-law 8 kHz) går rett inn og ut, uten omregning.
 export function openaiSesjon(env, kunde) {
   const s = sesjon(env, kunde);
   const o = kunde.oppsett;
   return {
     type: "realtime",
-    instructions: s.instructions + "\n\nSnakk alltid naturlig norsk bokmål. Snakk i et rolig, behagelig tempo, med små pauser mellom setningene. Ikke forhast deg.",
+    instructions: s.instructions + "\n\n" + SPRAK_REGEL,
     tools: s.tools,
     tool_choice: "auto",
     audio: {
@@ -557,7 +566,7 @@ export function geminiOppsett(env, kunde) {
         responseModalities: ["AUDIO"],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: env.GEMINI_STEMME || GEMINI_STEMME } } },
       },
-      systemInstruction: { parts: [{ text: s.instructions + "\n\nSnakk alltid naturlig norsk bokmål." }] },
+      systemInstruction: { parts: [{ text: s.instructions + "\n\n" + SPRAK_REGEL }] },
       tools: geminiVerktoy(s.tools),
       realtimeInputConfig: {
         automaticActivityDetection: {
@@ -709,7 +718,9 @@ export async function koblSamtale(env, tlfWs, urlParam) {
     demoHendelser.push(hendelse);
     const rolle = rolleInstruks(p);
     kunde.rolle = rolle;
-    if (!gemini) tilXai({ type: "session.update", session: { ...(openai ? { type: "realtime" } : {}), instructions: innringInstruks(kunde) + "\n\n" + rolle } });
+    // Hele instruksjonen på nytt (med språkregelen), ikke bare rollen.
+    if (openai) tilXai({ type: "session.update", session: { type: "realtime", instructions: openaiSesjon(env, kunde).instructions } });
+    else if (!gemini) tilXai({ type: "session.update", session: { instructions: sesjon(env, kunde).instructions } });
     return { funnet: true, firma: p.navn, instruksjoner: rolle, merk: "Følg disse instruksjonene fra nå av, når du spiller sekretæren." };
   }
 
