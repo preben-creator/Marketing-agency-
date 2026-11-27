@@ -973,10 +973,18 @@ export async function koblSamtale(env, tlfWs, urlParam) {
       utTekst = ""; avbrutt = false;
     };
     const dek = new TextDecoder();
-    ws.addEventListener("message", async (m) => {
+    // Gemini sender JSON som binære rammer. Med vår compatibility_date kommer de som Blob i Workers (ikke ArrayBuffer),
+    // og Blob må leses asynkront. Køen holder rekkefølgen på lydbitene.
+    let ko = Promise.resolve();
+    ws.addEventListener("message", (m) => {
+      const d = m.data;
+      const tekst = typeof d === "string" ? d : (d && typeof d.text === "function") ? d.text() : dek.decode(d);
+      ko = ko.then(() => tekst).then((t) => { behandle(t); }, () => {});
+    });
+    async function behandle(t) {
       if (ws !== xai) return; // en økt vi har byttet bort fra
       let e;
-      try { e = JSON.parse(typeof m.data === "string" ? m.data : dek.decode(m.data)); } catch { return; }
+      try { e = JSON.parse(t); } catch { return; }
       if (e.setupComplete) {
         geminiKlar = true;
         tilXai(geminiStart(forste));
@@ -1023,7 +1031,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
         return;
       }
       if (e.error) console.log("Gemini-feil", JSON.stringify(e).slice(0, 300));
-    });
+    }
     ws.addEventListener("close", (c) => {
       if (ws !== xai) return;
       if (c && c.code && c.code !== 1000) console.log("Gemini lukket", c.code, String(c.reason || "").slice(0, 200));
