@@ -647,7 +647,7 @@ export function sesjon(env, kunde) {
   const o = kunde.oppsett; // telefonlinje for en kunde
   return {
     voice: env.STEMME || "liora",
-    instructions: o ? o.instruksjoner : kunde.inn ? innringInstruks(kunde) + (kunde.rolle ? "\n\n" + kunde.rolle : "") : instruksjoner(kunde.navn, kunde.firma),
+    instructions: (o ? o.instruksjoner : kunde.inn ? innringInstruks(kunde) + (kunde.rolle ? "\n\n" + kunde.rolle : "") : instruksjoner(kunde.navn, kunde.firma)) + laerdomTekst(kunde.laerdom),
     tools: o ? o.verktoy : kunde.inn ? INN_VERKTOY(kunde) : VERKTOY,
     // Telefonlinjer har støy, og folk tar små pauser midt i setninger. Litt høyere terskel og lengre pause
     // før Petter svarer gir færre falske avbrytelser og færre ganger han snakker i munnen på kunden.
@@ -1149,6 +1149,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
         return;
       }
       kunde = kjent;
+      kunde.laerdom = await hentLaerdom(env, laerdomId(kunde));
       setTimeout(() => leggPaa(0), MAKS_SEK * 1000);
       await startGrok();
       return;
@@ -1187,6 +1188,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
     if (!kjent) { try { tlfWs.close(1008, "ugyldig"); } catch {} return; }
     tidligStart = true;
     kunde = kjent;
+    kunde.laerdom = await hentLaerdom(env, laerdomId(kunde));
     setTimeout(() => leggPaa(0), MAKS_SEK * 1000);
     await startGrok();
   }
@@ -1202,6 +1204,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
       await tilSekretar(env, "/telefon/slutt", { kunde: kunde.linje, start: new Date(startet).toISOString(), sek: Math.round((Date.now() - startet) / 1000),
         utskrift, bookinger: linjeData.bookinger, beskjeder: linjeData.beskjeder, verktoy: linjeData.verktoy })
         .catch((e) => console.log("telefon-slutt feilet", e && e.message));
+      await feilsjekk(env, laerdomId(kunde), logg, kunde.laerdom, "kundens telefonlinje").catch((e) => console.log("feilsjekk feilet", e && e.message));
       return;
     }
     const n = notat || {};
@@ -1219,7 +1222,58 @@ export async function koblSamtale(env, tlfWs, urlParam) {
     // Kostnad (Orvelos egne salgssamtaler) og sporbar logg til kvalitetssjekken på /drift i orvelo-sekretar.
     // Bare når KV-en KUNDER er koblet til. Nummeret lagres ikke i sporet.
     if (env.KUNDER) await lagreDrift(env, Math.round((Date.now() - startet) / 1000), logg, kunde.inn ? "ring-inn" : "ring-ut", n).catch((e) => console.log("drift feilet", e && e.message));
+    await feilsjekk(env, laerdomId(kunde), logg, kunde.laerdom, kunde.inn ? "demonummeret" : "utgående samtale").catch((e) => console.log("feilsjekk feilet", e && e.message));
   }
+}
+
+// ---------- feilsjekk etter hver samtale og lærdommer ----------
+// Etter hver samtale leser Grok samtalen og finner det Petter/Eva gjorde feil, med forslag til en ny regel.
+// Funnene lagres som feilsjekk:<id>:<tid> (60 dager). Preben godtar eller avviser forslagene på /drift (fanen Feilsjekk) i orvelo-sekretar.
+// Godtatte regler lagres i laerdom:<id> og legges til instruksjonene fra neste samtale.
+// id = kundens id på egen telefonlinje, ellers «orvelo» (demonummeret og utgående samtaler).
+const FEILSJEKK_DAGER = 60, MAKS_LAERDOM = 40;
+export const laerdomId = (kunde) => kunde.linje ? String(kunde.linje).replace(/[^a-z0-9-]/gi, "").slice(0, 60) : "orvelo";
+export async function hentLaerdom(env, id) {
+  if (!env.KUNDER) return [];
+  try { const l = await env.KUNDER.get("laerdom:" + id, "json"); return Array.isArray(l) ? l : []; } catch { return []; }
+}
+export function laerdomTekst(laerdom) {
+  const l = (laerdom || []).filter((x) => x && x.regel);
+  if (!l.length) return "";
+  return "\n\nLÆRDOMMER FRA TIDLIGERE SAMTALER (godkjent av Preben, følg dem alltid):\n" + l.map((x) => "- " + x.regel).join("\n");
+}
+const FEILSJEKK_SYSTEM = `Du kvalitetssjekker en telefonsamtale mellom en innringer og en norsk digital telefonsekretær (Petter eller Eva).
+Finn konkrete feil sekretæren gjorde. Eksempler: misforsto eller gjentok feil navn, firmanavn, adresse eller nummer; byttet ikke stemme da innringeren ba om det (eller byttet uten at de ba om det);
+sa «okei»/«ok», «hei» eller «hallo»; sa forkortelsen «KI»; brukte engelske ord; ble stille eller svarte ikke; stilte samme spørsmål flere ganger; avbrøt; lovet noe den ikke kan vite (priser, tider);
+avsluttet uten å oppsummere; ga feil eller uhøflig svar; forsto ikke fagord.
+Ikke regn med feil i transkripsjonen av innringeren (talegjenkjenning kan høre feil). Ikke foreslå regler som allerede står i listen over gjeldende lærdommer.
+For hver feil: skriv en kort regel på norsk (én setning, i du-form, til sekretæren) som ville hindret feilen neste gang. Regelen skal gjelde generelt, ikke bare denne innringeren, og ikke inneholde navn eller telefonnummer.
+Svar som JSON: {"feil":[{"hva":"kort beskrivelse av feilen","sitat":"kort sitat fra samtalen","regel":"forslag til ny regel","alvor":"hoy|middels|lav"}]}. Ingen feil: {"feil":[]}. Maks 5 feil.`;
+export async function feilsjekk(env, id, logg, laerdom, kanal) {
+  if (!env.KUNDER || !env.XAI_API_KEY || env.FEILSJEKK === "av") return null;
+  const linjer = logg.filter((l) => / (Kunde|Petter|Eva): /.test(l)).map((l) => l.replace(/\+?\d[\d ]{7,}/g, "[nummer]"));
+  if (linjer.length < 3) return null; // for kort til å si noe
+  const bruker = `Kanal: ${kanal}\nGjeldende lærdommer:\n${(laerdom || []).map((x) => "- " + x.regel).join("\n") || "(ingen)"}\n\nSamtalen:\n${linjer.slice(-120).join("\n")}`;
+  const r = await fetch("https://api.x.ai/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env.XAI_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: env.TEKST_MODELL || "grok-4-fast-non-reasoning", temperature: 0.1, response_format: { type: "json_object" },
+      messages: [{ role: "system", content: FEILSJEKK_SYSTEM }, { role: "user", content: bruker }] }),
+  });
+  if (!r.ok) throw new Error("Grok svarte " + r.status);
+  const d = await r.json();
+  const innhold = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || "{}";
+  let funn = [];
+  try { funn = (JSON.parse(innhold.slice(innhold.indexOf("{"), innhold.lastIndexOf("}") + 1)).feil || []); } catch { funn = []; }
+  const kort = (t, n) => String(t || "").replace(/\+?\d[\d ]{7,}/g, "[nummer]").slice(0, n);
+  funn = funn.filter((f) => f && f.regel).slice(0, 5).map((f, i) => ({ nr: i, hva: kort(f.hva, 200), sitat: kort(f.sitat, 200), regel: kort(f.regel, 300),
+    alvor: ["hoy", "middels", "lav"].includes(f.alvor) ? f.alvor : "middels", status: "ny" }));
+  const t = Date.now();
+  const rec = { id, kanal, t: new Date(t).toISOString(), funn, samtale: linjer.slice(-120) };
+  // Nøkkelen sorterer nyeste først (omvendt tid).
+  await env.KUNDER.put(`feilsjekk:${id}:${String(9e15 - t).padStart(16, "0")}`, JSON.stringify(rec),
+    { expirationTtl: FEILSJEKK_DAGER * 86400, metadata: { n: funn.length, a: funn.filter((f) => f.status === "ny").length, t: rec.t, k: kanal } });
+  return rec;
 }
 
 // ---------- kostnad og spor (samme format som orvelo-sekretar, se /drift der) ----------
