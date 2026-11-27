@@ -2883,7 +2883,7 @@ async function telefonRute(request, env, ctx, url) {
       firma: profil.navn, kortnavn: profil.kortnavn || profil.navn,
       instruksjoner: telefonInstruksjoner(profil, cfg.kalender.pa, venteliste, b.fra),
       verktoy: telefonVerktoy(venteliste),
-      forste: `${profil.kortnavn || profil.navn}, hei! Du snakker med den digitale assistenten. Hva kan jeg hjelpe deg med?`,
+      forste: `${profil.kortnavn || profil.navn}, god dag! Du snakker med den digitale assistenten. Hva kan jeg hjelpe deg med?`,
       keyterms: [profil.navn, profil.kortnavn, ...profil.ansatte].filter(Boolean).slice(0, 10),
       stemme: STEMME_ID[profil.stemme], fart: profil.fart,
     }, 200);

@@ -95,7 +95,7 @@ async function kjor(t) {
   if (t.rolle) {
     const navn = PROFILER[t.rolle].navn;
     send({ type: "conversation.item.create", item: { type: "message", role: "user", content: [{ type: "input_text", text: navn }] } });
-    send({ type: "conversation.item.create", item: { type: "message", role: "assistant", content: [{ type: "output_text", text: `Da hører du nå hvordan jeg ville svart for ${PROFILER[t.rolle].kortnavn}. Lat som du er en kunde som ringer. ${PROFILER[t.rolle].kortnavn}, hei! Hva kan jeg hjelpe deg med?` }] } });
+    send({ type: "conversation.item.create", item: { type: "message", role: "assistant", content: [{ type: "output_text", text: `Da hører du nå hvordan jeg ville svart for ${PROFILER[t.rolle].kortnavn}. Lat som du er en kunde som ringer. ${PROFILER[t.rolle].kortnavn}, god dag! Hva kan jeg hjelpe deg med?` }] } });
   }
   for (const s of t.sier) {
     linjer.push("Kunde: " + s);
