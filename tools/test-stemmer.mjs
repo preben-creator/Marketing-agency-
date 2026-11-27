@@ -10,10 +10,13 @@
 // Koster rundt 1–2 kroner per kjøring.
 import WebSocket from "ws";
 import fs from "node:fs";
-import { openaiSesjon, rolleInstruks, SPRAK_REGEL } from "../worker/ringeagent-worker.js";
+import { openaiSesjon, geminiOppsett, pcm24kTilUlaw, rolleInstruks, SPRAK_REGEL } from "../worker/ringeagent-worker.js";
 import { telefonInstruksjoner, normaliser } from "../worker/sekretar-worker.js";
 
+// MOTOR=gemini tester Gemini Live i stedet (trenger GEMINI_API_KEY i tillegg; whisper bruker fortsatt OpenAI).
+const GEMINI = process.env.MOTOR === "gemini";
 const NOKKEL = process.env.OPENAI_API_KEY;
+if (GEMINI && !process.env.GEMINI_API_KEY) { console.log("Hopper over: GEMINI_API_KEY mangler."); process.exit(0); }
 if (!NOKKEL) { console.log("Hopper over: OPENAI_API_KEY mangler."); process.exit(0); }
 const UT = process.argv[2] || "stemmetest";
 fs.mkdirSync(UT, { recursive: true });
@@ -41,7 +44,7 @@ const REPLIKKER = {
 const SCENARIER = [];
 // PROV_STEMME=ash prøver en annen OpenAI-stemme i stedet for cedar (Petter), for å sammenligne.
 for (const agentNavn of ["Petter", "Eva"]) {
-  const stemme = agentNavn === "Eva" ? "marin" : process.env.PROV_STEMME || "cedar";
+  const stemme = agentNavn === "Eva" ? (GEMINI ? "Aoede" : "marin") : process.env.PROV_STEMME || (GEMINI ? "Charon" : "cedar");
   SCENARIER.push({ navn: `${agentNavn}-demo`, stemme, replikker: REPLIKKER.demo, start: "Si nøyaktig dette, og ikke noe mer: «Lia Frisør, hei! Hva kan jeg hjelpe deg med?»",
     kunde: { inn: true, velgStemme: true, agent: agentNavn, rolle: rolleInstruks(profiler["demo-frisor"]) } });
   const p = normaliser(profiler["demo-rorlegger"]);
@@ -70,7 +73,41 @@ async function whisper(lyd) {
   return r.json();
 }
 
+// Gemini Live: samme oppsett som telefonen (geminiOppsett), men innringeren skriver, og lyden (PCM 24 kHz)
+// gjøres om til telefonlyd (μ-law 8 kHz) på samme måte som i samtalene.
+async function kjorGemini(sc) {
+  const ws = new WebSocket("wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent",
+    { headers: { "x-goog-api-key": process.env.GEMINI_API_KEY }, agent });
+  await new Promise((ok, feil) => { ws.once("open", ok); ws.once("error", feil); });
+  const oppsett = geminiOppsett({ GEMINI_STEMME: sc.stemme }, sc.kunde);
+  delete oppsett.setup.tools;
+  delete oppsett.setup.realtimeInputConfig;
+  if (!oppsett.setup.systemInstruction.parts[0].text.includes(SPRAK_REGEL)) throw new Error("Språkregelen mangler i instruksjonene");
+  ws.send(JSON.stringify(oppsett));
+  await new Promise((ok, feil) => { const h = (m) => { const e = JSON.parse(m); if (e.setupComplete) { ws.off("message", h); ok(); } else if (e.error) feil(new Error(JSON.stringify(e.error))); }; ws.on("message", h); ws.once("close", (c, r) => feil(new Error("lukket " + c + " " + r))); });
+  const svar = (tekst) => new Promise((ok, feil) => {
+    const lyd = []; let ut = ""; const st = {};
+    const t = setTimeout(() => { ws.off("message", h); feil(new Error("ingen svar på 60 sek")); }, 60000);
+    const h = (m) => {
+      const e = JSON.parse(m), sc2 = e.serverContent;
+      if (!sc2) return;
+      for (const p of (sc2.modelTurn && sc2.modelTurn.parts) || []) if (p.inlineData && p.inlineData.data) { const u = pcm24kTilUlaw(p.inlineData.data, st); if (u) lyd.push(Buffer.from(u, "base64")); }
+      if (sc2.outputTranscription && sc2.outputTranscription.text) ut += sc2.outputTranscription.text;
+      if (sc2.turnComplete) { clearTimeout(t); ws.off("message", h); ok({ lyd: Buffer.concat(lyd), tekst: ut }); }
+    };
+    ws.on("message", h);
+    ws.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text: tekst }] }], turnComplete: true } }));
+  });
+  const runder = [{ kunde: "(starter)", ...(await svar(`(Telefonsamtalen er koblet til. ${sc.start})`)) }];
+  for (const r of sc.replikker) runder.push({ kunde: r, ...(await svar(r)) });
+  ws.close();
+  const stille = Buffer.alloc(4000, 0xff);
+  fs.writeFileSync(`${UT}/${sc.navn}.wav`, wav(Buffer.concat(runder.flatMap((r) => [r.lyd, stille]))));
+  return runder;
+}
+
 async function kjor(sc) {
+  if (GEMINI) return kjorGemini(sc);
   const ws = new WebSocket(`wss://api.openai.com/v1/realtime?model=${encodeURIComponent(MODELL)}`, { headers: { Authorization: `Bearer ${NOKKEL}` }, agent });
   await new Promise((ok, feil) => { ws.once("open", ok); ws.once("error", feil); });
   const okt = openaiSesjon({}, sc.kunde);
