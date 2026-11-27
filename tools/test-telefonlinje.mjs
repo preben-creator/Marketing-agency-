@@ -344,7 +344,7 @@ await test("Demo (Gemini): Petter er Puck, sier «god dag», og Eva (Aoede) tar 
     assert.ok(oppsett.tools[0].functionDeclarations.some((f) => f.name === "bytt_stemme"));
     assert.match(oppsett.systemInstruction.parts[0].text, /Hils med «god dag»/);
     assert.match(oppsett.systemInstruction.parts[0].text, /Murer: baderom.*fasadeoppussing/, "fagkunnskap for murer");
-    assert.match(oppsett.systemInstruction.parts[0].text, /firmaet med navnet de ga deg/);
+    assert.match(oppsett.systemInstruction.parts[0].text, /firmaet med nøyaktig det navnet de bekreftet/);
     assert.match(oppsett.systemInstruction.parts[0].text, /ringer fra 987 65 400\. .*bruk dette nummeret/, "tilbyr nummeret de ringer fra");
     assert.match(oppsett.systemInstruction.parts[0].text, /Si aldri «okei»/);
     assert.match(oppsett.systemInstruction.parts[0].text, /or-VE-lo/);
@@ -373,6 +373,30 @@ await test("Demo (Gemini): Petter er Puck, sier «god dag», og Eva (Aoede) tar 
     assert.ok(eva.ut.some((m) => m.realtimeInput), "lyden fra kunden går til Eva");
     tlf.close();
   } finally { delete ringEnv.GEMINI_API_KEY; delete ringEnv.GEMINI_STEMME; }
+});
+await test("Demo (Gemini): «du passer fint» bytter ikke til Eva", async () => {
+  ringEnv.GEMINI_API_KEY = "g";
+  try {
+    const r = await twilioInn({ CallSid: "CAgem2", From: "+4798765401", To: "+4755608323" });
+    geminiWs.length = 0;
+    await ring.fetch(new Request("https://ring.example/media", { headers: { Upgrade: "websocket" } }), ringEnv);
+    const tlf = serverWs;
+    tlf.emit({ event: "start", start: { callSid: "CAgem2", streamSid: "MZ7", customParameters: tParam(r.xml) } });
+    await vent(30);
+    const petter = geminiWs[0];
+    assert.match(petter.ut[0].setup.systemInstruction.parts[0].text, /Bare hvis de tydelig sier kvinnelig/);
+    assert.match(petter.ut[0].setup.systemInstruction.parts[0].text, /stemmer det\?/);
+    petter.emit({ setupComplete: {} });
+    await vent(10);
+    petter.emit({ serverContent: { inputTranscription: { text: "Du passer fint, du." } } });
+    petter.emit({ toolCall: { functionCalls: [{ id: "g2", name: "bytt_stemme", args: { stemme: "kvinne" } }] } });
+    await vent(30);
+    assert.equal(geminiWs.length, 1, "ingen ny økt");
+    const svar = petter.ut.find((m) => m.toolResponse);
+    assert.ok(svar && svar.toolResponse.functionResponses[0].response.ok === false, "byttet avvises");
+    assert.match(svar.toolResponse.functionResponses[0].response.info, /Ikke bytt/);
+    tlf.close();
+  } finally { delete ringEnv.GEMINI_API_KEY; }
 });
 await test("Kundens linje med kvinnestemme (Gemini) får Aoede", async () => {
   ringEnv.GEMINI_API_KEY = "g";

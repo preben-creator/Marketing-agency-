@@ -326,6 +326,12 @@ Tre pakker med fast månedspris eks. mva. og uten oppstartskostnad: Starter 790 
 Tilby et kort møte med Preben (send_bookinglenke), skriv sammendrag med noter_for_preben, si ha det og bruk legg_paa.`;
 }
 
+// Ord som betyr at innringeren vil ha den andre stemmen. Brukes for å stoppe et bytte de ikke ba om.
+export const STEMMEORD = {
+  Eva: /kvinn|kvinne|dame|jente|eva\b|hun\b|henne|kone|female|woman/i,
+  Petter: /mann|mannlig|gutt|petter|han\b|ham\b|herre|male\b|\bman\b/i,
+};
+
 // +4741232557 -> «412 32 557» (bare norske 8-sifrede nummer).
 const nrTekst = (nr) => { const d = String(nr || "").replace(/^\+47/, ""); return /^\d{8}$/.test(d) ? `${d.slice(0, 3)} ${d.slice(3, 5)} ${d.slice(5)}` : ""; };
 
@@ -351,24 +357,26 @@ export const FAG_KUNNSKAP = `- Murer: baderom (riving, membran, flis, oppussing 
 export function innringInstruks(k = {}) {
   const navn = k.agent || "Petter";
   const valg = k.velgStemme && navn === "Petter"
-    ? `0. Du har spurt om de vil ha en mannlig eller kvinnelig KI-sekretær. Svarer de kvinnelig (eller «dame», «Eva» o.l.): bruk bytt_stemme med stemme «kvinne» med en gang, uten å si noe først. Da tar kollegaen din Eva over. Svarer de mannlig eller at det er det samme: si «Flott!» og gå videre til punkt 1.\n`
+    ? `0. Du har spurt om de vil ha en mannlig eller kvinnelig KI-sekretær. Bare hvis de tydelig sier kvinnelig (eller «dame», «kvinne», «Eva»): bruk bytt_stemme med stemme «kvinne» med en gang, uten å si noe først. Da tar kollegaen din Eva over. Alt annet betyr at de beholder deg: «mannlig», «du passer fint», «du er bra», «det er det samme», «spiller ingen rolle» eller et uklart svar. Si da «Flott!» og gå videre til punkt 1. Er du i tvil, behold deg selv.\n`
     : k.velgStemme ? `0. Innringeren valgte kvinnelig KI-sekretær, så du er Eva og har tatt over samtalen fra Petter. Vil de likevel ha mannsstemmen, bruk bytt_stemme med stemme «mann».\n` : "";
   return `Du er ${navn}, en KI-assistent fra Orvelo, et lite norsk selskap i Bergen drevet av Preben Hilleren. Orvelo lager KI-sekretærer som svarer telefonen for håndverkere og andre små bedrifter.
 Du snakker norsk (bokmål), varmt og kort, maks to setninger om gangen. Si tydelig at du er en KI hvis noen spør.
 
 Noen har ringt Orvelos demonummer, trolig etter en e-post der vi skrev at vi har laget en KI-sekretær til firmaet deres.
 ${nrTekst(k.til) ? `Innringeren ringer fra ${nrTekst(k.til)}. Når du (eller sekretæren du spiller) trenger telefonnummeret, spør «Kan vi ringe deg på nummeret du ringer fra?». Sier de ja eller «bruk dette nummeret», bruk det, og ikke be om nummeret på nytt.
-` : ""}${valg}1. Spør hvilket firma de ringer fra, og bruk verktøyet finn_firma med navnet. Er du usikker på navnet, spør dem om å si det en gang til.
+` : ""}${valg}1. Spør hvilket firma de ringer fra. Gjenta navnet og be dem bekrefte, for eksempel «Murmester Hilleren, stemmer det?». Retter de deg, bruk rettelsen; er du fortsatt usikker, be dem stave det. Bruk så finn_firma med det bekreftede navnet. Sier navnet hva slags firma det er (murmester, rør, elektro, frisør …), vet du bransjen og skal ikke spørre om den.
 2. Finner du firmaet: følg instruksjonene i svaret fra verktøyet og spill sekretæren deres.
 3. Finner du flere: les opp valgene kort og spør hvilket. Bruk så finn_firma med det fulle navnet.
 4. Har vi ikke laget en sekretær ennå, gir finn_firma treff fra Brønnøysundregistrene. Spør om det er riktig firma, med navn og sted (for eksempel «Er det Berg Rør AS i Bergen?»). Er det flere, nevn høyst tre. Bekrefter de: si «Et øyeblikk, så setter jeg opp sekretæren deres. Det tar rundt et halvt minutt.» og bruk lag_demo med org.nr-et. Følg så instruksjonene i svaret.
-5. Finner du det ikke, eller lag_demo feiler: si at sekretæren deres ikke er laget ennå, men at de kan høre hvordan den vil svare. Spør hva slags bedrift de har hvis du ikke vet det. Si så «Lat som du er en kunde som ringer», og spill sekretæren for firmaet med navnet de ga deg (ikke et oppdiktet navn, og ikke bare yrket). Svar «[firmanavn], god dag! Hva kan jeg hjelpe deg med?». Bruk fagkunnskapen under. Ikke nevn priser eller lov tider du ikke vet; si at fagfolkene ringer tilbake.
+5. Finner du det ikke, eller lag_demo feiler: si at sekretæren deres ikke er laget ennå, men at de kan høre hvordan den vil svare. Spør hva slags bedrift de har bare hvis navnet ikke sier det (Murmester Hilleren er en murer, Berg Rør er en rørlegger). Si så «Lat som du er en kunde som ringer», og spill sekretæren for firmaet med nøyaktig det navnet de bekreftet (ikke et oppdiktet navn, ikke bare yrket, og ikke et navn du har endret). Svar «[firmanavn], god dag! Hva kan jeg hjelpe deg med?». Bruk fagkunnskapen under. Ikke nevn priser eller lov tider du ikke vet; si at fagfolkene ringer tilbake.
 
 # Slik tar sekretæren imot en kunde (alle bransjer)
 - Forstå hva kunden vil ha gjort, og gjenta det kort med egne ord («Så dere vil pusse opp badet?»).
 - Still to–tre korte spørsmål som fagfolkene trenger, ett om gangen: hva og hvor stort, adresse eller sted, når det passer, og om det haster.
 - Ta imot navn og telefonnummer, les nummeret tilbake to og to siffer, og si at firmaet ringer tilbake. Tilby befaring der det passer.
 - Forstår du ikke et ord, spør hva de mener i stedet for å gjette.
+- Folk snakker mange dialekter. Gjenta alltid det viktigste du har hørt og la kunden bekrefte: navn, adresse, telefonnummer, dag og klokkeslett. Er du usikker på et navn eller en adresse, be dem stave det. Bruk aldri en opplysning du ikke har fått bekreftet.
+- Til slutt: oppsummer kort hva du har notert («Da har jeg notert … stemmer det?») før du avslutter.
 
 # Fagkunnskap (vanlige oppdrag)
 ${FAG_KUNNSKAP}
@@ -695,6 +703,13 @@ export async function koblSamtale(env, tlfWs, urlParam) {
   let spurtOmTilstede = false;
   let avslutter = false;
 
+  // Det innringeren sa sist (Gemini: teksten som ikke er logget ennå, ellers siste «Kunde:»-linje).
+  let uloggetKunde = "";
+  const sisteKundeTekst = () => {
+    if (uloggetKunde.trim()) return uloggetKunde.trim();
+    const l = [...logg].reverse().find((x) => / Kunde: /.test(x));
+    return l ? l.replace(/^.*? Kunde: /, "").trim() : "";
+  };
   const tilTlf = (obj) => { try { tlfWs.send(JSON.stringify(obj)); } catch {} };
   const sendLyd = (payload) => {
     if (!tlfKlar) { if (utKo.length < 400) utKo.push(payload); return; }
@@ -813,6 +828,10 @@ export async function koblSamtale(env, tlfWs, urlParam) {
     if (navn === "bytt_stemme") {
       const til = args.stemme === "kvinne" ? "Eva" : "Petter";
       if ((kunde.agent || "Petter") === til) return { ok: true, info: `Du er allerede ${til}. Fortsett samtalen.` };
+      // Bytt bare når innringeren faktisk har bedt om det. «Du passer fint», «samme det» o.l. betyr at de beholder den som snakker.
+      const sagt = sisteKundeTekst();
+      if (sagt && !STEMMEORD[til].test(sagt))
+        return { ok: false, info: `Innringeren sa «${sagt.slice(0, 80)}» og ba ikke om ${til === "Eva" ? "kvinnestemme" : "mannsstemme"}. Ikke bytt. Si «Flott!» og fortsett som ${kunde.agent || "Petter"}.` };
       if (await byttStemme(til)) return { byttet: true };
       return { ok: false, info: "Stemmen kunne ikke byttes akkurat nå. Beklag kort og fortsett selv." };
     }
@@ -999,7 +1018,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
     if (ekstra) oppsett.setup.systemInstruction.parts[0].text += "\n\n" + ekstra;
     tilXai(oppsett);
     let innTekst = "", utTekst = "";
-    const loggKunde = () => { if (innTekst.trim()) logg.push(`[${tid()}] Kunde: ${innTekst.trim()}`); innTekst = ""; };
+    const loggKunde = () => { if (innTekst.trim()) logg.push(`[${tid()}] Kunde: ${innTekst.trim()}`); innTekst = ""; uloggetKunde = ""; };
     const loggAda = () => {
       if (/[\p{L}\d]/u.test(utTekst)) logg.push(`[${tid()}] ${kunde.agent || "Petter"}: ${utTekst.trim()}${avbrutt ? " (avbrutt)" : ""}`);
       utTekst = ""; avbrutt = false;
@@ -1027,6 +1046,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
       if (sc) {
         if (sc.inputTranscription && sc.inputTranscription.text) {
           innTekst += sc.inputTranscription.text;
+          uloggetKunde = innTekst;
           sisteAktivitet = Date.now();
           spurtOmTilstede = false;
         }
