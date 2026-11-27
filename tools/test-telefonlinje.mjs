@@ -347,7 +347,7 @@ await test("Demo (Gemini): Petter er Puck, sier «god dag», og Eva (Aoede) tar 
     assert.match(oppsett.systemInstruction.parts[0].text, /firmaet med nøyaktig det navnet de bekreftet/);
     assert.match(oppsett.systemInstruction.parts[0].text, /ringer fra 987 65 400\. .*bruk dette nummeret/, "tilbyr nummeret de ringer fra");
     assert.match(oppsett.systemInstruction.parts[0].text, /Si aldri «okei»/);
-    assert.match(oppsett.systemInstruction.parts[0].text, /or-VE-lo/);
+    assert.match(oppsett.systemInstruction.parts[0].text, /orve-LO/);
     petter.emit({ setupComplete: {} });
     await vent(10);
     assert.match(petter.ut[1].clientContent.turns[0].parts[0].text, /God dag, du har ringt Orvelo! Jeg er Petter.*mannlig eller kvinnelig/);
@@ -397,6 +397,25 @@ await test("Demo (Gemini): «du passer fint» bytter ikke til Eva", async () => 
     assert.match(svar.toolResponse.functionResponses[0].response.info, /Ikke bytt/);
     tlf.close();
   } finally { delete ringEnv.GEMINI_API_KEY; }
+});
+await test("Demo (Gemini): blir Petter stille etter et verktøysvar, dyttes han i gang", async () => {
+  ringEnv.GEMINI_API_KEY = "g"; ringEnv.DYTT_MS = "100";
+  try {
+    const r = await twilioInn({ CallSid: "CAgem3", From: "+4798765402", To: "+4755608323" });
+    geminiWs.length = 0;
+    await ring.fetch(new Request("https://ring.example/media", { headers: { Upgrade: "websocket" } }), ringEnv);
+    const tlf = serverWs;
+    tlf.emit({ event: "start", start: { callSid: "CAgem3", streamSid: "MZ8", customParameters: tParam(r.xml) } });
+    await vent(30);
+    const petter = geminiWs[0];
+    petter.emit({ setupComplete: {} });
+    await vent(10);
+    petter.emit({ toolCall: { functionCalls: [{ id: "g3", name: "noter_for_preben", args: { sammendrag: "test" } }] } });
+    await vent(2600);
+    const dytt = petter.ut.filter((m) => m.clientContent && /venter på svar/.test(m.clientContent.turns[0].parts[0].text));
+    assert.equal(dytt.length, 1, "én dytt");
+    tlf.close();
+  } finally { delete ringEnv.GEMINI_API_KEY; delete ringEnv.DYTT_MS; }
 });
 await test("Kundens linje med kvinnestemme (Gemini) får Aoede", async () => {
   ringEnv.GEMINI_API_KEY = "g";
