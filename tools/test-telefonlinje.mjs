@@ -290,7 +290,7 @@ await test("Demo (OpenAI): Petter spør først om mannlig eller kvinnelig KI-sek
     const okt = petter.ut.find((m) => m.type === "session.update").session;
     assert.equal(okt.audio.output.voice, "cedar");
     assert.ok(okt.tools.some((t) => t.name === "bytt_stemme"));
-    assert.match(petter.ut.find((m) => m.type === "response.create").response.instructions, /Du har kommet til Petter.*mannlig eller kvinnelig KI-sekretær/);
+    assert.match(petter.ut.find((m) => m.type === "response.create").response.instructions, /Du har kommet til Petter.*mannlig eller kvinnelig sekretær/);
     // Innringeren sier «kvinnelig»: Petter bruker bytt_stemme, og en ny økt med stemmen marin hilser som Eva.
     petter.emit({ type: "conversation.item.input_audio_transcription.completed", transcript: "Kvinnelig, takk." });
     petter.emit({ type: "response.function_call_arguments.done", name: "bytt_stemme", call_id: "c1", arguments: '{"stemme":"kvinne"}' });
@@ -342,7 +342,7 @@ await test("Demo (Gemini): Petter er Puck, sier «god dag», og Eva (Aoede) tar 
     const oppsett = petter.ut[0].setup;
     assert.equal(oppsett.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName, "Puck");
     assert.ok(oppsett.tools[0].functionDeclarations.some((f) => f.name === "bytt_stemme"));
-    assert.match(oppsett.systemInstruction.parts[0].text, /Første hilsen er «Hei, god dag!»/);
+    assert.match(oppsett.systemInstruction.parts[0].text, /Hils med «God dag!»/);
     assert.match(oppsett.systemInstruction.parts[0].text, /Murer: baderom.*fasadeoppussing/, "fagkunnskap for murer");
     assert.match(oppsett.systemInstruction.parts[0].text, /firmaet med nøyaktig det navnet de bekreftet/);
     assert.match(oppsett.systemInstruction.parts[0].text, /ringer fra 987 65 400\. .*bruk dette nummeret/, "tilbyr nummeret de ringer fra");
@@ -350,7 +350,7 @@ await test("Demo (Gemini): Petter er Puck, sier «god dag», og Eva (Aoede) tar 
     assert.match(oppsett.systemInstruction.parts[0].text, /uttales «Orvello»/);
     petter.emit({ setupComplete: {} });
     await vent(10);
-    assert.match(petter.ut[1].clientContent.turns[0].parts[0].text, /Hei, god dag! Du har kommet til Petter, KI-sekretær for Orvello.*mannlig eller kvinnelig/);
+    assert.match(petter.ut[1].clientContent.turns[0].parts[0].text, /God dag! Du har kommet til Petter, kå-i-sekretær for Orvello.*mannlig eller kvinnelig/);
     petter.emit({ serverContent: { modelTurn: { parts: [{ inlineData: { mimeType: "audio/pcm;rate=24000", data: Buffer.alloc(4800).toString("base64") } }] } } });
     await vent(10);
     assert.ok(tlf.ut.some((m) => m.event === "media" && m.streamSid === "MZ6"), "lyden fra Gemini (Blob) når telefonen");
