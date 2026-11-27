@@ -38,7 +38,7 @@ class FakeWs {
   emit(obj) { for (const f of this.l.message || []) f({ data: JSON.stringify(obj) }); }
 }
 let serverWs, xaiWs;
-const openaiWs = [];
+const openaiWs = [], geminiWs = [];
 globalThis.WebSocketPair = function () { serverWs = new FakeWs(); return { 0: new FakeWs(), 1: serverWs }; };
 const OrigResponse = globalThis.Response;
 globalThis.Response = class extends OrigResponse {
@@ -49,6 +49,7 @@ globalThis.fetch = async (url, opt = {}) => {
   url = String(url);
   kall.push({ url, body: opt.body });
   if (url.startsWith("https://api.x.ai/v1/realtime")) { xaiWs = new FakeWs(); return { webSocket: xaiWs, status: 101 }; }
+  if (url.includes("generativelanguage.googleapis.com")) { const w = new FakeWs(); geminiWs.push(w); return { webSocket: w, status: 101 }; }
   if (url.startsWith("https://api.openai.com/v1/realtime")) { const w = new FakeWs(); openaiWs.push(w); return { webSocket: w, status: 101 }; }
   if (url.includes("data.brreg.no")) {
     if (url.includes("enheter?navn=")) return OrigResponse.json({ _embedded: { enheter: [{ organisasjonsnummer: "912345678", navn: "FJELL RØR AS", naeringskode1: { beskrivelse: "Rørleggerarbeid" }, forretningsadresse: { poststed: "BERGEN" } }] } });
@@ -145,7 +146,7 @@ await test("Petter svarer som kundens sekretær (instruksjoner, verktøy, hilsen
   assert.deepEqual(navn.sort(), ["finn_ledige_tider", "legg_igjen_beskjed", "legg_paa", "send_timeforesporsel"]);
   assert.ok(okt.tools.every((t) => t.type === "function" && t.parameters), "verktøyene har realtime-formatet");
   const hei = xaiWs.ut.find((m) => m.item?.type === "force_message").item.content[0].text;
-  assert.match(hei, /^Lia Frisør, hei!/);
+  assert.match(hei, /^Lia Frisør, god dag!/);
   assert.match(hei, /digitale assistenten/);
   tlf.emit({ event: "start", start: { call_control_id: "v3:abc" } });
 });
@@ -250,7 +251,7 @@ await test("Twilio: Petter svarer som kundens sekretær og sender lyd med stream
   assert.ok(xaiWs, "Petter startet");
   const okt = xaiWs.ut.find((m) => m.type === "session.update").session;
   assert.match(okt.instructions, /Lia Frisør/);
-  assert.match(xaiWs.ut.find((m) => m.item?.type === "force_message").item.content[0].text, /^Lia Frisør, hei!/);
+  assert.match(xaiWs.ut.find((m) => m.item?.type === "force_message").item.content[0].text, /^Lia Frisør, god dag!/);
   xaiWs.emit({ type: "response.output_audio.delta", delta: "AAAA" });
   await vent(10);
   assert.ok(ws.ut.some((m) => m.event === "media" && m.streamSid === "MZ1"), "lyden går til Twilio-strømmen");
@@ -325,6 +326,52 @@ await test("Kundens egen linje (OpenAI) spør ikke om stemme", async () => {
     assert.doesNotMatch(okt.instructions, /mannlig eller kvinnelig/);
     serverWs.close();
   } finally { delete ringEnv.OPENAI_API_KEY; }
+});
+
+await test("Demo (Gemini): Petter er Puck, sier «hallo», og Eva (Aoede) tar over i en ny økt", async () => {
+  ringEnv.GEMINI_API_KEY = "g"; ringEnv.GEMINI_STEMME = "Aoede"; // gammel verdi fra Ada-tiden skal ikke gjøre Petter til kvinne
+  try {
+    const r = await twilioInn({ CallSid: "CAgem", From: "+4798765400", To: "+4755608323" });
+    geminiWs.length = 0;
+    await ring.fetch(new Request("https://ring.example/media", { headers: { Upgrade: "websocket" } }), ringEnv);
+    const tlf = serverWs;
+    tlf.emit({ event: "start", start: { callSid: "CAgem", streamSid: "MZ6", customParameters: tParam(r.xml) } });
+    await vent(30);
+    const petter = geminiWs[0];
+    const oppsett = petter.ut[0].setup;
+    assert.equal(oppsett.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName, "Puck");
+    assert.ok(oppsett.tools[0].functionDeclarations.some((f) => f.name === "bytt_stemme"));
+    assert.match(oppsett.systemInstruction.parts[0].text, /Hils med «hallo»/);
+    petter.emit({ setupComplete: {} });
+    await vent(10);
+    assert.match(petter.ut[1].clientContent.turns[0].parts[0].text, /Hallo, du har ringt Orvelo! Jeg er Petter.*mannlig eller kvinnelig/);
+    petter.emit({ serverContent: { inputTranscription: { text: "Kvinnelig." } } });
+    petter.emit({ serverContent: { turnComplete: true } });
+    petter.emit({ toolCall: { functionCalls: [{ id: "g1", name: "bytt_stemme", args: { stemme: "kvinne" } }] } });
+    await vent(30);
+    assert.equal(geminiWs.length, 2, "ny økt for Eva");
+    const eva = geminiWs[1];
+    assert.equal(eva.ut[0].setup.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName, "Aoede");
+    assert.match(eva.ut[0].setup.systemInstruction.parts[0].text, /Du er Eva/);
+    assert.match(eva.ut[0].setup.systemInstruction.parts[0].text, /Kunde: Kvinnelig/);
+    assert.ok(petter.lukket && !tlf.lukket);
+    assert.ok(!petter.ut.some((m) => m.toolResponse), "ingen svar til den gamle økten");
+    tlf.emit({ event: "media", media: { payload: "//8=" } }); // venter til Eva er klar
+    eva.emit({ setupComplete: {} });
+    await vent(10);
+    assert.match(eva.ut[1].clientContent.turns[0].parts[0].text, /Hallo, jeg er Eva/);
+    assert.ok(eva.ut.some((m) => m.realtimeInput), "lyden fra kunden går til Eva");
+    tlf.close();
+  } finally { delete ringEnv.GEMINI_API_KEY; delete ringEnv.GEMINI_STEMME; }
+});
+await test("Kundens linje med kvinnestemme (Gemini) får Aoede", async () => {
+  ringEnv.GEMINI_API_KEY = "g";
+  try {
+    const { geminiStemme } = await import("../worker/ringeagent-worker.js");
+    assert.equal(geminiStemme({}, { oppsett: { stemme: "marin" } }), "Aoede");
+    assert.equal(geminiStemme({}, { oppsett: { stemme: "cedar" } }), "Puck");
+    assert.equal(geminiStemme({ GEMINI_STEMME: "Aoede" }, {}), "Puck");
+  } finally { delete ringEnv.GEMINI_API_KEY; }
 });
 
 // 3d. Demonummeret: ukjent firma slås opp i Brønnøysund, og Petter lager sekretæren under samtalen

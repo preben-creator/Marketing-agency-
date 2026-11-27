@@ -44,12 +44,12 @@ const REPLIKKER = {
 const SCENARIER = [];
 // PROV_STEMME=ash prøver en annen OpenAI-stemme i stedet for cedar (Petter), for å sammenligne.
 for (const agentNavn of ["Petter", "Eva"]) {
-  const stemme = agentNavn === "Eva" ? (GEMINI ? "Aoede" : "marin") : process.env.PROV_STEMME || (GEMINI ? "Charon" : "cedar");
-  SCENARIER.push({ navn: `${agentNavn}-demo`, stemme, replikker: REPLIKKER.demo, start: "Si nøyaktig dette, og ikke noe mer: «Lia Frisør, hei! Hva kan jeg hjelpe deg med?»",
+  const stemme = agentNavn === "Eva" ? (GEMINI ? "Aoede" : "marin") : process.env.PROV_STEMME || (GEMINI ? "Puck" : "cedar");
+  SCENARIER.push({ navn: `${agentNavn}-demo`, stemme, replikker: REPLIKKER.demo, start: "Si nøyaktig dette, og ikke noe mer: «Lia Frisør, god dag! Hva kan jeg hjelpe deg med?»",
     kunde: { inn: true, velgStemme: true, agent: agentNavn, rolle: rolleInstruks(profiler["demo-frisor"]) } });
   const p = normaliser(profiler["demo-rorlegger"]);
   SCENARIER.push({ navn: `${agentNavn}-kundelinje`, stemme, replikker: REPLIKKER.linje,
-    start: `Start samtalen med å si nøyaktig dette, og ikke noe mer: «${p.kortnavn || p.navn}, hei! Du snakker med den digitale assistenten. Hva kan jeg hjelpe deg med?»`,
+    start: `Start samtalen med å si nøyaktig dette, og ikke noe mer: «${p.kortnavn || p.navn}, god dag! Du snakker med den digitale assistenten. Hva kan jeg hjelpe deg med?»`,
     kunde: { oppsett: { instruksjoner: telefonInstruksjoner(p, true, false, "+4741234567"), verktoy: [], keyterms: [], stemme } } });
 }
 
@@ -79,7 +79,8 @@ async function kjorGemini(sc) {
   const ws = new WebSocket("wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent",
     { headers: { "x-goog-api-key": process.env.GEMINI_API_KEY }, agent });
   await new Promise((ok, feil) => { ws.once("open", ok); ws.once("error", feil); });
-  const oppsett = geminiOppsett({ GEMINI_STEMME: sc.stemme }, sc.kunde);
+  const oppsett = geminiOppsett({ GEMINI_PETTER_STEMME: sc.stemme }, sc.kunde);
+  oppsett.setup.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName = sc.stemme;
   delete oppsett.setup.tools;
   delete oppsett.setup.realtimeInputConfig;
   if (!oppsett.setup.systemInstruction.parts[0].text.includes(SPRAK_REGEL)) throw new Error("Språkregelen mangler i instruksjonene");
@@ -153,7 +154,9 @@ for (const sc of SCENARIER.filter((x) => !bare || x.navn === bare)) {
     const w = await whisper(r.lyd);
     const sprak = String(w.language || "").toLowerCase();
     const problem = [];
-    if (!/^(norwegian|nynorsk|no|nn|nb)$/.test(sprak)) problem.push(`hørtes ut som ${sprak || "ukjent språk"}`);
+    // Whisper gjetter dårlig på språket i svært korte svar («Ha det.»), så dem sjekker vi bare for engelske ord.
+    const ord = r.tekst.replace(/\([^)]*\)/g, "").trim().split(/\s+/).filter(Boolean).length;
+    if (ord >= 3 && !/^(norwegian|nynorsk|no|nn|nb)$/.test(sprak)) problem.push(`hørtes ut som ${sprak || "ukjent språk"}`);
     const eng = (r.tekst.match(ENGELSK) || w.text.match(ENGELSK) || [])[0];
     if (eng) problem.push(`engelsk ord «${eng}»`);
     if (problem.length) feil++;

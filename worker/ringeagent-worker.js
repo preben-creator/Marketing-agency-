@@ -11,15 +11,16 @@
 //   Under samtalen kan agenten sende bookinglenken på SMS og sende Preben et sammendrag på e-post.
 //
 // Innstillinger (Cloudflare: Worker -> Settings -> Variables and Secrets):
-//   OPENAI_API_KEY       (Secret, valgfri)  satt = Petter snakker med OpenAI Realtime (stemmen cedar). Standard når den finnes.
+//   OPENAI_API_KEY       (Secret, valgfri)  reserve: OpenAI Realtime (Petter = cedar, Eva = marin). Brukes når Gemini ikke er satt opp.
 //   OPENAI_MODELL        (Text,   valgfri)  standard «gpt-realtime-2.1»
 //   OPENAI_STEMME        (Text,   valgfri)  standard «cedar» (Preben valgte den 2026-11-17)
 //   OPENAI_FART          (Text,   valgfri)  taletempo 0,25–1,5, standard 0.9 (Preben ville ha roligere tale)
-//   GEMINI_API_KEY       (Secret, valgfri)  reserve: Gemini Live (stemmen Aoede)
-//   MOTOR                (Text,   valgfri)  «openai», «gemini» eller «grok». Tom = OpenAI hvis nøkkelen finnes, så Gemini, så Grok.
-//                                          Rask vei tilbake uten ny deploy: sett MOTOR til «gemini» eller «grok».
+//   GEMINI_API_KEY       (Secret)           Gemini Live: Petter (Puck) og Eva (Aoede). Standard når den finnes (fra 2026-11-27).
+//   MOTOR                (Text,   valgfri)  «gemini», «openai» eller «grok». Tom = Gemini hvis nøkkelen finnes, så OpenAI, så Grok.
+//                                          Rask vei tilbake uten ny deploy: sett MOTOR til «openai» eller «grok».
 //   GEMINI_MODELL        (Text,   valgfri)  standard «gemini-3.8-live»
-//   GEMINI_STEMME        (Text,   valgfri)  standard «Aoede» (Preben valgte den 2026-11-17)
+//   GEMINI_PETTER_STEMME (Text,   valgfri)  Petters Gemini-stemme, standard «Puck» (valgt 2026-11-27). Eva = Aoede.
+//                                          (Den gamle GEMINI_STEMME brukes ikke lenger.)
 //   XAI_API_KEY          (Secret)           xAI-nøkkelen (Grok), påkrevd når Gemini ikke er satt opp
 //   TWILIO_ACCOUNT_SID   (Secret, påkrevd)  fra Twilio-forsiden
 //   TWILIO_AUTH_TOKEN    (Secret, påkrevd)  fra Twilio-forsiden
@@ -48,7 +49,9 @@ const BOOKING_URL_DEFAULT = "https://calendar.app.google/24niGvpRRwPqNqr28";
 const VARSEL_EPOST_DEFAULT = "hilleren.bedrift@gmail.com";
 const MODEL = "grok-voice-latest";
 const GEMINI_MODELL = "gemini-3.8-live";
-const GEMINI_STEMME = "Aoede";
+const GEMINI_STEMME = "Puck"; // Petter. Eva = Aoede. Valgt av Preben 2026-11-27 etter tools/test-stemmer.mjs.
+// Stemmene i kundeprofilen (OpenAI-navn fra orvelo-sekretar) og Eva -> Gemini-stemme.
+export const GEMINI_STEMME_FOR = { cedar: "Puck", marin: "Aoede", Petter: "Puck", Eva: "Aoede" };
 const OPENAI_MODELL = "gpt-realtime-2.1";
 const OPENAI_STEMME = "cedar";
 const MAKS_SEK = 480; // operatøren legger på etter 8 minutter uansett
@@ -282,7 +285,7 @@ export function rolleInstruks(p) {
   const kontakt = [p.adresse && `Adresse: ${p.adresse}.`, p.omraade && `Område: ${p.omraade}.`].filter(Boolean).join(" ");
   return `# Rolle nå
 Du spiller den digitale telefonsekretæren til ${p.navn}${p.bransje ? ", " + p.bransje : ""}. Personen som ringer er trolig eier eller ansatt i ${p.kortnavn || p.navn} og vil høre hvordan sekretæren ville tatt imot kundene deres.
-Si først kort: «Da hører du nå hvordan jeg ville svart for ${p.kortnavn || p.navn}. Lat som du er en kunde som ringer.» Svar så som sekretæren: «${p.kortnavn || p.navn}, hei! Hva kan jeg hjelpe deg med?»
+Si først kort: «Da hører du nå hvordan jeg ville svart for ${p.kortnavn || p.navn}. Lat som du er en kunde som ringer.» Svar så som sekretæren: «${p.kortnavn || p.navn}, god dag! Hva kan jeg hjelpe deg med?»
 
 # Stil
 Norsk bokmål, kort og varmt, én eller to setninger om gangen, ett spørsmål om gangen. Si klokkeslett og priser slik folk sier dem.
@@ -424,7 +427,8 @@ export function velgMotor(env) {
   const har = { openai: !!env.OPENAI_API_KEY, gemini: !!env.GEMINI_API_KEY, grok: !!env.XAI_API_KEY };
   const valgt = String(env.MOTOR || "").toLowerCase().trim();
   if (har[valgt]) return valgt;
-  return har.openai ? "openai" : har.gemini ? "gemini" : "grok";
+  // Gemini først (2026-11-27): Petter (Puck) holder seg norsk, mens OpenAI-mannsstemmene glir over i svensk.
+  return har.gemini ? "gemini" : har.openai ? "openai" : "grok";
 }
 export const brukGemini = (env) => velgMotor(env) === "gemini";
 
@@ -433,6 +437,7 @@ export const brukGemini = (env) => velgMotor(env) === "gemini";
 export const SPRAK_REGEL = `# Språk og uttale (gjelder hele samtalen)
 - Snakk bare norsk bokmål, med vanlig østnorsk uttale, som en norsk sekretær. Aldri svensk eller dansk uttale. Hold samme stemme, tonefall og uttale hele samtalen, også når du sier tall og navn.
 - Bruk aldri engelske ord eller uttrykk, heller ikke enkeltord som «okay», «sure», «great», «perfect», «sorry», «appointment» eller «anyway». Si heller «ja», «greit», «flott», «supert», «beklager» og «time».
+- Hils med «hallo» eller «god dag», ikke «hei» (på telefon høres det ut som engelsk «hey»). Si «ha det» når dere avslutter.
 - Les tall, priser, klokkeslett, datoer og adresser på norsk. Telefonnummer leser du to og to siffer på norsk, for eksempel «fire-en, to-tre, to-fem, fem-sju».
 - Snakker kunden bare engelsk, kan du svare på engelsk. Ellers svarer du alltid på norsk, også om kunden bruker et engelsk ord.
 - Snakk i et rolig, behagelig tempo, med små pauser mellom setningene. Ikke forhast deg.`;
@@ -557,6 +562,13 @@ export function geminiVerktoy(verktoy) {
 }
 
 // Øktoppsettet for Gemini Live: samme instruksjoner og verktøy som Grok får.
+export function geminiStemme(env, kunde) {
+  const o = kunde.oppsett;
+  if (o && GEMINI_STEMME_FOR[o.stemme]) return GEMINI_STEMME_FOR[o.stemme];
+  if (kunde.agent === "Eva") return "Aoede";
+  // GEMINI_PETTER_STEMME (ny variabel) i stedet for den gamle GEMINI_STEMME, som kan stå igjen som «Aoede» fra Ada-tiden.
+  return env.GEMINI_PETTER_STEMME || GEMINI_STEMME;
+}
 export function geminiOppsett(env, kunde) {
   const s = sesjon(env, kunde);
   return {
@@ -564,7 +576,7 @@ export function geminiOppsett(env, kunde) {
       model: `models/${env.GEMINI_MODELL || GEMINI_MODELL}`,
       generationConfig: {
         responseModalities: ["AUDIO"],
-        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: env.GEMINI_STEMME || GEMINI_STEMME } } },
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: geminiStemme(env, kunde) } } },
       },
       systemInstruction: { parts: [{ text: s.instructions + "\n\n" + SPRAK_REGEL }] },
       tools: geminiVerktoy(s.tools),
@@ -613,11 +625,11 @@ export function sesjon(env, kunde) {
 
 export function forsteReplikk(kunde) {
   if (kunde.oppsett) return kunde.oppsett.forste;
-  const hei = kunde.navn ? `Hei, ${kunde.navn.split(" ")[0]}!` : "Hei!";
+  const hei = kunde.navn ? `Hallo, ${kunde.navn.split(" ")[0]}!` : "Hallo!";
   return kunde.inn
     ? kunde.velgStemme
-      ? "Hei, du har ringt Orvelo! Jeg er Petter, en KI-assistent. Vil du ha en mannlig eller kvinnelig KI-sekretær?"
-      : "Hei, du har ringt Orvelo! Jeg er Petter, en KI-assistent. Hvilket firma ringer du fra?"
+      ? "Hallo, du har ringt Orvelo! Jeg er Petter, en KI-assistent. Vil du ha en mannlig eller kvinnelig KI-sekretær?"
+      : "Hallo, du har ringt Orvelo! Jeg er Petter, en KI-assistent. Hvilket firma ringer du fra?"
     : `${hei} Det er Petter fra Orvelo, en KI-assistent. Du ba om en samtale for å høre hvordan en KI-sekretær høres ut. Passer det nå?`;
 }
 
@@ -829,11 +841,11 @@ export async function koblSamtale(env, tlfWs, urlParam) {
     if (kunde.linje && !kunde.oppsett) {
       // Fikk vi ikke hentet sekretæren: si det kort og legg på (bedre enn en sekretær som ikke vet noe).
       kunde.oppsett = { instruksjoner: "Si bare replikken du har fått, ikke noe mer.", verktoy: [], keyterms: [],
-        forste: "Hei! Beklager, vi har et teknisk problem akkurat nå. Prøv å ringe igjen om litt." };
+        forste: "Hallo! Beklager, vi har et teknisk problem akkurat nå. Prøv å ringe igjen om litt." };
       logg.push(`[${tid()}] (fikk ikke hentet sekretæren, la på)`);
       leggPaa(9000);
     }
-    if (gemini) { startGemini(); return; }
+    if (gemini) { startGemini(xai, forsteReplikk(kunde)); return; }
     const forste = forsteReplikk(kunde);
     if (openai) {
       tilXai({ type: "session.update", session: openaiSesjon(env, kunde) });
@@ -855,13 +867,17 @@ export async function koblSamtale(env, tlfWs, urlParam) {
   // Ny OpenAI-økt med en annen stemme midt i samtalen (OpenAI lar ikke stemmen byttes etter at økten har snakket).
   // Den nye økten får samtalen så langt i instruksjonene og hilser selv. Lyd fra kunden mens vi bytter, venter i køen.
   async function byttStemme(til) {
-    if (!openai || kunde.linje || bytter) return false;
+    if (!(openai || gemini) || kunde.linje || bytter) return false;
     bytter = true;
     try {
-      const r = await fetch(`https://api.openai.com/v1/realtime?model=${encodeURIComponent(env.OPENAI_MODELL || OPENAI_MODELL)}`, {
-        headers: { Upgrade: "websocket", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
-      });
-      if (!r.webSocket) { console.log("Stemmebytte: fikk ikke kontakt med OpenAI", r.status); return false; }
+      const r = gemini
+        ? await fetch("https://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent", {
+          headers: { Upgrade: "websocket", "x-goog-api-key": env.GEMINI_API_KEY },
+        })
+        : await fetch(`https://api.openai.com/v1/realtime?model=${encodeURIComponent(env.OPENAI_MODELL || OPENAI_MODELL)}`, {
+          headers: { Upgrade: "websocket", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+        });
+      if (!r.webSocket) { console.log(`Stemmebytte: fikk ikke kontakt med ${motor}`, r.status); return false; }
       const ny = r.webSocket;
       ny.accept();
       const gammel = xai;
@@ -870,15 +886,22 @@ export async function koblSamtale(env, tlfWs, urlParam) {
       demoHendelser.push(`Byttet stemme: ${fra} -> ${til}`);
       logg.push(`[${tid()}] (byttet til ${til})`);
       xai = ny;
-      lytt(ny);
-      const s = openaiSesjon(env, kunde);
       const sa = logg.filter((l) => / (Kunde|Petter|Eva): /.test(l)).slice(-16).join("\n");
-      if (sa) s.instructions += `\n\n# Samtalen så langt (${fra} snakket før deg)\n${sa}`;
-      tilXai({ type: "session.update", session: s });
+      const historikk = sa ? `# Samtalen så langt (${fra} snakket før deg)\n${sa}` : "";
       const hei = til === "Eva"
-        ? (kunde.firma ? "Hei, jeg er Eva! Da tar jeg over herfra." : "Hei, jeg er Eva, en KI-sekretær fra Orvelo. Hvilket firma ringer du fra?")
-        : "Hei igjen, det er Petter. Da tar jeg over.";
-      tilXai({ type: "response.create", response: { instructions: `Si nøyaktig dette, og ikke noe mer: «${hei}»` } });
+        ? (kunde.firma ? "Hallo, jeg er Eva! Da tar jeg over herfra." : "Hallo, jeg er Eva, en KI-sekretær fra Orvelo. Hvilket firma ringer du fra?")
+        : "Hallo igjen, det er Petter. Da tar jeg over.";
+      if (gemini) {
+        // Gemini: ny økt med den nye stemmen. Lyden fra kunden venter i køen til oppsettet er godtatt.
+        geminiKlar = false;
+        startGemini(ny, hei, historikk);
+      } else {
+        lytt(ny);
+        const s = openaiSesjon(env, kunde);
+        if (historikk) s.instructions += "\n\n" + historikk;
+        tilXai({ type: "session.update", session: s });
+        tilXai({ type: "response.create", response: { instructions: `Si nøyaktig dette, og ikke noe mer: «${hei}»` } });
+      }
       try { gammel && gammel.close(1000, "byttet stemme"); } catch {}
       return true;
     } catch (e) {
@@ -886,7 +909,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
       return false;
     } finally {
       bytter = false;
-      while (ventende.length) sendInnLyd(ventende.shift());
+      if (motorKlar()) while (ventende.length) sendInnLyd(ventende.shift());
     }
   }
 
@@ -938,21 +961,25 @@ export async function koblSamtale(env, tlfWs, urlParam) {
     ws.addEventListener("close", () => { if (ws !== xai) return; clearInterval(stilleSjekk); try { tlfWs.close(1000, "grok lukket"); } catch {} });
   }
 
-  function startGemini() {
-    tilXai(geminiOppsett(env, kunde));
+  // ws = Gemini-økten, forste = det Petter/Eva sier først, ekstra = tekst lagt til instruksjonene (samtalen så langt ved stemmebytte).
+  function startGemini(ws, forste, ekstra = "") {
+    const oppsett = geminiOppsett(env, kunde);
+    if (ekstra) oppsett.setup.systemInstruction.parts[0].text += "\n\n" + ekstra;
+    tilXai(oppsett);
     let innTekst = "", utTekst = "";
     const loggKunde = () => { if (innTekst.trim()) logg.push(`[${tid()}] Kunde: ${innTekst.trim()}`); innTekst = ""; };
     const loggAda = () => {
-      if (/[\p{L}\d]/u.test(utTekst)) logg.push(`[${tid()}] Petter: ${utTekst.trim()}${avbrutt ? " (avbrutt)" : ""}`);
+      if (/[\p{L}\d]/u.test(utTekst)) logg.push(`[${tid()}] ${kunde.agent || "Petter"}: ${utTekst.trim()}${avbrutt ? " (avbrutt)" : ""}`);
       utTekst = ""; avbrutt = false;
     };
     const dek = new TextDecoder();
-    xai.addEventListener("message", async (m) => {
+    ws.addEventListener("message", async (m) => {
+      if (ws !== xai) return; // en økt vi har byttet bort fra
       let e;
       try { e = JSON.parse(typeof m.data === "string" ? m.data : dek.decode(m.data)); } catch { return; }
       if (e.setupComplete) {
         geminiKlar = true;
-        tilXai(geminiStart(forsteReplikk(kunde)));
+        tilXai(geminiStart(forste));
         while (ventende.length) sendInnLyd(ventende.shift());
         return;
       }
@@ -989,6 +1016,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
         const svar = [];
         for (const f of e.toolCall.functionCalls) {
           const res = await kjorVerktoy(f.name, f.args || {});
+          if (res && res.byttet) return; // ny økt med ny stemme har tatt over
           svar.push({ id: f.id, name: f.name, response: f.name === "legg_paa" ? { ok: true, info: "Samtalen avsluttes. Ikke si mer." } : res });
         }
         tilXai({ toolResponse: { functionResponses: svar } });
@@ -996,7 +1024,8 @@ export async function koblSamtale(env, tlfWs, urlParam) {
       }
       if (e.error) console.log("Gemini-feil", JSON.stringify(e).slice(0, 300));
     });
-    xai.addEventListener("close", (c) => {
+    ws.addEventListener("close", (c) => {
+      if (ws !== xai) return;
       if (c && c.code && c.code !== 1000) console.log("Gemini lukket", c.code, String(c.reason || "").slice(0, 200));
       clearInterval(stilleSjekk); try { tlfWs.close(1000, "gemini lukket"); } catch {}
     });
@@ -1057,7 +1086,7 @@ export async function koblSamtale(env, tlfWs, urlParam) {
       const forventet = await hmac(env.TWILIO_AUTH_TOKEN, `inn|${p.cid}|${p.fra}|${p.ts}` + (p.kunde ? `|${p.kunde}` : ""));
       if (!likt(p.sig, forventet) || Date.now() - Number(p.ts) > 2 * 60 * 1000) { console.log("Ugyldig innringing-signatur"); return null; }
       // Demonummeret (ikke en kundes linje): innringeren velger mannlig eller kvinnelig sekretær først. STEMMEVALG=av slår det av.
-      const velgStemme = !p.kunde && openai && env.STEMMEVALG !== "av";
+      const velgStemme = !p.kunde && (openai || gemini) && env.STEMMEVALG !== "av";
       return { til: p.fra || "ukjent", navn: "", firma: "", inn: true, linje: p.kunde || "", ...(velgStemme ? { velgStemme } : {}) };
     }
     // Sjekk at samtalen faktisk ble startet av /ring (signert), ellers legg på.
