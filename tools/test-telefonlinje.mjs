@@ -35,7 +35,7 @@ class FakeWs {
   addEventListener(t, f) { (this.l[t] ||= []).push(f); }
   send(d) { this.ut.push(JSON.parse(d)); }
   close() { if (this.lukket) return; this.lukket = true; this.readyState = 3; for (const f of this.l.close || []) f({}); }
-  emit(obj) { for (const f of this.l.message || []) f({ data: JSON.stringify(obj) }); }
+  emit(obj) { for (const f of this.l.message || []) f({ data: this.blob ? new Blob([JSON.stringify(obj)]) : JSON.stringify(obj) }); }
 }
 let serverWs, xaiWs;
 const openaiWs = [], geminiWs = [];
@@ -338,6 +338,7 @@ await test("Demo (Gemini): Petter er Puck, sier «hallo», og Eva (Aoede) tar ov
     tlf.emit({ event: "start", start: { callSid: "CAgem", streamSid: "MZ6", customParameters: tParam(r.xml) } });
     await vent(30);
     const petter = geminiWs[0];
+    petter.blob = true; // Cloudflare gir Gemini-svarene som Blob (binære rammer)
     const oppsett = petter.ut[0].setup;
     assert.equal(oppsett.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName, "Puck");
     assert.ok(oppsett.tools[0].functionDeclarations.some((f) => f.name === "bytt_stemme"));
@@ -345,12 +346,16 @@ await test("Demo (Gemini): Petter er Puck, sier «hallo», og Eva (Aoede) tar ov
     petter.emit({ setupComplete: {} });
     await vent(10);
     assert.match(petter.ut[1].clientContent.turns[0].parts[0].text, /Hallo, du har ringt Orvelo! Jeg er Petter.*mannlig eller kvinnelig/);
+    petter.emit({ serverContent: { modelTurn: { parts: [{ inlineData: { mimeType: "audio/pcm;rate=24000", data: Buffer.alloc(4800).toString("base64") } }] } } });
+    await vent(10);
+    assert.ok(tlf.ut.some((m) => m.event === "media" && m.streamSid === "MZ6"), "lyden fra Gemini (Blob) når telefonen");
     petter.emit({ serverContent: { inputTranscription: { text: "Kvinnelig." } } });
     petter.emit({ serverContent: { turnComplete: true } });
     petter.emit({ toolCall: { functionCalls: [{ id: "g1", name: "bytt_stemme", args: { stemme: "kvinne" } }] } });
     await vent(30);
     assert.equal(geminiWs.length, 2, "ny økt for Eva");
     const eva = geminiWs[1];
+    eva.blob = true;
     assert.equal(eva.ut[0].setup.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName, "Aoede");
     assert.match(eva.ut[0].setup.systemInstruction.parts[0].text, /Du er Eva/);
     assert.match(eva.ut[0].setup.systemInstruction.parts[0].text, /Kunde: Kvinnelig/);
